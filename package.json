@@ -1,0 +1,48 @@
+{
+  "name": "@superfaceai/testing-lib",
+  "version": "0.0.1",
+  "description": "Testing library for Superface capabilities.",
+  "main": "dist/index.js",
+  "source": "src/index.ts",
+  "types": "dist/index.d.ts",
+  "author": "Superface Team",
+  "private": false,
+  "files": [
+    "dist/**/*"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.release.json --outDir dist",
+    "watch": "yarn build --watch",
+    "clean": "rimraf dist/",
+    "prebuild": "yarn clean",
+    "test": "jest",
+    "lint": "eslint src/",
+    "lint:fix": "yarn lint --fix",
+    "format": "prettier -c src/",
+    "format:fix": "prettier --write src/",
+    "prepush": "yarn build && yarn test && yarn lint && yarn format"
+  },
+  "devDependencies": {
+    "@types/jest": "^27.0.1",
+    "@types/rimraf": "^3.0.2",
+    "@types/debug": "^4.1.7",
+    "@typescript-eslint/eslint-plugin": "^4.29.2",
+    "@typescript-eslint/parser": "^4.29.2",
+    "eslint": "^7.32.0",
+    "eslint-config-prettier": "^8.3.0",
+    "eslint-import-resolver-typescript": "^2.4.0",
+    "eslint-plugin-import": "^2.24.0",
+    "eslint-plugin-jest": "^24.4.0",
+    "eslint-plugin-simple-import-sort": "^7.0.0",
+    "jest": "^27.0.6",
+    "prettier": "^2.3.2",
+    "rimraf": "^3.0.2",
+    "ts-jest": "^27.0.5",
+    "typescript": "4.3.2"
+  },
+  "dependencies": {
+    "@superfaceai/one-sdk": "^0.0.31",
+    "debug": "^4.3.2",
+    "nock": "^13.1.1"
+  }
+}
