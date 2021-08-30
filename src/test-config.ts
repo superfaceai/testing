@@ -1,4 +1,4 @@
-import { SuperfaceClient } from '@superfaceai/one-sdk';
+import { SuperfaceClient, SuperJson } from '@superfaceai/one-sdk';
 import {
   back as nockBack,
   load as loadRecording,
@@ -49,6 +49,12 @@ export class TestConfig {
       await this.setup(testCase);
     }
 
+    if (!(await this.areCapabilitiesLocal())) {
+      throw new Error(
+        'Some capabilities are not local, do not forget to set up file paths in super.json.'
+      );
+    }
+
     await this.prepareConfig();
 
     if (this.sfConfig.profile === undefined) {
@@ -65,6 +71,12 @@ export class TestConfig {
   }
 
   async run(input: unknown): Promise<TestingReturn> {
+    if (!(await this.areCapabilitiesLocal())) {
+      throw new Error(
+        'Some capabilities are not local, do not forget to set up file paths in super.json.'
+      );
+    }
+
     await this.prepareConfig();
 
     assertsPreparedConfig(this.sfConfig);
@@ -124,7 +136,8 @@ export class TestConfig {
         dont_print: true,
         output_objects: true,
         use_separator: false,
-        enable_reqheaders_recording: this.nockConfig?.hideHeaders ?? nockConfig?.hideHeaders ?? true,
+        enable_reqheaders_recording:
+          this.nockConfig?.hideHeaders ?? nockConfig?.hideHeaders ?? true,
       });
     }
   }
@@ -246,5 +259,81 @@ export class TestConfig {
         `${fixture ?? 'recording'}.json`
       );
     }
+  }
+
+  private async areCapabilitiesLocal(): Promise<boolean> {
+    if (this.sfConfig === undefined) {
+      throw new Error('no configuration found');
+    }
+
+    const superPath = await SuperJson.detectSuperJson(process.cwd(), 3);
+
+    if (superPath === undefined) {
+      throw new Error('no super.json found');
+    }
+
+    const superJsonResult = await SuperJson.load(
+      joinPath(superPath, 'super.json')
+    );
+
+    if (superJsonResult.isErr()) {
+      throw superJsonResult.error;
+    }
+
+    const superJsonProfiles = superJsonResult.value.normalized.profiles;
+    let profileId: string | undefined;
+
+    // check whether profile is local and contain some file path
+    if (this.sfConfig.profile !== undefined) {
+      if (typeof this.sfConfig.profile === 'string') {
+        if (!('file' in superJsonProfiles[this.sfConfig.profile])) {
+          return false;
+        }
+
+        profileId = this.sfConfig.profile;
+      } else {
+        if (
+          !('file' in superJsonProfiles[this.sfConfig.profile.configuration.id])
+        ) {
+          return false;
+        }
+
+        profileId = this.sfConfig.profile.configuration.id;
+      }
+    }
+
+    // check whether provider is local and contain some file path
+    if (this.sfConfig.provider !== undefined) {
+      if (profileId === undefined) {
+        throw new Error('profile not found');
+      }
+
+      const superJsonProviders = superJsonResult.value.normalized.providers;
+      const superJsonProfileProviders = superJsonProfiles[profileId].providers;
+
+      if (typeof this.sfConfig.provider === 'string') {
+        if (
+          !('file' in superJsonProfileProviders[this.sfConfig.provider]) ||
+          !('file' in superJsonProviders[this.sfConfig.provider])
+        ) {
+          return false;
+        }
+      } else {
+        if (
+          !(
+            'file' in
+            superJsonProfileProviders[this.sfConfig.provider.configuration.name]
+          ) ||
+          !(
+            'file' in
+            superJsonProviders[this.sfConfig.provider.configuration.name]
+          )
+        ) {
+          return false;
+        }
+      }
+    }
+
+    return true;
   }
 }
