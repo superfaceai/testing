@@ -35,9 +35,10 @@ export type TestingReturn =
 export type NockBackMode = 'wild' | 'dryrun' | 'record' | 'lockdown';
 
 export interface NockConfig {
-  path: string;
+  path?: string;
   dir?: string;
   mode?: NockBackMode;
   fixture?: string;
   update?: boolean;
+  hideHeaders?: boolean;
 }

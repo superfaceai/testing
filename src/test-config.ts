@@ -5,7 +5,7 @@ import {
   recorder,
   restore as endRec,
 } from 'nock';
-import { join as joinPath } from 'path';
+import { basename, join as joinPath } from 'path';
 
 import { removeTimestamp } from './common/format';
 import { exists } from './common/io';
@@ -36,6 +36,9 @@ function assertsPreparedConfig(
 }
 
 export class TestConfig {
+  private fixturePath?: string;
+  private nockDone?: () => void;
+
   constructor(
     public sfConfig: TestConfigPayload,
     public nockConfig?: NockConfig
@@ -103,6 +106,99 @@ export class TestConfig {
     }
   }
 
+  async record(nockConfig?: NockConfig): Promise<void> {
+    if (!nockConfig && !this.nockConfig) {
+      throw new Error('nock configuration missing');
+    }
+
+    this.setupNockConfig(nockConfig);
+
+    if (!this.fixturePath) {
+      throw new Error('unreachable');
+    }
+
+    if (await exists(this.fixturePath)) {
+      loadRecording(this.fixturePath);
+    } else {
+      recorder.rec({
+        dont_print: true,
+        output_objects: true,
+        use_separator: false,
+        enable_reqheaders_recording: this.nockConfig?.hideHeaders ?? nockConfig?.hideHeaders ?? true,
+      });
+    }
+  }
+
+  // possible to update recordings through force flag
+  async endRecording(nockConfig?: NockConfig): Promise<void> {
+    if (!nockConfig && !this.nockConfig) {
+      throw new Error('nock configuration missing');
+    }
+
+    if (!this.fixturePath) {
+      throw new Error('unreachable');
+    }
+
+    if (await exists(this.fixturePath)) {
+      return;
+    }
+
+    const { path, dir, fixture, update } = nockConfig ?? this.nockConfig ?? {};
+    const fixturePath = joinPath(
+      path ?? process.cwd(),
+      dir ?? '.',
+      `${fixture ?? 'recording'}.json`
+    );
+
+    await OutputStream.writeIfAbsent(
+      fixturePath,
+      JSON.stringify(recorder.play(), null, 2),
+      { dirs: true, force: update }
+    );
+
+    endRec();
+  }
+
+  setupNockBack(nockConfig?: NockConfig): void {
+    if (!nockConfig && !this.nockConfig) {
+      throw new Error('nock configuration missing');
+    }
+
+    this.setupNockConfig(nockConfig);
+
+    const { path, dir, mode } = nockConfig ?? this.nockConfig ?? {};
+
+    nockBack.fixtures = joinPath(path ?? process.cwd(), dir ?? '.');
+    nockBack.setMode(mode ?? 'record');
+  }
+
+  async nockBackRecord(nockConfig?: NockConfig): Promise<void> {
+    if (!nockConfig && !this.nockConfig) {
+      throw new Error('nock configuration missing');
+    }
+
+    this.setupNockConfig(nockConfig);
+
+    if (!this.fixturePath) {
+      throw new Error('unreachable');
+    }
+
+    const { nockDone } = await nockBack(basename(this.fixturePath));
+    this.nockDone = nockDone;
+
+    // TODO: implement headers filtering in preprocessing function: https://github.com/nock/nock#example
+  }
+
+  endNockBackRecording(): void {
+    if (this.nockDone === undefined) {
+      throw new Error('nock recording failed');
+    }
+
+    this.nockDone();
+
+    endRec();
+  }
+
   private async prepareConfig(): Promise<void> {
     if (!this.sfConfig.client) {
       this.sfConfig.client = new SuperfaceClient();
@@ -133,29 +229,7 @@ export class TestConfig {
     }
   }
 
-  setupRecordings(nockConfig?: NockConfig): void {
-    if (!nockConfig && !this.nockConfig) {
-      throw new Error('nock configuration missing');
-    }
-
-    if (nockConfig) {
-      this.nockConfig = {
-        ...this.nockConfig,
-        ...nockConfig,
-      };
-    }
-
-    const { path, dir, mode } = nockConfig ?? this.nockConfig ?? {};
-
-    nockBack.fixtures = joinPath(path ?? process.cwd(), dir ?? '.');
-    nockBack.setMode(mode ?? 'record');
-  }
-
-  async recordOrLoad(nockConfig?: NockConfig): Promise<void> {
-    if (!nockConfig && !this.nockConfig) {
-      throw new Error('nock configuration missing');
-    }
-
+  private setupNockConfig(nockConfig?: NockConfig): void {
     if (nockConfig) {
       this.nockConfig = {
         ...this.nockConfig,
@@ -164,43 +238,13 @@ export class TestConfig {
     }
 
     const { path, dir, fixture } = nockConfig ?? this.nockConfig ?? {};
-    const fixturePath = joinPath(
-      path ?? process.cwd(),
-      dir ?? '.',
-      `${fixture ?? 'recording'}.json`
-    );
 
-    if (await exists(fixturePath)) {
-      loadRecording(fixturePath);
-    } else {
-      recorder.rec({
-        dont_print: true,
-        output_objects: true,
-        use_separator: false,
-        enable_reqheaders_recording: true,
-      });
+    if (this.fixturePath === undefined) {
+      this.fixturePath = joinPath(
+        path ?? process.cwd(),
+        dir ?? '.',
+        `${fixture ?? 'recording'}.json`
+      );
     }
-  }
-
-  // possible to update recordings through force flag
-  async endRecording(nockConfig?: NockConfig): Promise<void> {
-    if (!nockConfig && !this.nockConfig) {
-      throw new Error('nock configuration missing');
-    }
-
-    const { path, dir, fixture, update } = nockConfig ?? this.nockConfig ?? {};
-    const fixturePath = joinPath(
-      path ?? process.cwd(),
-      dir ?? '.',
-      `${fixture ?? 'recording'}.json`
-    );
-
-    await OutputStream.writeIfAbsent(
-      fixturePath,
-      JSON.stringify(recorder.play(), null, 2),
-      { dirs: true, force: update }
-    );
-
-    endRec();
   }
 }
