@@ -1,4 +1,10 @@
-import { SuperfaceClient, SuperJson } from '@superfaceai/one-sdk';
+import {
+  ProfileEntry,
+  ProfileProviderEntry,
+  ProviderEntry,
+  SuperfaceClient,
+  SuperJson,
+} from '@superfaceai/one-sdk';
 import {
   back as nockBack,
   load as loadRecording,
@@ -46,7 +52,7 @@ export class TestConfig {
 
   async test(testCase?: TestConfigPayload): Promise<void> {
     if (testCase !== undefined) {
-      await this.setup(testCase);
+      this.setup(testCase);
     }
 
     if (!(await this.areCapabilitiesLocal())) {
@@ -100,7 +106,7 @@ export class TestConfig {
     throw new Error('unreachable');
   }
 
-  async setup(payload: TestConfigPayload): Promise<void> {
+  setup(payload: TestConfigPayload): void {
     if (payload.client !== undefined) {
       this.sfConfig.client = payload.client;
     }
@@ -149,7 +155,7 @@ export class TestConfig {
     }
 
     if (!this.fixturePath) {
-      throw new Error('unreachable');
+      throw new Error('Fixture path is not defined, have you start recording?');
     }
 
     if (await exists(this.fixturePath)) {
@@ -262,39 +268,40 @@ export class TestConfig {
   }
 
   private async areCapabilitiesLocal(): Promise<boolean> {
-    if (this.sfConfig === undefined) {
-      throw new Error('no configuration found');
+    let superJson = this.sfConfig.client?.superJson;
+
+    if (!superJson) {
+      const superPath = await SuperJson.detectSuperJson(process.cwd(), 3);
+
+      if (superPath === undefined) {
+        throw new Error('no super.json found');
+      }
+
+      superJson = (
+        await SuperJson.load(joinPath(superPath, 'super.json'))
+      ).unwrap();
     }
 
-    const superPath = await SuperJson.detectSuperJson(process.cwd(), 3);
-
-    if (superPath === undefined) {
-      throw new Error('no super.json found');
-    }
-
-    const superJsonResult = await SuperJson.load(
-      joinPath(superPath, 'super.json')
-    );
-
-    if (superJsonResult.isErr()) {
-      throw superJsonResult.error;
-    }
-
-    const superJsonProfiles = superJsonResult.value.normalized.profiles;
+    const superJsonNormalized = superJson.normalized;
+    const superJsonProfiles = superJsonNormalized.profiles;
     let profileId: string | undefined;
 
     // check whether profile is local and contain some file path
     if (this.sfConfig.profile !== undefined) {
+      let targettedProfile: ProfileEntry;
       if (typeof this.sfConfig.profile === 'string') {
-        if (!('file' in superJsonProfiles[this.sfConfig.profile])) {
+        targettedProfile = superJsonProfiles[this.sfConfig.profile];
+
+        if (!('file' in targettedProfile)) {
           return false;
         }
 
         profileId = this.sfConfig.profile;
       } else {
-        if (
-          !('file' in superJsonProfiles[this.sfConfig.profile.configuration.id])
-        ) {
+        targettedProfile =
+          superJsonProfiles[this.sfConfig.profile.configuration.id];
+
+        if (!('file' in targettedProfile)) {
           return false;
         }
 
@@ -308,26 +315,34 @@ export class TestConfig {
         throw new Error('profile not found');
       }
 
-      const superJsonProviders = superJsonResult.value.normalized.providers;
+      const superJsonProviders = superJsonNormalized.providers;
       const superJsonProfileProviders = superJsonProfiles[profileId].providers;
 
+      let targetedProvider: ProviderEntry,
+        targetedProfileProvider: ProfileProviderEntry;
+
       if (typeof this.sfConfig.provider === 'string') {
+        targetedProvider = superJsonProviders[this.sfConfig.provider];
+        targetedProfileProvider =
+          superJsonProfileProviders[this.sfConfig.provider];
+
         if (
-          !('file' in superJsonProfileProviders[this.sfConfig.provider]) ||
-          !('file' in superJsonProviders[this.sfConfig.provider])
+          !('file' in targetedProfileProvider) ||
+          !('file' in targetedProvider) ||
+          targetedProvider.file === undefined
         ) {
           return false;
         }
       } else {
+        targetedProvider =
+          superJsonProviders[this.sfConfig.provider.configuration.name];
+        targetedProfileProvider =
+          superJsonProfileProviders[this.sfConfig.provider.configuration.name];
+
         if (
-          !(
-            'file' in
-            superJsonProfileProviders[this.sfConfig.provider.configuration.name]
-          ) ||
-          !(
-            'file' in
-            superJsonProviders[this.sfConfig.provider.configuration.name]
-          )
+          !('file' in targetedProfileProvider) ||
+          !('file' in targetedProvider) ||
+          targetedProvider.file === undefined
         ) {
           return false;
         }
