@@ -159,7 +159,7 @@ describe('TestConfig', () => {
       });
     });
 
-    describe('when preparing configuration', () => {
+    describe.skip('when preparing configuration', () => {
       it('throws error when usecase is string and profile is undefined', async () => {
         const mockSuperJson = new SuperJson({
           profiles: {

@@ -4,11 +4,12 @@ import { rimraf, streamEnd, streamWrite } from './io';
 import { OutputStream } from './output-stream';
 
 //Mock only streamWrite and streamEnd response
-jest.mock('../common/io', () => ({
-  ...jest.requireActual<Record<string, unknown>>('../common/io'),
+jest.mock('./io', () => ({
+  ...jest.requireActual<Record<string, unknown>>('./io'),
   streamWrite: jest.fn(),
   streamEnd: jest.fn(),
 }));
+
 describe('OutputStream', () => {
   const WORKING_DIR = join('fixtures', 'output-stream');
 
