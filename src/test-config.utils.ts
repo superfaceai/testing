@@ -7,7 +7,7 @@ import {
 } from '@superfaceai/one-sdk';
 import { join as joinPath } from 'path';
 
-import { TestConfigPayload, TestConfiguration } from '.';
+import { ProfilePayload, TestConfigPayload, TestConfiguration } from '.';
 import { InstanceMissingError, SuperJsonNotFoundError } from './errors';
 
 /**
@@ -33,7 +33,7 @@ export function assertsPreparedConfig(
  * Checks whether profile is local and contains some file path.
  */
 export function isProfileLocal(
-  profile: TypedProfile<any> | Profile | string,
+  profile: ProfilePayload,
   superJsonNormalized: NormalizedSuperJsonDocument
 ): boolean {
   const profileId = getProfileId(profile);
@@ -77,9 +77,7 @@ export function isProviderLocal(
  * Returns profile id if entered profile is either
  * typed instance of Profile or instance of Profile or string
  */
-export function getProfileId(
-  profile: TypedProfile<any> | Profile | string
-): string {
+export function getProfileId(profile: ProfilePayload): string {
   if (profile instanceof TypedProfile || profile instanceof Profile) {
     return profile.configuration.id;
   }

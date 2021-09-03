@@ -10,15 +10,19 @@ import { TypedUseCase } from '@superfaceai/one-sdk/dist/client/usecase';
 
 /* eslint-disable  @typescript-eslint/no-explicit-any */
 
+export type Client = SuperfaceClient | TypedSuperfaceClient<any>;
+export type ProfilePayload = Profile | TypedProfile<any> | string;
+export type UseCasePayload = UseCase | TypedUseCase<any, unknown> | string;
+
 export interface TestConfigPayload {
-  client?: SuperfaceClient | TypedSuperfaceClient<any>;
-  profile?: Profile | TypedProfile<any> | string;
+  client?: Client;
+  profile?: ProfilePayload;
   provider?: Provider | string;
-  useCase?: UseCase | TypedUseCase<any, unknown> | string;
+  useCase?: UseCasePayload;
 }
 
 export interface TestConfiguration {
-  client?: SuperfaceClient | TypedSuperfaceClient<any>;
+  client?: Client;
   profile?: Profile | TypedProfile<any>;
   provider?: Provider;
   useCase?: UseCase | TypedUseCase<any, unknown>;
