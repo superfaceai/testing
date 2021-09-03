@@ -18,6 +18,12 @@ import { mocked } from 'ts-jest/utils';
 
 import { exists } from './common/io';
 import { OutputStream } from './common/output-stream';
+import {
+  ComponentUndefinedError,
+  NockConfigUndefinedError,
+  RecordingNotStartedError,
+  SuperJsonNotFoundError,
+} from './errors';
 import { TestConfig } from './test-config';
 import { TestConfigPayload, TestConfiguration } from './test-config.interfaces';
 
@@ -57,7 +63,9 @@ describe('TestConfig', () => {
 
       testConfig = new TestConfig({});
 
-      await expect(testConfig.test()).rejects.toThrow('no super.json found');
+      await expect(testConfig.test()).rejects.toThrowError(
+        new SuperJsonNotFoundError()
+      );
 
       expect(detectSpy).toHaveBeenCalledTimes(1);
       expect(loadSpy).not.toHaveBeenCalled();
@@ -225,7 +233,9 @@ describe('TestConfig', () => {
 
       testConfig = new TestConfig({});
 
-      await expect(testConfig.run({})).rejects.toThrow('no super.json found');
+      await expect(testConfig.run({})).rejects.toThrowError(
+        new SuperJsonNotFoundError()
+      );
 
       expect(detectSpy).toHaveBeenCalledTimes(1);
       expect(loadSpy).not.toHaveBeenCalled();
@@ -281,7 +291,9 @@ describe('TestConfig', () => {
         provider: mockedProvider,
       });
 
-      await expect(testConfig.run({})).rejects.toThrow('perform failed');
+      await expect(testConfig.run({})).rejects.toThrowError(
+        new ComponentUndefinedError('UseCase')
+      );
 
       expect(detectSpy).toHaveBeenCalledTimes(1);
       expect(loadSpy).toHaveBeenCalledTimes(1);
@@ -326,7 +338,7 @@ describe('TestConfig', () => {
 
       expect(performSpy).toHaveBeenCalledTimes(1);
       expect(performSpy).toHaveBeenCalledWith({}, { provider: mockedProvider });
-      
+
       expect(detectSpy).toHaveBeenCalledTimes(1);
       expect(loadSpy).toHaveBeenCalledTimes(1);
     });
@@ -365,12 +377,12 @@ describe('TestConfig', () => {
       });
 
       await expect(testConfig.run({})).resolves.toMatchObject({
-        value: "result"
+        value: 'result',
       });
 
       expect(performSpy).toHaveBeenCalledTimes(1);
       expect(performSpy).toHaveBeenCalledWith({}, { provider: mockedProvider });
-      
+
       expect(detectSpy).toHaveBeenCalledTimes(1);
       expect(loadSpy).toHaveBeenCalledTimes(1);
     });
@@ -408,7 +420,7 @@ describe('TestConfig', () => {
         useCase: 'another-new-usecase',
       });
     });
-    
+
     it('does nothing when no payload is specified', () => {
       testConfig = new TestConfig({
         profile: 'some-profile',
@@ -423,8 +435,8 @@ describe('TestConfig', () => {
 
   describe('record', () => {
     it('throws when nockConfig is not specified', async () => {
-      await expect(testConfig.record()).rejects.toThrow(
-        'nock configuration missing'
+      await expect(testConfig.record()).rejects.toThrowError(
+        new NockConfigUndefinedError()
       );
     });
 
@@ -468,16 +480,16 @@ describe('TestConfig', () => {
     afterAll(async () => {
       await mockServer.stop();
     });
-    
+
     it('throws when nockConfig is not specified', async () => {
-      await expect(testConfig.endRecording()).rejects.toThrow(
-        'nock configuration missing'
+      await expect(testConfig.endRecording()).rejects.toThrowError(
+        new NockConfigUndefinedError()
       );
     });
 
     it('throws when fixture path is not set', async () => {
-      await expect(testConfig.endRecording({})).rejects.toThrow(
-        'Fixture path is not defined, make sure to run `record()` before ending recording.'
+      await expect(testConfig.endRecording({})).rejects.toThrowError(
+        new RecordingNotStartedError('record')
       );
     });
 
@@ -542,8 +554,8 @@ describe('TestConfig', () => {
 
   describe('setupNockBack', () => {
     it('throws when nockConfig is not specified', async () => {
-      expect(() => testConfig.setupNockBack()).toThrow(
-        'nock configuration missing'
+      expect(() => testConfig.setupNockBack()).toThrowError(
+        new NockConfigUndefinedError()
       );
     });
 
@@ -563,8 +575,8 @@ describe('TestConfig', () => {
 
   describe('nockBackRecord', () => {
     it('throws when nockConfig is not specified', async () => {
-      await expect(testConfig.nockBackRecord()).rejects.toThrow(
-        'nock configuration missing'
+      await expect(testConfig.nockBackRecord()).rejects.toThrowError(
+        new NockConfigUndefinedError()
       );
     });
 
@@ -596,8 +608,8 @@ describe('TestConfig', () => {
 
   describe('endNockBackRecording', () => {
     it('throws when nockDone is not defined', async () => {
-      expect(() => testConfig.endNockBackRecording()).toThrow(
-        'Nock recording failed, make sure to run `nockBackRecord()` before ending recording.'
+      expect(() => testConfig.endNockBackRecording()).toThrowError(
+        new RecordingNotStartedError('nockBackRecord')
       );
     });
 
@@ -700,8 +712,8 @@ describe('TestConfig', () => {
         .spyOn(SuperJson, 'load')
         .mockResolvedValue(ok(mockSuperJson));
 
-      await expect(testConfig.test()).rejects.toThrow(
-        'To setup usecase, you need to specify profile as well.'
+      await expect(testConfig.test()).rejects.toThrowError(
+        new ComponentUndefinedError('Profile')
       );
 
       expect(detectSpy).toHaveBeenCalledTimes(1);
@@ -752,7 +764,7 @@ describe('TestConfig', () => {
       });
 
       const client = new SuperfaceClient();
-      
+
       testConfig = new TestConfig({
         client,
         profile: 'profile',
@@ -770,13 +782,15 @@ describe('TestConfig', () => {
         new ProviderConfiguration('provider', [])
       );
 
-      const getProfileSpy = mocked(SuperfaceClient.prototype).getProfile.mockResolvedValue(
-        mockedProfile
-      );
-      const getProviderSpy = mocked(SuperfaceClient.prototype).getProvider.mockResolvedValue(
-        mockedProvider
-      );
-      const getUseCaseSpy= mocked(Profile.prototype).getUseCase.mockReturnValue(mockedUseCase);
+      const getProfileSpy = mocked(
+        SuperfaceClient.prototype
+      ).getProfile.mockResolvedValue(mockedProfile);
+      const getProviderSpy = mocked(
+        SuperfaceClient.prototype
+      ).getProvider.mockResolvedValue(mockedProvider);
+      const getUseCaseSpy = mocked(
+        Profile.prototype
+      ).getUseCase.mockReturnValue(mockedUseCase);
 
       const detectSpy = jest
         .spyOn(SuperJson, 'detectSuperJson')
@@ -789,9 +803,9 @@ describe('TestConfig', () => {
 
       expect(detectSpy).toHaveBeenCalledTimes(1);
       expect(loadSpy).toHaveBeenCalledTimes(1);
-      expect(getProfileSpy).toHaveBeenCalledTimes(1)
-      expect(getProviderSpy).toHaveBeenCalledTimes(1)
-      expect(getUseCaseSpy).toHaveBeenCalledTimes(1)
+      expect(getProfileSpy).toHaveBeenCalledTimes(1);
+      expect(getProviderSpy).toHaveBeenCalledTimes(1);
+      expect(getUseCaseSpy).toHaveBeenCalledTimes(1);
 
       const profile = await client.getProfile('profile');
       const provider = await client.getProvider('provider');
