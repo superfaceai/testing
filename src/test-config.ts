@@ -155,7 +155,7 @@ export class TestConfig {
     }
 
     if (!this.fixturePath) {
-      throw new Error('Fixture path is not defined, have you start recording?');
+      throw new Error('Fixture path is not defined, make sure to run `record()` before ending recording.');
     }
 
     if (await exists(this.fixturePath)) {
@@ -210,7 +210,7 @@ export class TestConfig {
 
   endNockBackRecording(): void {
     if (this.nockDone === undefined) {
-      throw new Error('nock recording failed');
+      throw new Error('Nock recording failed, make sure to run `nockBackRecord()` before ending recording.');
     }
 
     this.nockDone();
