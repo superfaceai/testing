@@ -27,8 +27,10 @@ jest.mock('./common/io', () => ({
 }));
 
 jest.mock('@superfaceai/one-sdk/dist/client/client');
+jest.mock('@superfaceai/one-sdk/dist/client/profile');
+jest.mock('@superfaceai/one-sdk/dist/client/usecase');
 
-// jest.mock('@superfaceai/one-sdk/dist/internal/superjson');
+jest.mock('@superfaceai/one-sdk/dist/internal/superjson');
 
 jest.mock('nock');
 
@@ -44,266 +46,6 @@ describe('TestConfig', () => {
   describe('test', () => {
     beforeEach(() => {
       testConfig = new TestConfig({});
-    });
-
-    describe('when capabilities are not local', () => {
-      beforeEach(() => {
-        testConfig = new TestConfig({
-          profile: 'profile',
-          provider: 'provider',
-          useCase: 'usecase',
-        });
-      });
-
-      it('throws error when profile, profileProvider nor provider is not local', async () => {
-        const mockSuperJson = new SuperJson({
-          profiles: {
-            profile: {
-              version: '0.0.1',
-              providers: {
-                provider: {},
-              },
-            },
-          },
-        });
-
-        const detectSpy = jest
-          .spyOn(SuperJson, 'detectSuperJson')
-          .mockResolvedValue('.');
-        const loadSpy = jest
-          .spyOn(SuperJson, 'load')
-          .mockResolvedValue(ok(mockSuperJson));
-
-        const errorMessage =
-          'Some capabilities are not local, do not forget to set up file paths in super.json.';
-
-        await expect(testConfig.test()).rejects.toThrow(errorMessage);
-
-        expect(detectSpy).toHaveBeenCalledTimes(1);
-        expect(loadSpy).toHaveBeenCalledTimes(1);
-      });
-
-      it('throws error when profile nor provider is not local', async () => {
-        const mockSuperJson = new SuperJson({
-          profiles: {
-            profile: {
-              version: '0.0.1',
-              providers: {
-                provider: {
-                  file: 'path/to/map.suma',
-                },
-              },
-            },
-          },
-          providers: {
-            provider: {
-              security: [],
-            },
-          },
-        });
-
-        const detectSpy = jest
-          .spyOn(SuperJson, 'detectSuperJson')
-          .mockResolvedValue('.');
-        const loadSpy = jest
-          .spyOn(SuperJson, 'load')
-          .mockResolvedValue(ok(mockSuperJson));
-
-        const errorMessage =
-          'Some capabilities are not local, do not forget to set up file paths in super.json.';
-
-        await expect(testConfig.test()).rejects.toThrow(errorMessage);
-
-        expect(detectSpy).toHaveBeenCalledTimes(1);
-        expect(loadSpy).toHaveBeenCalledTimes(1);
-      });
-
-      // TODO: fix TestConfig areCapabilitiesLocal()
-      it('throws error when profileProvider is not local', async () => {
-        const mockSuperJson = new SuperJson({
-          profiles: {
-            profile: {
-              file: 'path/to/profile.supr',
-              providers: {
-                provider: {
-                  file: 'path/to/map.suma',
-                },
-              },
-            },
-          },
-          providers: {
-            provider: {
-              security: [],
-            },
-          },
-        });
-
-        const detectSpy = jest
-          .spyOn(SuperJson, 'detectSuperJson')
-          .mockResolvedValue('.');
-        const loadSpy = jest
-          .spyOn(SuperJson, 'load')
-          .mockResolvedValue(ok(mockSuperJson));
-        const loadSyncSpy = jest
-          .spyOn(SuperJson, 'loadSync')
-          .mockReturnValue(ok(mockSuperJson));
-
-        const errorMessage =
-          'Some capabilities are not local, do not forget to set up file paths in super.json.';
-
-        await expect(testConfig.test()).rejects.toThrow(errorMessage);
-
-        expect(detectSpy).toHaveBeenCalledTimes(1);
-        expect(loadSpy).toHaveBeenCalledTimes(1);
-        expect(loadSyncSpy).toHaveBeenCalledTimes(0);
-      });
-    });
-
-    describe.skip('when preparing configuration', () => {
-      it('throws error when usecase is string and profile is undefined', async () => {
-        const mockSuperJson = new SuperJson({
-          profiles: {
-            myprofile: {
-              file: 'path/to/profile.supr',
-              providers: {
-                myprovider: {
-                  file: 'path/to/map.suma',
-                },
-              },
-            },
-          },
-          providers: {
-            myprovider: {
-              file: 'path/to/provider.json',
-              security: [],
-            },
-          },
-        });
-
-        const expectedSfConfig: TestConfigPayload = {
-          useCase: 'some-use-case',
-        };
-
-        const loadSyncSpy = jest
-          .spyOn(SuperJson, 'loadSync')
-          .mockReturnValue(ok(mockSuperJson));
-        const client = new SuperfaceClient();
-
-        testConfig = new TestConfig({
-          client,
-          useCase: 'some-use-case',
-        });
-
-        const detectSpy = jest
-          .spyOn(SuperJson, 'detectSuperJson')
-          .mockResolvedValue('.');
-        const loadSpy = jest
-          .spyOn(SuperJson, 'load')
-          .mockResolvedValue(ok(mockSuperJson));
-
-        await expect(testConfig.test()).rejects.toThrow(
-          'To setup usecase, you need to specify profile as well.'
-        );
-
-        expect(detectSpy).toHaveBeenCalledTimes(1);
-        expect(loadSpy).toHaveBeenCalledTimes(1);
-        expect(loadSyncSpy).toHaveBeenCalledTimes(1);
-        expect(testConfig.sfConfig).toMatchObject(expectedSfConfig);
-      });
-
-      it('reconstructs valid string configuration', async () => {
-        const mockSuperJson = new SuperJson({
-          profiles: {
-            myprofile: {
-              file: 'path/to/profile.supr',
-              providers: {
-                myprovider: {
-                  file: 'path/to/map.suma',
-                },
-              },
-            },
-          },
-          providers: {
-            myprovider: {
-              file: 'path/to/provider.json',
-              security: [],
-            },
-          },
-        });
-        Object.assign(mockSuperJson, {
-          normalized: {
-            profiles: {
-              myprofile: {
-                file: 'path/to/profile.supr',
-                defaults: {},
-                providers: {
-                  myprovider: {
-                    file: 'path/to/map.suma',
-                    defaults: {},
-                  },
-                },
-              },
-            },
-            providers: {
-              myprovider: {
-                file: 'path/to/provider.json',
-                security: [],
-              },
-            },
-          },
-        });
-
-        const loadSyncSpy = jest
-          .spyOn(SuperJson, 'loadSync')
-          .mockReturnValue(ok(mockSuperJson));
-        const client = new SuperfaceClient();
-
-        testConfig = new TestConfig({
-          client,
-          profile: 'myprofile',
-          provider: 'myprovider',
-          useCase: 'some-use-case',
-        });
-
-        const mockedProfile = new Profile(
-          client,
-          new ProfileConfiguration('myprofile', '1.0.0')
-        );
-        const mockedUseCase = new UseCase(mockedProfile, 'some-use-case');
-
-        mocked(SuperfaceClient.prototype).getProfile.mockResolvedValue(
-          mockedProfile
-        );
-        mocked(SuperfaceClient.prototype).getProvider.mockResolvedValue(
-          new Provider(client, new ProviderConfiguration('myprovider', []))
-        );
-        mocked(Profile.prototype).getUseCase.mockReturnValue(mockedUseCase);
-
-        const detectSpy = jest
-          .spyOn(SuperJson, 'detectSuperJson')
-          .mockResolvedValue('.');
-        const loadSpy = jest
-          .spyOn(SuperJson, 'load')
-          .mockResolvedValue(ok(mockSuperJson));
-
-        await expect(testConfig.test()).resolves.toBeUndefined();
-
-        expect(detectSpy).toHaveBeenCalledTimes(1);
-        expect(loadSpy).toHaveBeenCalledTimes(1);
-        expect(loadSyncSpy).toHaveBeenCalledTimes(1);
-
-        const profile = await client.getProfile('profile');
-        const provider = await client.getProvider('provider');
-        const useCase = profile.getUseCase('some-use-case');
-
-        const expectedSfConfig: TestConfiguration = {
-          profile,
-          provider,
-          useCase,
-        };
-
-        expect(testConfig.sfConfig).toMatchObject(expectedSfConfig);
-      });
     });
 
     it('throws when detecting superJson fails', async () => {
@@ -370,6 +112,21 @@ describe('TestConfig', () => {
             },
           },
         });
+        Object.assign(mockSuperJson, {
+          normalized: {
+            profiles: {
+              profile: {
+                version: '0.0.1',
+                defaults: {},
+                providers: {
+                  provider: {
+                    defaults: {},
+                  },
+                },
+              },
+            },
+          },
+        });
 
         const detectSpy = jest
           .spyOn(SuperJson, 'detectSuperJson')
@@ -405,6 +162,27 @@ describe('TestConfig', () => {
             },
           },
         });
+        Object.assign(mockSuperJson, {
+          normalized: {
+            profiles: {
+              profile: {
+                version: '0.0.1',
+                defaults: {},
+                providers: {
+                  provider: {
+                    file: 'path/to/map.suma',
+                    defaults: {},
+                  },
+                },
+              },
+            },
+            providers: {
+              provider: {
+                security: [],
+              },
+            },
+          },
+        });
 
         const detectSpy = jest
           .spyOn(SuperJson, 'detectSuperJson')
@@ -437,6 +215,27 @@ describe('TestConfig', () => {
           providers: {
             provider: {
               security: [],
+            },
+          },
+        });
+        Object.assign(mockSuperJson, {
+          normalized: {
+            profiles: {
+              profile: {
+                file: 'path/to/profile.supr',
+                defaults: {},
+                providers: {
+                  provider: {
+                    file: 'path/to/map.suma',
+                    defaults: {},
+                  },
+                },
+              },
+            },
+            providers: {
+              provider: {
+                security: [],
+              },
             },
           },
         });
@@ -754,6 +553,350 @@ describe('TestConfig', () => {
 
       expect(nockDoneMock).toHaveBeenCalledTimes(1);
       expect(endRecSpy).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('when preparing configuration', () => {
+    beforeEach(() => {
+      testConfig = new TestConfig({});
+    });
+
+    it('throws error when usecase is string and profile is undefined', async () => {
+      const mockSuperJson = new SuperJson({
+        profiles: {
+          profile: {
+            file: 'path/to/profile.supr',
+            providers: {
+              provider: {
+                file: 'path/to/map.suma',
+              },
+            },
+          },
+        },
+        providers: {
+          provider: {
+            file: 'path/to/provider.json',
+            security: [],
+          },
+        },
+      });
+      Object.assign(mockSuperJson, {
+        normalized: {
+          profiles: {
+            profile: {
+              file: 'path/to/profile.supr',
+              defaults: {},
+              providers: {
+                provider: {
+                  file: 'path/to/map.suma',
+                  defaults: {},
+                },
+              },
+            },
+          },
+          providers: {
+            provider: {
+              file: 'path/to/provider.json',
+              security: [],
+            },
+          },
+        },
+      });
+
+      const expectedSfConfig: TestConfigPayload = {
+        useCase: 'some-use-case',
+      };
+
+      const client = new SuperfaceClient();
+
+      testConfig = new TestConfig({
+        client,
+        useCase: 'some-use-case',
+      });
+
+      const detectSpy = jest
+        .spyOn(SuperJson, 'detectSuperJson')
+        .mockResolvedValue('.');
+      const loadSpy = jest
+        .spyOn(SuperJson, 'load')
+        .mockResolvedValue(ok(mockSuperJson));
+
+      await expect(testConfig.test()).rejects.toThrow(
+        'To setup usecase, you need to specify profile as well.'
+      );
+
+      expect(detectSpy).toHaveBeenCalledTimes(1);
+      expect(loadSpy).toHaveBeenCalledTimes(1);
+      expect(testConfig.sfConfig).toMatchObject(expectedSfConfig);
+    });
+
+    it('reconstructs valid string configuration', async () => {
+      const mockSuperJson = new SuperJson({
+        profiles: {
+          profile: {
+            file: 'path/to/profile.supr',
+            providers: {
+              provider: {
+                file: 'path/to/map.suma',
+              },
+            },
+          },
+        },
+        providers: {
+          provider: {
+            file: 'path/to/provider.json',
+            security: [],
+          },
+        },
+      });
+      Object.assign(mockSuperJson, {
+        normalized: {
+          profiles: {
+            profile: {
+              file: 'path/to/profile.supr',
+              defaults: {},
+              providers: {
+                provider: {
+                  file: 'path/to/map.suma',
+                  defaults: {},
+                },
+              },
+            },
+          },
+          providers: {
+            provider: {
+              file: 'path/to/provider.json',
+              security: [],
+            },
+          },
+        },
+      });
+
+      // const loadSyncSpy = jest
+      //   .spyOn(SuperJson, 'loadSync')
+      //   .mockReturnValue(ok(mockSuperJson));
+      const client = new SuperfaceClient();
+
+      // expect(loadSyncSpy).toHaveBeenCalledTimes(1);
+
+      testConfig = new TestConfig({
+        client,
+        profile: 'profile',
+        provider: 'provider',
+        useCase: 'some-use-case',
+      });
+      // Object.assign(client, {superJson: mockSuperJson, hookContext: {}});
+
+      const mockedProfile = new Profile(
+        client,
+        new ProfileConfiguration('profile', '1.0.0')
+      );
+      const mockedUseCase = new UseCase(mockedProfile, 'some-use-case');
+      const mockedProvider = new Provider(
+        client,
+        new ProviderConfiguration('provider', [])
+      );
+
+      mocked(SuperfaceClient.prototype).getProfile.mockResolvedValue(
+        mockedProfile
+      );
+      mocked(SuperfaceClient.prototype).getProvider.mockResolvedValue(
+        mockedProvider
+      );
+      mocked(Profile.prototype).getUseCase.mockReturnValue(mockedUseCase);
+
+      const detectSpy = jest
+        .spyOn(SuperJson, 'detectSuperJson')
+        .mockResolvedValue('.');
+      const loadSpy = jest
+        .spyOn(SuperJson, 'load')
+        .mockResolvedValue(ok(mockSuperJson));
+
+      await expect(testConfig.test()).resolves.toBeUndefined();
+
+      expect(detectSpy).toHaveBeenCalledTimes(1);
+      expect(loadSpy).toHaveBeenCalledTimes(1);
+
+      const profile = await client.getProfile('profile');
+      const provider = await client.getProvider('provider');
+      const useCase = profile.getUseCase('some-use-case');
+
+      const expectedSfConfig: TestConfiguration = {
+        profile,
+        provider,
+        useCase,
+      };
+
+      expect(testConfig.sfConfig).toMatchObject(expectedSfConfig);
+    });
+  });
+
+  describe('when capabilities are not local', () => {
+    beforeEach(() => {
+      testConfig = new TestConfig({
+        profile: 'profile',
+        provider: 'provider',
+        useCase: 'usecase',
+      });
+    });
+
+    it('throws error when profile, profileProvider nor provider is not local', async () => {
+      const mockSuperJson = new SuperJson({
+        profiles: {
+          profile: {
+            version: '0.0.1',
+            providers: {
+              provider: {},
+            },
+          },
+        },
+      });
+      Object.assign(mockSuperJson, {
+        normalized: {
+          profiles: {
+            profile: {
+              version: '0.0.1',
+              defaults: {},
+              providers: {
+                provider: {
+                  defaults: {},
+                },
+              },
+            },
+          },
+        },
+      });
+
+      const detectSpy = jest
+        .spyOn(SuperJson, 'detectSuperJson')
+        .mockResolvedValue('.');
+      const loadSpy = jest
+        .spyOn(SuperJson, 'load')
+        .mockResolvedValue(ok(mockSuperJson));
+
+      const errorMessage =
+        'Some capabilities are not local, do not forget to set up file paths in super.json.';
+
+      await expect(testConfig.test()).rejects.toThrow(errorMessage);
+
+      expect(detectSpy).toHaveBeenCalledTimes(1);
+      expect(loadSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('throws error when profile nor provider is not local', async () => {
+      const mockSuperJson = new SuperJson({
+        profiles: {
+          profile: {
+            version: '0.0.1',
+            providers: {
+              provider: {
+                file: 'path/to/map.suma',
+              },
+            },
+          },
+        },
+        providers: {
+          provider: {
+            security: [],
+          },
+        },
+      });
+      Object.assign(mockSuperJson, {
+        normalized: {
+          profiles: {
+            profile: {
+              version: '0.0.1',
+              defaults: {},
+              providers: {
+                provider: {
+                  file: 'path/to/map.suma',
+                  defaults: {},
+                },
+              },
+            },
+          },
+          providers: {
+            provider: {
+              security: [],
+            },
+          },
+        },
+      });
+
+      const detectSpy = jest
+        .spyOn(SuperJson, 'detectSuperJson')
+        .mockResolvedValue('.');
+      const loadSpy = jest
+        .spyOn(SuperJson, 'load')
+        .mockResolvedValue(ok(mockSuperJson));
+
+      const errorMessage =
+        'Some capabilities are not local, do not forget to set up file paths in super.json.';
+
+      await expect(testConfig.test()).rejects.toThrow(errorMessage);
+
+      expect(detectSpy).toHaveBeenCalledTimes(1);
+      expect(loadSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('throws error when profileProvider is not local', async () => {
+      const mockSuperJson = new SuperJson({
+        profiles: {
+          profile: {
+            file: 'path/to/profile.supr',
+            providers: {
+              provider: {
+                file: 'path/to/map.suma',
+              },
+            },
+          },
+        },
+        providers: {
+          provider: {
+            security: [],
+          },
+        },
+      });
+      Object.assign(mockSuperJson, {
+        normalized: {
+          profiles: {
+            profile: {
+              file: 'path/to/profile.supr',
+              defaults: {},
+              providers: {
+                provider: {
+                  file: 'path/to/map.suma',
+                  defaults: {},
+                },
+              },
+            },
+          },
+          providers: {
+            provider: {
+              security: [],
+            },
+          },
+        },
+      });
+
+      const detectSpy = jest
+        .spyOn(SuperJson, 'detectSuperJson')
+        .mockResolvedValue('.');
+      const loadSpy = jest
+        .spyOn(SuperJson, 'load')
+        .mockResolvedValue(ok(mockSuperJson));
+      const loadSyncSpy = jest
+        .spyOn(SuperJson, 'loadSync')
+        .mockReturnValue(ok(mockSuperJson));
+
+      const errorMessage =
+        'Some capabilities are not local, do not forget to set up file paths in super.json.';
+
+      await expect(testConfig.test()).rejects.toThrow(errorMessage);
+
+      expect(detectSpy).toHaveBeenCalledTimes(1);
+      expect(loadSpy).toHaveBeenCalledTimes(1);
+      expect(loadSyncSpy).toHaveBeenCalledTimes(0);
     });
   });
 });
