@@ -60,7 +60,7 @@ describe('TestConfig', () => {
       await expect(testConfig.test()).rejects.toThrow('no super.json found');
 
       expect(detectSpy).toHaveBeenCalledTimes(1);
-      expect(loadSpy).toHaveBeenCalledTimes(0);
+      expect(loadSpy).not.toHaveBeenCalled();
     });
 
     it('throws when superJson loading fails', async () => {
@@ -228,7 +228,7 @@ describe('TestConfig', () => {
       await expect(testConfig.run({})).rejects.toThrow('no super.json found');
 
       expect(detectSpy).toHaveBeenCalledTimes(1);
-      expect(loadSpy).toHaveBeenCalledTimes(0);
+      expect(loadSpy).not.toHaveBeenCalled();
     });
 
     it('throws when superJson loading fails', async () => {
@@ -456,7 +456,7 @@ describe('TestConfig', () => {
 
       expect(loadRecordingSpy).toHaveBeenCalledTimes(1);
       expect(loadRecordingSpy).toHaveBeenCalledWith(DEFAULT_RECORDING_PATH);
-      expect(recorderSpy).toHaveBeenCalledTimes(0);
+      expect(recorderSpy).not.toHaveBeenCalled();
     });
   });
 
@@ -491,8 +491,8 @@ describe('TestConfig', () => {
       mocked(exists).mockResolvedValue(true);
 
       await expect(testConfig.endRecording()).resolves.toBeUndefined();
-      expect(writeIfAbsentSpy).toHaveBeenCalledTimes(0);
-      expect(endRecSpy).toHaveBeenCalledTimes(0);
+      expect(writeIfAbsentSpy).not.toHaveBeenCalled();
+      expect(endRecSpy).not.toHaveBeenCalled();
     });
 
     it('writes and restores recordings', async () => {
@@ -590,7 +590,7 @@ describe('TestConfig', () => {
       expect(nockBackSpy).toHaveBeenCalledTimes(1);
       expect(nockBackSpy).toHaveBeenCalledWith('recording.json');
 
-      expect(nockDoneMock).toHaveBeenCalledTimes(0);
+      expect(nockDoneMock).not.toHaveBeenCalled();
     });
   });
 
@@ -976,7 +976,7 @@ describe('TestConfig', () => {
 
       expect(detectSpy).toHaveBeenCalledTimes(2);
       expect(loadSpy).toHaveBeenCalledTimes(2);
-      expect(loadSyncSpy).toHaveBeenCalledTimes(0);
+      expect(loadSyncSpy).not.toHaveBeenCalled();
     });
   });
 });
