@@ -1,10 +1,5 @@
-import {
-  ProfileEntry,
-  ProfileProviderEntry,
-  ProviderEntry,
-  SuperfaceClient,
-  SuperJson,
-} from '@superfaceai/one-sdk';
+import { SuperfaceClient } from '@superfaceai/one-sdk';
+import { UnexpectedError } from '@superfaceai/one-sdk/dist/internal/errors';
 import {
   back as nockBack,
   load as loadRecording,
@@ -17,29 +12,23 @@ import { removeTimestamp } from './common/format';
 import { exists } from './common/io';
 import { OutputStream } from './common/output-stream';
 import {
+  CapabilitiesNotLocalError,
+  ComponentUndefinedError,
+  NockConfigUndefinedError,
+  RecordingNotStartedError,
+} from './errors';
+import {
   NockConfig,
   TestConfigPayload,
-  TestConfiguration,
   TestingReturn,
 } from './test-config.interfaces';
-
-// TODO: add comments
-
-function assertsPreparedConfig(
-  sfConfig: TestConfigPayload
-): asserts sfConfig is TestConfiguration {
-  if (typeof sfConfig.profile === 'string') {
-    throw new Error('Should be Profile instance');
-  }
-
-  if (typeof sfConfig.provider === 'string') {
-    throw new Error('Should be Provider instance');
-  }
-
-  if (typeof sfConfig.useCase === 'string') {
-    throw new Error('Should be UseCase instance');
-  }
-}
+import {
+  assertsPreparedConfig,
+  getProfileId,
+  getSuperJson,
+  isProfileLocal,
+  isProviderLocal,
+} from './test-config.utils';
 
 export class TestConfig {
   private fixturePath?: string;
@@ -50,50 +39,53 @@ export class TestConfig {
     public nockConfig?: NockConfig
   ) {}
 
+  /**
+   * Tests current configuration whether all necessary components
+   * are defined and ready to use.
+   */
   async test(testCase?: TestConfigPayload): Promise<void> {
     if (testCase !== undefined) {
       this.setup(testCase);
     }
 
     if (!(await this.areCapabilitiesLocal())) {
-      throw new Error(
-        'Some capabilities are not local, do not forget to set up file paths in super.json.'
-      );
+      throw new CapabilitiesNotLocalError();
     }
 
     await this.prepareConfig();
 
     if (this.sfConfig.profile === undefined) {
-      throw new Error('Undefined Profile');
+      throw new ComponentUndefinedError('Profile');
     }
 
     if (this.sfConfig.provider === undefined) {
-      throw new Error('Undefined Provider');
+      throw new ComponentUndefinedError('Provider');
     }
 
     if (this.sfConfig.useCase === undefined) {
-      throw new Error('Undefined UseCase');
+      throw new ComponentUndefinedError('UseCase');
     }
   }
 
+  /**
+   * Checks whether components are ready to use and tries to perform entered usecase.
+   */
   async run(input: unknown): Promise<TestingReturn> {
     if (!(await this.areCapabilitiesLocal())) {
-      throw new Error(
-        'Some capabilities are not local, do not forget to set up file paths in super.json.'
-      );
+      throw new CapabilitiesNotLocalError();
     }
 
     await this.prepareConfig();
 
     assertsPreparedConfig(this.sfConfig);
 
-    const result = await this.sfConfig?.useCase?.perform(input, {
+    if (this.sfConfig.useCase === undefined) {
+      throw new ComponentUndefinedError('UseCase');
+    }
+
+    const result = await this.sfConfig.useCase.perform(input, {
       provider: this.sfConfig.provider,
     });
-
-    if (!result) {
-      throw new Error('perform failed');
-    }
 
     if (result.isErr()) {
       return { error: removeTimestamp(result.error.toString()) };
@@ -103,9 +95,12 @@ export class TestConfig {
       return { value: result.value };
     }
 
-    throw new Error('unreachable');
+    throw new UnexpectedError('unreachable');
   }
 
+  /**
+   * Sets up entered payload to current Superface configuration
+   */
   setup(payload: TestConfigPayload): void {
     if (payload.client !== undefined) {
       this.sfConfig.client = payload.client;
@@ -124,15 +119,19 @@ export class TestConfig {
     }
   }
 
+  /**
+   * Checks whether nock is configured and
+   * starts recording or loads recording file if exists.
+   */
   async record(nockConfig?: NockConfig): Promise<void> {
     if (!nockConfig && !this.nockConfig) {
-      throw new Error('nock configuration missing');
+      throw new NockConfigUndefinedError();
     }
 
     this.setupNockConfig(nockConfig);
 
     if (!this.fixturePath) {
-      throw new Error('unreachable');
+      throw new UnexpectedError('unreachable');
     }
 
     if (await exists(this.fixturePath)) {
@@ -148,14 +147,18 @@ export class TestConfig {
     }
   }
 
-  // possible to update recordings through force flag
+  /**
+   * Checks if recording started and if yes, it ends recording and
+   * saves recording to file specified in nockConfig.
+   * Possible to update recordings with property `update`.
+   */
   async endRecording(nockConfig?: NockConfig): Promise<void> {
     if (!nockConfig && !this.nockConfig) {
-      throw new Error('nock configuration missing');
+      throw new NockConfigUndefinedError();
     }
 
     if (!this.fixturePath) {
-      throw new Error('Fixture path is not defined, make sure to run `record()` before ending recording.');
+      throw new RecordingNotStartedError('record');
     }
 
     if (await exists(this.fixturePath)) {
@@ -178,9 +181,12 @@ export class TestConfig {
     endRec();
   }
 
+  /**
+   * Sets up nock.back path to fixtures and its mode before recording.
+   */
   setupNockBack(nockConfig?: NockConfig): void {
     if (!nockConfig && !this.nockConfig) {
-      throw new Error('nock configuration missing');
+      throw new NockConfigUndefinedError();
     }
 
     this.setupNockConfig(nockConfig);
@@ -191,15 +197,19 @@ export class TestConfig {
     nockBack.setMode(mode ?? 'record');
   }
 
+  /**
+   * Checks whether nock is configured and
+   * starts recording with nock.back support and playback system.
+   */
   async nockBackRecord(nockConfig?: NockConfig): Promise<void> {
     if (!nockConfig && !this.nockConfig) {
-      throw new Error('nock configuration missing');
+      throw new NockConfigUndefinedError();
     }
 
     this.setupNockConfig(nockConfig);
 
     if (!this.fixturePath) {
-      throw new Error('unreachable');
+      throw new UnexpectedError('unreachable');
     }
 
     const { nockDone } = await nockBack(basename(this.fixturePath));
@@ -208,9 +218,13 @@ export class TestConfig {
     // TODO: implement headers filtering in preprocessing function: https://github.com/nock/nock#example
   }
 
+  /**
+   * Checks if recording started and if yes, it ends recording and
+   * saves recording to file specified in nockConfig.
+   */
   endNockBackRecording(): void {
     if (this.nockDone === undefined) {
-      throw new Error('Nock recording failed, make sure to run `nockBackRecord()` before ending recording.');
+      throw new RecordingNotStartedError('nockBackRecord');
     }
 
     this.nockDone();
@@ -218,6 +232,10 @@ export class TestConfig {
     endRec();
   }
 
+  /**
+   * Prepares current configuration and transforms every component
+   * that is represented by string to instance of that corresponding component.
+   */
   private async prepareConfig(): Promise<void> {
     if (!this.sfConfig.client) {
       this.sfConfig.client = new SuperfaceClient();
@@ -237,9 +255,7 @@ export class TestConfig {
 
     if (typeof this.sfConfig.useCase === 'string') {
       if (this.sfConfig.profile === undefined) {
-        throw new Error(
-          'To setup usecase, you need to specify profile as well.'
-        );
+        throw new ComponentUndefinedError('Profile');
       }
 
       this.sfConfig.useCase = this.sfConfig.profile.getUseCase(
@@ -248,6 +264,9 @@ export class TestConfig {
     }
   }
 
+  /**
+   * Sets up nock configuration and fixture path.
+   */
   private setupNockConfig(nockConfig?: NockConfig): void {
     if (nockConfig) {
       this.nockConfig = {
@@ -267,86 +286,30 @@ export class TestConfig {
     }
   }
 
+  /**
+   * Checks whether current components in sfConfig
+   * are locally linked in super.json.
+   */
   private async areCapabilitiesLocal(): Promise<boolean> {
-    let superJson = this.sfConfig.client?.superJson;
-
-    if (!superJson) {
-      const superPath = await SuperJson.detectSuperJson(process.cwd(), 3);
-
-      if (superPath === undefined) {
-        throw new Error('no super.json found');
-      }
-
-      superJson = (
-        await SuperJson.load(joinPath(superPath, 'super.json'))
-      ).unwrap();
-    }
-
+    const superJson = this.sfConfig.client?.superJson ?? (await getSuperJson());
     const superJsonNormalized = superJson.normalized;
-    const superJsonProfiles = superJsonNormalized.profiles;
+
     let profileId: string | undefined;
 
-    // check whether profile is local and contain some file path
     if (this.sfConfig.profile !== undefined) {
-      let targettedProfile: ProfileEntry;
-      if (typeof this.sfConfig.profile === 'string') {
-        targettedProfile = superJsonProfiles[this.sfConfig.profile];
-
-        if (!('file' in targettedProfile)) {
-          return false;
-        }
-
-        profileId = this.sfConfig.profile;
-      } else {
-        targettedProfile =
-          superJsonProfiles[this.sfConfig.profile.configuration.id];
-
-        if (!('file' in targettedProfile)) {
-          return false;
-        }
-
-        profileId = this.sfConfig.profile.configuration.id;
+      if (!isProfileLocal(this.sfConfig.profile, superJsonNormalized)) {
+        return false;
       }
+
+      profileId = getProfileId(this.sfConfig.profile);
     }
 
-    // check whether provider is local and contain some file path
     if (this.sfConfig.provider !== undefined) {
-      if (profileId === undefined) {
-        throw new Error('profile not found');
-      }
-
-      const superJsonProviders = superJsonNormalized.providers;
-      const superJsonProfileProviders = superJsonProfiles[profileId].providers;
-
-      let targetedProvider: ProviderEntry,
-        targetedProfileProvider: ProfileProviderEntry;
-
-      if (typeof this.sfConfig.provider === 'string') {
-        targetedProvider = superJsonProviders[this.sfConfig.provider];
-        targetedProfileProvider =
-          superJsonProfileProviders[this.sfConfig.provider];
-
-        if (
-          !('file' in targetedProfileProvider) ||
-          !('file' in targetedProvider) ||
-          targetedProvider.file === undefined
-        ) {
-          return false;
-        }
-      } else {
-        targetedProvider =
-          superJsonProviders[this.sfConfig.provider.configuration.name];
-        targetedProfileProvider =
-          superJsonProfileProviders[this.sfConfig.provider.configuration.name];
-
-        if (
-          !('file' in targetedProfileProvider) ||
-          !('file' in targetedProvider) ||
-          targetedProvider.file === undefined
-        ) {
-          return false;
-        }
-      }
+      return isProviderLocal(
+        this.sfConfig.provider,
+        profileId,
+        superJsonNormalized
+      );
     }
 
     return true;
