@@ -136,7 +136,7 @@ export class TestConfig {
     const update = nockConfig?.update ?? this.nockConfig?.update ?? false;
     const hideReqHeaders =
       this.nockConfig?.hideHeaders ?? nockConfig?.hideHeaders ?? true;
-      
+
     if ((await exists(this.fixturePath)) && !update) {
       loadRecording(this.fixturePath);
     } else {
