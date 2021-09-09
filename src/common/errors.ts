@@ -1,3 +1,5 @@
+import { inspect } from 'util';
+
 class ErrorBase extends Error {
   constructor(public kind: string, public override message: string) {
     super(message);
@@ -60,4 +62,18 @@ export class SuperJsonNotFoundError extends ErrorBase {
   constructor() {
     super('SuperJsonNotFoundError', 'No super.json found.');
   }
+}
+
+export function assertIsIOError(
+  error: unknown
+): asserts error is { code: string } {
+  if (typeof error === 'object' && error !== null && 'code' in error) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const err: Record<string, any> = error;
+    if (typeof err.code === 'string') {
+      return;
+    }
+  }
+
+  throw new UnexpectedError(`${inspect(error)}`);
 }

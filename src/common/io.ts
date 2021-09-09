@@ -2,7 +2,9 @@ import * as fs from 'fs';
 import { dirname } from 'path';
 import rimrafCallback from 'rimraf';
 import { Writable } from 'stream';
-import { inspect, promisify } from 'util';
+import { promisify } from 'util';
+
+import { assertIsIOError } from './errors';
 
 export const mkdir = promisify(fs.mkdir);
 export const access = promisify(fs.access);
@@ -12,20 +14,6 @@ export interface WritingOptions {
   append?: boolean;
   force?: boolean;
   dirs?: boolean;
-}
-
-export function assertIsIOError(
-  error: unknown
-): asserts error is { code: string } {
-  if (typeof error === 'object' && error !== null && 'code' in error) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const err: Record<string, any> = error;
-    if (typeof err.code === 'string') {
-      return;
-    }
-  }
-
-  throw new Error(`unexpected error: ${inspect(error)}`);
 }
 
 export async function exists(path: string): Promise<boolean> {

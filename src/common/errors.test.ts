@@ -1,4 +1,5 @@
 import {
+  assertIsIOError,
   CapabilitiesNotLocalError,
   ComponentUndefinedError,
   InstanceMissingError,
@@ -9,7 +10,7 @@ import {
 } from './errors';
 
 describe('errors', () => {
-  describe('UnexpectedError', () => {
+  describe('when throwing UnexpectedError', () => {
     const error = new UnexpectedError('out of nowhere');
 
     it('throws in correct format', () => {
@@ -23,7 +24,7 @@ describe('errors', () => {
     });
   });
 
-  describe('CapabilitiesNotLocalError', () => {
+  describe('when throwing CapabilitiesNotLocalError', () => {
     const error = new CapabilitiesNotLocalError();
 
     it('throws in correct format', () => {
@@ -41,7 +42,7 @@ describe('errors', () => {
     });
   });
 
-  describe('ComponentUndefinedError', () => {
+  describe('when throwing ComponentUndefinedError', () => {
     const errorProfile = new ComponentUndefinedError('Profile');
     const errorProvider = new ComponentUndefinedError('Provider');
     const errorUseCase = new ComponentUndefinedError('UseCase');
@@ -75,7 +76,7 @@ describe('errors', () => {
     });
   });
 
-  describe('NockConfigUndefinedError', () => {
+  describe('when throwing NockConfigUndefinedError', () => {
     const error = new NockConfigUndefinedError();
 
     it('throws in correct format', () => {
@@ -91,7 +92,7 @@ describe('errors', () => {
     });
   });
 
-  describe('RecordingNotStartedError', () => {
+  describe('when throwing RecordingNotStartedError', () => {
     const errorRecord = new RecordingNotStartedError('record');
     const errorNockBackRecord = new RecordingNotStartedError('nockBackRecord');
 
@@ -120,7 +121,7 @@ describe('errors', () => {
     });
   });
 
-  describe('InstanceMissingError', () => {
+  describe('when throwing InstanceMissingError', () => {
     const missingProfile = new InstanceMissingError('Profile');
     const missingProvider = new InstanceMissingError('Provider');
     const missingUseCase = new InstanceMissingError('UseCase');
@@ -154,7 +155,7 @@ describe('errors', () => {
     });
   });
 
-  describe('SuperJsonNotFoundError', () => {
+  describe('when throwing SuperJsonNotFoundError', () => {
     const error = new SuperJsonNotFoundError();
 
     it('throws in correct format', () => {
@@ -167,6 +168,30 @@ describe('errors', () => {
       expect(error.toString()).toEqual(
         'SuperJsonNotFoundError: No super.json found.'
       );
+    });
+  });
+
+  describe('when asserting error is IO error', () => {
+    it('throws developer error correctly', async () => {
+      expect(() => assertIsIOError(null)).toThrow(
+        new UnexpectedError('null')
+      );
+      expect(() => assertIsIOError(undefined)).toThrow(
+        new UnexpectedError('undefined')
+      );
+      expect(() => assertIsIOError({})).toThrow(
+        new UnexpectedError('{}')
+      );
+      expect(() => assertIsIOError({ code: 2 })).toThrow(
+        new UnexpectedError('{ code: 2 }')
+      );
+      expect(() => assertIsIOError({ message: 2 })).toThrow(
+        new UnexpectedError('{ message: 2 }')
+      );
+    });
+
+    it('does not throw developer error', async () => {
+      expect(() => assertIsIOError({ code: 'test' })).not.toThrow();
     });
   });
 });
