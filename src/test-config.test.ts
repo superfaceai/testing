@@ -16,14 +16,13 @@ import nock, { back as nockBack, recorder as nockRecorder } from 'nock';
 import { join as joinPath } from 'path';
 import { mocked } from 'ts-jest/utils';
 
-import { exists } from './common/io';
-import { OutputStream } from './common/output-stream';
 import {
   ComponentUndefinedError,
   NockConfigUndefinedError,
   RecordingNotStartedError,
   SuperJsonNotFoundError,
-} from './errors';
+} from './common/errors';
+import { exists, writeIfAbsent } from './common/io';
 import { TestConfig } from './test-config';
 import { TestConfigPayload, TestConfiguration } from './test-config.interfaces';
 
@@ -31,6 +30,7 @@ const mockServer = getLocal();
 
 jest.mock('./common/io', () => ({
   exists: jest.fn(),
+  writeIfAbsent: jest.fn(),
 }));
 
 jest.mock('@superfaceai/one-sdk/dist/client/client');
@@ -498,7 +498,7 @@ describe('TestConfig', () => {
 
       await testConfig.record();
 
-      const writeIfAbsentSpy = jest.spyOn(OutputStream, 'writeIfAbsent');
+      const writeIfAbsentSpy = mocked(writeIfAbsent);
       const endRecSpy = jest.spyOn(nock, 'restore');
       mocked(exists).mockResolvedValue(true);
 
@@ -517,9 +517,7 @@ describe('TestConfig', () => {
         .withHeaders({ Accept: 'application/json' })
         .thenJson(200, { some: 'data' });
 
-      const writeIfAbsentSpy = jest
-        .spyOn(OutputStream, 'writeIfAbsent')
-        .mockResolvedValue(true);
+      const writeIfAbsentSpy = mocked(writeIfAbsent).mockResolvedValue(true);
       const playSpy = jest
         .spyOn(nockRecorder, 'play')
         .mockReturnValue([

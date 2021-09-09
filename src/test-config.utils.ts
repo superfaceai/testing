@@ -8,7 +8,7 @@ import {
 import { join as joinPath } from 'path';
 
 import { ProfilePayload, TestConfigPayload, TestConfiguration } from '.';
-import { InstanceMissingError, SuperJsonNotFoundError } from './errors';
+import { InstanceMissingError, SuperJsonNotFoundError } from './common/errors';
 
 /**
  * Asserts that entered sfConfig contains only instances of classes not strings.

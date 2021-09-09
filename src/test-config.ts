@@ -8,15 +8,14 @@ import {
 } from 'nock';
 import { basename, join as joinPath } from 'path';
 
-import { removeTimestamp } from './common/format';
-import { exists } from './common/io';
-import { OutputStream } from './common/output-stream';
 import {
   CapabilitiesNotLocalError,
   ComponentUndefinedError,
   NockConfigUndefinedError,
   RecordingNotStartedError,
-} from './errors';
+} from './common/errors';
+import { removeTimestamp } from './common/format';
+import { exists, writeIfAbsent } from './common/io';
 import {
   NockConfig,
   TestConfigPayload,
@@ -134,15 +133,18 @@ export class TestConfig {
       throw new UnexpectedError('unreachable');
     }
 
-    if (await exists(this.fixturePath)) {
+    const update = nockConfig?.update ?? this.nockConfig?.update ?? false;
+    const hideReqHeaders =
+      this.nockConfig?.hideHeaders ?? nockConfig?.hideHeaders ?? true;
+      
+    if ((await exists(this.fixturePath)) && !update) {
       loadRecording(this.fixturePath);
     } else {
       recorder.rec({
         dont_print: true,
         output_objects: true,
         use_separator: false,
-        enable_reqheaders_recording:
-          this.nockConfig?.hideHeaders ?? nockConfig?.hideHeaders ?? true,
+        enable_reqheaders_recording: hideReqHeaders,
       });
     }
   }
@@ -161,21 +163,18 @@ export class TestConfig {
       throw new RecordingNotStartedError('record');
     }
 
-    if (await exists(this.fixturePath)) {
+    const update = nockConfig?.update ?? this.nockConfig?.update ?? false;
+    if ((await exists(this.fixturePath)) && !update) {
       return;
     }
 
-    const { path, dir, fixture, update } = nockConfig ?? this.nockConfig ?? {};
-    const fixturePath = joinPath(
-      path ?? process.cwd(),
-      dir ?? '.',
-      `${fixture ?? 'recording'}.json`
-    );
-
-    await OutputStream.writeIfAbsent(
-      fixturePath,
+    await writeIfAbsent(
+      this.fixturePath,
       JSON.stringify(recorder.play(), null, 2),
-      { dirs: true, force: update }
+      {
+        dirs: true,
+        force: update,
+      }
     );
 
     endRec();
