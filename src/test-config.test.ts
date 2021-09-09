@@ -542,7 +542,7 @@ describe('TestConfig', () => {
     }
   }
 ]`,
-        { dirs: true }
+        { dirs: true, force: false }
       );
 
       expect(playSpy).toHaveBeenCalledTimes(1);
