@@ -173,15 +173,11 @@ describe('errors', () => {
 
   describe('when asserting error is IO error', () => {
     it('throws developer error correctly', async () => {
-      expect(() => assertIsIOError(null)).toThrow(
-        new UnexpectedError('null')
-      );
+      expect(() => assertIsIOError(null)).toThrow(new UnexpectedError('null'));
       expect(() => assertIsIOError(undefined)).toThrow(
         new UnexpectedError('undefined')
       );
-      expect(() => assertIsIOError({})).toThrow(
-        new UnexpectedError('{}')
-      );
+      expect(() => assertIsIOError({})).toThrow(new UnexpectedError('{}'));
       expect(() => assertIsIOError({ code: 2 })).toThrow(
         new UnexpectedError('{ code: 2 }')
       );
