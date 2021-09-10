@@ -3,6 +3,7 @@ import { inspect } from 'util';
 class ErrorBase extends Error {
   constructor(public kind: string, public override message: string) {
     super(message);
+    this.name = kind;
 
     Object.setPrototypeOf(this, ErrorBase.prototype);
   }
