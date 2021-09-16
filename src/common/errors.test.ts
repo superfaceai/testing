@@ -4,7 +4,7 @@ import {
   ComponentUndefinedError,
   InstanceMissingError,
   NockConfigUndefinedError,
-  RecordingNotStartedError,
+  RecordingPathUndefinedError,
   SuperJsonNotFoundError,
   UnexpectedError,
 } from './errors';
@@ -92,31 +92,18 @@ describe('errors', () => {
     });
   });
 
-  describe('when throwing RecordingNotStartedError', () => {
-    const errorRecord = new RecordingNotStartedError('record');
-    const errorNockBackRecord = new RecordingNotStartedError('nockBackRecord');
+  describe('when throwing RecordingPathUndefinedError', () => {
+    const errorRecord = new RecordingPathUndefinedError();
 
     it('throws in correct format', () => {
       expect(() => {
         throw errorRecord;
-      }).toThrow(
-        'Recording failed, make sure to run `record()` before ending recording.'
-      );
-
-      expect(() => {
-        throw errorNockBackRecord;
-      }).toThrow(
-        'Recording failed, make sure to run `nockBackRecord()` before ending recording.'
-      );
+      }).toThrow('Recording path missing.');
     });
 
     it('returns correct format', () => {
       expect(errorRecord.toString()).toEqual(
-        'RecordingNotStartedError: Recording failed, make sure to run `record()` before ending recording.'
-      );
-
-      expect(errorNockBackRecord.toString()).toEqual(
-        'RecordingNotStartedError: Recording failed, make sure to run `nockBackRecord()` before ending recording.'
+        'RecordingPathUndefinedError: Recording path missing.'
       );
     });
   });
