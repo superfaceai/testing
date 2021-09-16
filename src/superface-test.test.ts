@@ -19,8 +19,8 @@ import {
 } from './common/errors';
 import { SuperfaceTest } from './superface-test';
 import {
-  SuperfaceTestConfigPayload,
   SuperfaceTestConfig,
+  SuperfaceTestConfigPayload,
 } from './superface-test.interfaces';
 
 // const mockServer = getLocal();
@@ -118,41 +118,6 @@ describe.skip('SuperfaceTest', () => {
     });
 
     it('throws when config is not present', async () => {
-      const detectSpy = jest
-        .spyOn(SuperJson, 'detectSuperJson')
-        .mockResolvedValue('.');
-
-      const loadSpy = jest
-        .spyOn(SuperJson, 'load')
-        .mockResolvedValue(ok(mockSuperJson));
-
-      const client = new SuperfaceClient();
-      const mockedProfile = new Profile(
-        client,
-        new ProfileConfiguration('profile', '1.0.0')
-      );
-      Object.assign(mockedProfile, {
-        configuration: { id: 'profile', version: '1.0.0' },
-      });
-      const mockedProvider = new Provider(
-        client,
-        new ProviderConfiguration('provider', [])
-      );
-
-      superfaceTest = new SuperfaceTest({
-        profile: mockedProfile,
-        provider: mockedProvider,
-      });
-
-      await expect(superfaceTest.run({ input: '' })).rejects.toThrowError(
-        new ComponentUndefinedError('UseCase')
-      );
-
-      expect(detectSpy).toHaveBeenCalledTimes(1);
-      expect(loadSpy).toHaveBeenCalledTimes(1);
-    });
-
-    it('throws when config is not present', async () => {
       const mockSuperJson = new SuperJson({
         profiles: {
           profile: {
@@ -230,14 +195,14 @@ describe.skip('SuperfaceTest', () => {
         useCase: mockedUseCase,
       });
 
-      await expect(superfaceTest1.run({ input: '' })).rejects.toThrow(
-        'Undefined Profile'
+      await expect(superfaceTest1.run({ input: '' })).rejects.toThrowError(
+        new ComponentUndefinedError('Profile')
       );
-      await expect(superfaceTest2.run({ input: '' })).rejects.toThrow(
-        'Undefined Provider'
+      await expect(superfaceTest2.run({ input: '' })).rejects.toThrowError(
+        new ComponentUndefinedError('Provider')
       );
-      await expect(superfaceTest3.run({ input: '' })).rejects.toThrow(
-        'Undefined UseCase'
+      await expect(superfaceTest3.run({ input: '' })).rejects.toThrowError(
+        new ComponentUndefinedError('UseCase')
       );
       await expect(superfaceTest4.run({ input: '' })).resolves.toBeUndefined();
 
