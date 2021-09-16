@@ -11,7 +11,11 @@ export const removeTimestamp = (payload: string): string =>
 export function getFixtureName(sfConfig: CompleteSuperfaceTestConfig): string {
   const { profile, provider, useCase } = sfConfig;
 
-  return joinPath(profile.configuration.id, provider?.configuration.name, useCase?.name);
+  return joinPath(
+    profile.configuration.id,
+    provider?.configuration.name,
+    useCase?.name
+  );
 }
 
 /**

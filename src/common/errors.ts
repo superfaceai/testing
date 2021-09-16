@@ -52,10 +52,7 @@ export class FixturesPathUndefinedError extends ErrorBase {
 
 export class RecordingPathUndefinedError extends ErrorBase {
   constructor() {
-    super(
-      'RecordingPathUndefinedError',
-      `Recording path missing.`
-    );
+    super('RecordingPathUndefinedError', `Recording path missing.`);
   }
 }
 
@@ -75,7 +72,7 @@ export class RecordingsNotFoundError extends ErrorBase {
   constructor() {
     super(
       'RecordingsNotFoundError',
-      "Recording could not be found, if you want to record new traffic, configure enviroment variable SUPERFACE_LIVE_API"
+      'Recording could not be found, if you want to record new traffic, configure enviroment variable SUPERFACE_LIVE_API'
     );
   }
 }

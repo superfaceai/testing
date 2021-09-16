@@ -32,7 +32,7 @@ export interface SuperfaceTestConfig {
   useCase?: UseCase | TypedUseCase<any, unknown>;
 }
 
-export type CompleteSuperfaceTestConfig = Required<SuperfaceTestConfig>
+export type CompleteSuperfaceTestConfig = Required<SuperfaceTestConfig>;
 
 export type TestingReturn =
   | {

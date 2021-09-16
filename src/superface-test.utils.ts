@@ -25,9 +25,9 @@ export function assertsPreparedConfig(
   sfConfig: SuperfaceTestConfigPayload
 ): asserts sfConfig is CompleteSuperfaceTestConfig {
   if (sfConfig.client === undefined) {
-    throw new ComponentUndefinedError('Client')
+    throw new ComponentUndefinedError('Client');
   }
-  
+
   if (sfConfig.profile === undefined) {
     throw new ComponentUndefinedError('Profile');
   }
