@@ -33,7 +33,7 @@ export class CapabilitiesNotLocalError extends ErrorBase {
 }
 
 export class ComponentUndefinedError extends ErrorBase {
-  constructor(component: 'Profile' | 'Provider' | 'UseCase') {
+  constructor(component: 'Client' | 'Profile' | 'Provider' | 'UseCase') {
     super('ComponentUndefinedError', `Undefined ${component}`);
   }
 }
@@ -44,11 +44,17 @@ export class NockConfigUndefinedError extends ErrorBase {
   }
 }
 
-export class RecordingNotStartedError extends ErrorBase {
-  constructor(method: 'record' | 'nockBackRecord') {
+export class FixturesPathUndefinedError extends ErrorBase {
+  constructor() {
+    super('FixturePathUndefinedError', 'Fixture path missing.');
+  }
+}
+
+export class RecordingPathUndefinedError extends ErrorBase {
+  constructor() {
     super(
-      'RecordingNotStartedError',
-      `Recording failed, make sure to run \`${method}()\` before ending recording.`
+      'RecordingPathUndefinedError',
+      `Recording path missing.`
     );
   }
 }
@@ -62,6 +68,15 @@ export class InstanceMissingError extends ErrorBase {
 export class SuperJsonNotFoundError extends ErrorBase {
   constructor() {
     super('SuperJsonNotFoundError', 'No super.json found.');
+  }
+}
+
+export class RecordingsNotFoundError extends ErrorBase {
+  constructor() {
+    super(
+      'RecordingsNotFoundError',
+      "Recording could not be found, if you want to record new traffic, configure enviroment variable SUPERFACE_LIVE_API"
+    );
   }
 }
 

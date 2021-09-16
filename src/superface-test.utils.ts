@@ -7,21 +7,45 @@ import {
 } from '@superfaceai/one-sdk';
 import { join as joinPath } from 'path';
 
-import { ProfilePayload, TestConfigPayload, TestConfiguration } from '.';
-import { InstanceMissingError, SuperJsonNotFoundError } from './common/errors';
+import {
+  CompleteSuperfaceTestConfig,
+  ProfilePayload,
+  SuperfaceTestConfigPayload,
+} from '.';
+import {
+  ComponentUndefinedError,
+  InstanceMissingError,
+  SuperJsonNotFoundError,
+} from './common/errors';
 
 /**
  * Asserts that entered sfConfig contains only instances of classes not strings.
  */
 export function assertsPreparedConfig(
-  sfConfig: TestConfigPayload
-): asserts sfConfig is TestConfiguration {
+  sfConfig: SuperfaceTestConfigPayload
+): asserts sfConfig is CompleteSuperfaceTestConfig {
+  if (sfConfig.client === undefined) {
+    throw new ComponentUndefinedError('Client')
+  }
+  
+  if (sfConfig.profile === undefined) {
+    throw new ComponentUndefinedError('Profile');
+  }
+
   if (typeof sfConfig.profile === 'string') {
     throw new InstanceMissingError('Profile');
   }
 
+  if (sfConfig.provider === undefined) {
+    throw new ComponentUndefinedError('Provider');
+  }
+
   if (typeof sfConfig.provider === 'string') {
     throw new InstanceMissingError('Provider');
+  }
+
+  if (sfConfig.useCase === undefined) {
+    throw new ComponentUndefinedError('UseCase');
   }
 
   if (typeof sfConfig.useCase === 'string') {

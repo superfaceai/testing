@@ -14,19 +14,25 @@ export type Client = SuperfaceClient | TypedSuperfaceClient<any>;
 export type ProfilePayload = Profile | TypedProfile<any> | string;
 export type UseCasePayload = UseCase | TypedUseCase<any, unknown> | string;
 
-export interface TestConfigPayload {
+export interface SuperfaceTestConfigPayload {
   client?: Client;
   profile?: ProfilePayload;
   provider?: Provider | string;
   useCase?: UseCasePayload;
 }
 
-export interface TestConfiguration {
+export type SuperfaceTestRun = SuperfaceTestConfigPayload & {
+  input: unknown;
+};
+
+export interface SuperfaceTestConfig {
   client?: Client;
   profile?: Profile | TypedProfile<any>;
   provider?: Provider;
   useCase?: UseCase | TypedUseCase<any, unknown>;
 }
+
+export type CompleteSuperfaceTestConfig = Required<SuperfaceTestConfig>
 
 export type TestingReturn =
   | {
@@ -36,13 +42,8 @@ export type TestingReturn =
       error: string;
     };
 
-export type NockBackMode = 'wild' | 'dryrun' | 'record' | 'lockdown';
-
 export interface NockConfig {
   path?: string;
-  dir?: string;
-  mode?: NockBackMode;
   fixture?: string;
-  update?: boolean;
   hideHeaders?: boolean;
 }
