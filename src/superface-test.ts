@@ -20,7 +20,8 @@ import {
   matchWildCard,
   removeTimestamp,
 } from './common/format';
-import { exists, writeIfAbsent } from './common/io';
+import { exists } from './common/io';
+import { OutputStream } from './common/output-stream';
 import {
   NockConfig,
   SuperfaceTestConfigPayload,
@@ -31,7 +32,6 @@ import {
   assertsPreparedConfig,
   getProfileId,
   getSuperJson,
-  isProfileLocal,
   isProviderLocal,
 } from './superface-test.utils';
 
@@ -49,8 +49,8 @@ export class SuperfaceTest {
   /**
    * Sets up path to all fixtures.
    */
-  private setupFixturesPath(nockConfig?: NockConfig): void {
-    const { path } = this.nockConfig ?? nockConfig ?? {};
+  private setupFixturesPath(): void {
+    const { path } = this.nockConfig ?? {};
 
     if (this.fixturesPath === undefined) {
       this.fixturesPath = path ?? joinPath(process.cwd(), 'nock');
@@ -175,10 +175,6 @@ export class SuperfaceTest {
     let profileId: string | undefined;
 
     if (this.sfConfig.profile !== undefined) {
-      if (!isProfileLocal(this.sfConfig.profile, superJsonNormalized)) {
-        return false;
-      }
-
       profileId = getProfileId(this.sfConfig.profile);
     }
 
@@ -219,7 +215,7 @@ export class SuperfaceTest {
         throw new RecordingsNotFoundError();
       }
     } else {
-      const hideReqHeaders = this.nockConfig?.hideHeaders ?? true;
+      const hideReqHeaders = this.nockConfig.hideHeaders ?? true;
 
       recorder.rec({
         dont_print: true,
@@ -247,7 +243,7 @@ export class SuperfaceTest {
     if (!record) {
       return;
     } else {
-      await writeIfAbsent(
+      await OutputStream.writeIfAbsent(
         this.recordingPath,
         JSON.stringify(recorder.play(), null, 2),
         {

@@ -9,11 +9,7 @@ import {
 } from '@superfaceai/one-sdk';
 
 import { SuperfaceTest } from './superface-test';
-import {
-  assertsPreparedConfig,
-  isProfileLocal,
-  isProviderLocal,
-} from './superface-test.utils';
+import { assertsPreparedConfig, isProviderLocal } from './superface-test.utils';
 
 jest.mock('@superfaceai/one-sdk/dist/client/client');
 jest.mock('@superfaceai/one-sdk/dist/client/profile');
@@ -30,7 +26,6 @@ describe('SuperfaceTest', () => {
   // TODO: update tests
   describe.skip('assertsPreparedConfig', () => {
     it('throws if configuration has string representation of some component', () => {
-
       const superfaceTest1 = {
         profile: 'some-profile',
       };
@@ -84,68 +79,6 @@ describe('SuperfaceTest', () => {
     });
   });
 
-  describe('isProfileLocal', () => {
-    it('returns false when profile is not local', async () => {
-      const mockSuperJson = new SuperJson({
-        profiles: {
-          profile: {
-            version: '0.0.1',
-            providers: {
-              provider: {},
-            },
-          },
-        },
-      });
-      Object.assign(mockSuperJson, {
-        normalized: {
-          profiles: {
-            profile: {
-              version: '0.0.1',
-              defaults: {},
-              providers: {
-                provider: {
-                  defaults: {},
-                },
-              },
-            },
-          },
-        },
-      });
-
-      expect(isProfileLocal('profile', mockSuperJson.normalized)).toBeFalsy();
-    });
-
-    it('returns true when profile is local', async () => {
-      const mockSuperJson = new SuperJson({
-        profiles: {
-          profile: {
-            file: 'some/path/to/profile.supr',
-            providers: {
-              provider: {},
-            },
-          },
-        },
-      });
-      Object.assign(mockSuperJson, {
-        normalized: {
-          profiles: {
-            profile: {
-              file: 'some/path/to/profile.supr',
-              defaults: {},
-              providers: {
-                provider: {
-                  defaults: {},
-                },
-              },
-            },
-          },
-        },
-      });
-
-      expect(isProfileLocal('profile', mockSuperJson.normalized)).toBeTruthy();
-    });
-  });
-
   describe('isProviderLocal', () => {
     it('returns false when provider is not local', async () => {
       const mockSuperJson = new SuperJson({
@@ -153,9 +86,7 @@ describe('SuperfaceTest', () => {
           profile: {
             version: '0.0.1',
             providers: {
-              provider: {
-                file: 'some/path/to/map.suma',
-              },
+              provider: {},
             },
           },
         },
@@ -173,7 +104,6 @@ describe('SuperfaceTest', () => {
               defaults: {},
               providers: {
                 provider: {
-                  file: 'some/path/to/map.suma',
                   defaults: {},
                 },
               },
@@ -238,7 +168,7 @@ describe('SuperfaceTest', () => {
       ).toBeFalsy();
     });
 
-    it('returns true when provider and profile provider is local', async () => {
+    it('returns true when profile provider is local', async () => {
       const mockSuperJson = new SuperJson({
         profiles: {
           profile: {
@@ -252,7 +182,6 @@ describe('SuperfaceTest', () => {
         },
         providers: {
           provider: {
-            file: 'some/path/to/provider.json',
             security: [],
           },
         },
@@ -273,7 +202,6 @@ describe('SuperfaceTest', () => {
           },
           providers: {
             provider: {
-              file: 'some/path/to/provider.json',
               security: [],
               defaults: {},
             },

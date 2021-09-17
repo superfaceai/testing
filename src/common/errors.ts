@@ -52,7 +52,7 @@ export class FixturesPathUndefinedError extends ErrorBase {
 
 export class RecordingPathUndefinedError extends ErrorBase {
   constructor() {
-    super('RecordingPathUndefinedError', `Recording path missing.`);
+    super('RecordingPathUndefinedError', 'Recording path missing.');
   }
 }
 

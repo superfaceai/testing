@@ -2,7 +2,8 @@ import { SuperJson } from '@superfaceai/one-sdk';
 import { join } from 'path';
 import { Writable } from 'stream';
 
-import { exists, rimraf, streamEnd, streamWrite, writeOnce } from './io';
+import { exists, rimraf, streamEnd, streamWrite } from './io';
+import { OutputStream } from './output-stream';
 
 describe('IO functions', () => {
   const WORKING_DIR = join('fixtures', 'io');
@@ -41,7 +42,7 @@ describe('IO functions', () => {
 
   /** Resets super.json to initial state stored in `INITIAL_SUPER_JSON` */
   async function resetSuperJson() {
-    await writeOnce(
+    await OutputStream.writeOnce(
       FIXTURE.superJson,
       JSON.stringify(INITIAL_SUPER_JSON.document, undefined, 2)
     );

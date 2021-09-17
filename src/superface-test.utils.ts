@@ -54,23 +54,6 @@ export function assertsPreparedConfig(
 }
 
 /**
- * Checks whether profile is local and contains some file path.
- */
-export function isProfileLocal(
-  profile: ProfilePayload,
-  superJsonNormalized: NormalizedSuperJsonDocument
-): boolean {
-  const profileId = getProfileId(profile);
-  const targettedProfile = superJsonNormalized.profiles[profileId];
-
-  if (!('file' in targettedProfile)) {
-    return false;
-  }
-
-  return true;
-}
-
-/**
  * Checks whether provider is local and contains some file path.
  */
 export function isProviderLocal(
@@ -87,11 +70,6 @@ export function isProviderLocal(
     if (!('file' in targetedProfileProvider)) {
       return false;
     }
-  }
-
-  const targetedProvider = superJsonNormalized.providers[providerId];
-  if (!('file' in targetedProvider) || targetedProvider.file === undefined) {
-    return false;
   }
 
   return true;
