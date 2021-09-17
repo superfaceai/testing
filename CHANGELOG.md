@@ -7,4 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-[Unreleased]: https://github.com/superfaceai/testing-lib/compare/v0.0.0...HEAD
+## 0.0.2-beta.0 - 2021-09-16
+
+[Unreleased]: https://github.com/superfaceai/testing-lib/compare/v0.0.2-beta.0...HEAD
