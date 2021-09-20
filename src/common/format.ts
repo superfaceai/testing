@@ -24,8 +24,8 @@ export function getFixtureName(sfConfig: CompleteSuperfaceTestConfig): string {
  * SUPERFACE_LIVE_API="scope/profile:provider:usecase*"
  */
 export function matchWildCard(
-  superfaceEnv: string | undefined,
-  sfConfig: CompleteSuperfaceTestConfig
+  sfConfig: CompleteSuperfaceTestConfig,
+  superfaceEnv?: string,
 ): boolean {
   if (superfaceEnv === undefined) {
     return false;

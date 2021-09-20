@@ -90,7 +90,7 @@ export class SuperfaceTest {
     this.setupRecordingPath(getFixtureName(this.sfConfig));
 
     // parse env variable and check if test should be recorded
-    const record = matchWildCard(process.env.SUPERFACE_LIVE_API, this.sfConfig);
+    const record = matchWildCard(this.sfConfig, process.env.SUPERFACE_LIVE_API);
 
     await this.startRecording(record);
 
