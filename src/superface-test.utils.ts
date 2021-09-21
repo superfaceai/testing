@@ -6,10 +6,7 @@ import {
 } from '@superfaceai/one-sdk';
 import { join as joinPath } from 'path';
 
-import {
-  CompleteSuperfaceTestConfig,
-  SuperfaceTestConfigPayload,
-} from '.';
+import { CompleteSuperfaceTestConfig, SuperfaceTestConfigPayload } from '.';
 import {
   ComponentUndefinedError,
   InstanceMissingError,

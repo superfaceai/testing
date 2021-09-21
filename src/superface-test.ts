@@ -7,9 +7,9 @@ import {
 import { join as joinPath } from 'path';
 
 import {
-  CapabilitiesNotLocalError,
   ComponentUndefinedError,
   FixturesPathUndefinedError,
+  MapUndefinedError,
   NockConfigUndefinedError,
   RecordingPathUndefinedError,
   RecordingsNotFoundError,
@@ -31,18 +31,21 @@ import {
 import {
   assertsPreparedConfig,
   getProfileId,
+  getProviderId,
   getSuperJson,
   isProviderLocal,
 } from './superface-test.utils';
 
 export class SuperfaceTest {
+  private sfConfig: SuperfaceTestConfigPayload;
+  private nockConfig?: NockConfig;
   private fixturesPath?: string;
   private recordingPath?: string;
 
-  constructor(
-    public sfConfig: SuperfaceTestConfigPayload,
-    public nockConfig?: NockConfig
-  ) {
+  constructor(sfConfig?: SuperfaceTestConfigPayload, nockConfig?: NockConfig) {
+    this.sfConfig = sfConfig ?? {};
+    this.nockConfig = nockConfig;
+
     this.setupFixturesPath();
   }
 
@@ -79,13 +82,16 @@ export class SuperfaceTest {
   async run(testCase: SuperfaceTestRun): Promise<TestingReturn> {
     this.prepareSuperfaceConfig(testCase);
 
-    if (!(await this.areCapabilitiesLocal())) {
-      throw new CapabilitiesNotLocalError();
-    }
-
     await this.setupSuperfaceConfig();
 
     assertsPreparedConfig(this.sfConfig);
+
+    if (!(await this.isMapLocal())) {
+      throw new MapUndefinedError(
+        getProfileId(this.sfConfig.profile),
+        getProviderId(this.sfConfig.provider)
+      );
+    }
 
     this.setupRecordingPath(getFixtureName(this.sfConfig));
 
@@ -168,7 +174,7 @@ export class SuperfaceTest {
    * Checks whether current components in sfConfig
    * are locally linked in super.json.
    */
-  private async areCapabilitiesLocal(): Promise<boolean> {
+  private async isMapLocal(): Promise<boolean> {
     const superJson = this.sfConfig.client?.superJson ?? (await getSuperJson());
     const superJsonNormalized = superJson.normalized;
 

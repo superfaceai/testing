@@ -1,8 +1,8 @@
 import {
   assertIsIOError,
-  CapabilitiesNotLocalError,
   ComponentUndefinedError,
   InstanceMissingError,
+  MapUndefinedError,
   NockConfigUndefinedError,
   RecordingPathUndefinedError,
   SuperJsonNotFoundError,
@@ -24,20 +24,20 @@ describe('errors', () => {
     });
   });
 
-  describe('when throwing CapabilitiesNotLocalError', () => {
-    const error = new CapabilitiesNotLocalError();
+  describe('when throwing MapUndefinedError', () => {
+    const error = new MapUndefinedError('profile', 'provider');
 
     it('throws in correct format', () => {
       expect(() => {
         throw error;
       }).toThrow(
-        'Some capabilities are not local, do not forget to set up file paths in super.json.'
+        'Map for profile and provider does not exist. Use `superface create --map --profileId profile --providerName provider` to create it.'
       );
     });
 
     it('returns correct format', () => {
       expect(error.toString()).toEqual(
-        'CapabilitiesNotLocalError: Some capabilities are not local, do not forget to set up file paths in super.json.'
+        'MapUndefinedError: Map for profile and provider does not exist. Use `superface create --map --profileId profile --providerName provider` to create it.'
       );
     });
   });

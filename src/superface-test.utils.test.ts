@@ -8,7 +8,6 @@ import {
   UseCase,
 } from '@superfaceai/one-sdk';
 
-import { SuperfaceTest } from './superface-test';
 import { assertsPreparedConfig, isProviderLocal } from './superface-test.utils';
 
 jest.mock('@superfaceai/one-sdk/dist/client/client');
@@ -58,23 +57,21 @@ describe('SuperfaceTest', () => {
         new ProfileConfiguration('some-profile', '1.0.0')
       );
 
-      const superfaceTest1 = new SuperfaceTest({
+      const sfConfig = {
         profile: mockedProfile,
         provider: new Provider(
           client,
           new ProviderConfiguration('some-provider', [])
         ),
         useCase: new UseCase(mockedProfile, 'some-usecase'),
-      });
+      };
 
       expect(() => {
-        assertsPreparedConfig(superfaceTest1.sfConfig);
+        assertsPreparedConfig(sfConfig);
       }).not.toThrow();
 
-      const superfaceTest2 = new SuperfaceTest({});
-
       expect(() => {
-        assertsPreparedConfig(superfaceTest2.sfConfig);
+        assertsPreparedConfig({});
       }).not.toThrow();
     });
   });

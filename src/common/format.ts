@@ -25,7 +25,7 @@ export function getFixtureName(sfConfig: CompleteSuperfaceTestConfig): string {
  */
 export function matchWildCard(
   sfConfig: CompleteSuperfaceTestConfig,
-  superfaceEnv?: string,
+  superfaceEnv?: string
 ): boolean {
   if (superfaceEnv === undefined) {
     return false;

@@ -23,11 +23,11 @@ export class UnexpectedError extends ErrorBase {
   }
 }
 
-export class CapabilitiesNotLocalError extends ErrorBase {
-  constructor() {
+export class MapUndefinedError extends ErrorBase {
+  constructor(profile: string, provider: string) {
     super(
-      'CapabilitiesNotLocalError',
-      'Some capabilities are not local, do not forget to set up file paths in super.json.'
+      'MapUndefinedError',
+      `Map for ${profile} and ${provider} does not exist. Use \`superface create --map --profileId ${profile} --providerName ${provider}\` to create it.`
     );
   }
 }
@@ -72,7 +72,7 @@ export class RecordingsNotFoundError extends ErrorBase {
   constructor() {
     super(
       'RecordingsNotFoundError',
-      'Recording could not be found, if you want to record new traffic, configure enviroment variable SUPERFACE_LIVE_API'
+      'Recordings could not be found for running mocked tests. You must call the live API first to record API traffic. Use the environment variable SUPERFACE_LIVE_API to call the API and record traffic. See https://github.com/superfaceai/testing-lib#recording for details.'
     );
   }
 }

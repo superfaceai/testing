@@ -18,10 +18,6 @@ import {
   SuperJsonNotFoundError,
 } from './common/errors';
 import { SuperfaceTest } from './superface-test';
-import {
-  SuperfaceTestConfig,
-  SuperfaceTestConfigPayload,
-} from './superface-test.interfaces';
 
 // const mockServer = getLocal();
 
@@ -472,10 +468,6 @@ describe.skip('SuperfaceTest', () => {
         },
       });
 
-      const expectedSfConfig: SuperfaceTestConfigPayload = {
-        useCase: 'some-use-case',
-      };
-
       const client = new SuperfaceClient();
 
       superfaceTest = new SuperfaceTest({
@@ -498,7 +490,6 @@ describe.skip('SuperfaceTest', () => {
 
       expect(detectSpy).toHaveBeenCalledTimes(1);
       expect(loadSpy).toHaveBeenCalledTimes(1);
-      expect(superfaceTest.sfConfig).toMatchObject(expectedSfConfig);
     });
 
     it('reconstructs valid string configuration', async () => {
@@ -591,18 +582,18 @@ describe.skip('SuperfaceTest', () => {
       expect(getProviderSpy).toHaveBeenCalledTimes(1);
       expect(getUseCaseSpy).toHaveBeenCalledTimes(1);
 
-      const profile = await client.getProfile('profile');
-      const provider = await client.getProvider('provider');
-      const useCase = profile.getUseCase('some-use-case');
+      // const profile = await client.getProfile('profile');
+      // const provider = await client.getProvider('provider');
+      // const useCase = profile.getUseCase('some-use-case');
 
-      const expectedSfConfig: SuperfaceTestConfig = {
-        client,
-        profile,
-        provider,
-        useCase,
-      };
+      // const expectedSfConfig: SuperfaceTestConfig = {
+      //   client,
+      //   profile,
+      //   provider,
+      //   useCase,
+      // };
 
-      expect(superfaceTest.sfConfig).toMatchObject(expectedSfConfig);
+      // expect(superfaceTest.sfConfig).toMatchObject(expectedSfConfig);
     });
   });
 
