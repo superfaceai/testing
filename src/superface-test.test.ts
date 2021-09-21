@@ -6,11 +6,11 @@ import {
   ProfileConfiguration,
   Provider,
   ProviderConfiguration,
+  SDKExecutionError,
   SuperfaceClient,
   SuperJson,
   UseCase,
 } from '@superfaceai/one-sdk';
-import { SDKExecutionError } from '@superfaceai/one-sdk/dist/internal/errors';
 import { mocked } from 'ts-jest/utils';
 
 import {
@@ -109,7 +109,7 @@ describe.skip('SuperfaceTest', () => {
         useCase: 'usecase',
       });
 
-      await expect(superfaceTest.run({ input: '' })).rejects.toThrow(
+      await expect(superfaceTest.run({ input: {} })).rejects.toThrow(
         'super.json error'
       );
 
@@ -195,16 +195,16 @@ describe.skip('SuperfaceTest', () => {
         useCase: mockedUseCase,
       });
 
-      await expect(superfaceTest1.run({ input: '' })).rejects.toThrowError(
+      await expect(superfaceTest1.run({ input: {} })).rejects.toThrowError(
         new ComponentUndefinedError('Profile')
       );
-      await expect(superfaceTest2.run({ input: '' })).rejects.toThrowError(
+      await expect(superfaceTest2.run({ input: {} })).rejects.toThrowError(
         new ComponentUndefinedError('Provider')
       );
-      await expect(superfaceTest3.run({ input: '' })).rejects.toThrowError(
+      await expect(superfaceTest3.run({ input: {} })).rejects.toThrowError(
         new ComponentUndefinedError('UseCase')
       );
-      await expect(superfaceTest4.run({ input: '' })).resolves.toBeUndefined();
+      await expect(superfaceTest4.run({ input: {} })).resolves.toBeUndefined();
 
       expect(detectSpy).toHaveBeenCalledTimes(4);
       expect(loadSpy).toHaveBeenCalledTimes(4);
@@ -219,7 +219,7 @@ describe.skip('SuperfaceTest', () => {
 
       superfaceTest = new SuperfaceTest({});
 
-      await expect(superfaceTest.run({ input: '' })).rejects.toThrowError(
+      await expect(superfaceTest.run({ input: {} })).rejects.toThrowError(
         new SuperJsonNotFoundError()
       );
 
@@ -260,7 +260,7 @@ describe.skip('SuperfaceTest', () => {
         useCase: mockedUseCase,
       });
 
-      await expect(superfaceTest.run({ input: '' })).resolves.toMatchObject({
+      await expect(superfaceTest.run({ input: {} })).resolves.toMatchObject({
         error: new MapASTError('error').toString(),
       });
 
@@ -304,7 +304,7 @@ describe.skip('SuperfaceTest', () => {
         useCase: mockedUseCase,
       });
 
-      await expect(superfaceTest.run({ input: '' })).resolves.toMatchObject({
+      await expect(superfaceTest.run({ input: {} })).resolves.toMatchObject({
         value: 'result',
       });
 
@@ -492,7 +492,7 @@ describe.skip('SuperfaceTest', () => {
 
       await expect(
         superfaceTest.run({
-          input: '',
+          input: {},
         })
       ).rejects.toThrowError(new ComponentUndefinedError('Profile'));
 
@@ -581,7 +581,7 @@ describe.skip('SuperfaceTest', () => {
 
       await expect(
         superfaceTest.run({
-          input: '',
+          input: {},
         })
       ).resolves.toBeUndefined();
 
@@ -654,7 +654,7 @@ describe.skip('SuperfaceTest', () => {
 
       await expect(
         superfaceTest.run({
-          input: '',
+          input: {},
         })
       ).rejects.toThrow(errorMessage);
 
@@ -714,7 +714,7 @@ describe.skip('SuperfaceTest', () => {
 
       await expect(
         superfaceTest.run({
-          input: '',
+          input: {},
         })
       ).rejects.toThrow(errorMessage);
 
@@ -775,7 +775,7 @@ describe.skip('SuperfaceTest', () => {
       const errorMessage =
         'Some capabilities are not local, do not forget to set up file paths in super.json.';
 
-      await expect(superfaceTest.run({ input: '' })).rejects.toThrow(
+      await expect(superfaceTest.run({ input: {} })).rejects.toThrow(
         errorMessage
       );
 

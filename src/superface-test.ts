@@ -1,5 +1,4 @@
 import { SuperfaceClient } from '@superfaceai/one-sdk';
-import { UnexpectedError } from '@superfaceai/one-sdk/dist/internal/errors';
 import {
   load as loadRecording,
   recorder,
@@ -14,6 +13,7 @@ import {
   NockConfigUndefinedError,
   RecordingPathUndefinedError,
   RecordingsNotFoundError,
+  UnexpectedError,
 } from './common/errors';
 import {
   getFixtureName,

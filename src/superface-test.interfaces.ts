@@ -2,34 +2,26 @@ import {
   Profile,
   Provider,
   SuperfaceClient,
-  TypedProfile,
   UseCase,
 } from '@superfaceai/one-sdk';
-import { TypedSuperfaceClient } from '@superfaceai/one-sdk/dist/client/client';
-import { TypedUseCase } from '@superfaceai/one-sdk/dist/client/usecase';
-
-/* eslint-disable  @typescript-eslint/no-explicit-any */
-
-export type Client = SuperfaceClient | TypedSuperfaceClient<any>;
-export type ProfilePayload = Profile | TypedProfile<any> | string;
-export type UseCasePayload = UseCase | TypedUseCase<any, unknown> | string;
+import { NonPrimitive } from '@superfaceai/one-sdk/dist/internal/interpreter/variables';
 
 export interface SuperfaceTestConfigPayload {
-  client?: Client;
-  profile?: ProfilePayload;
+  client?: SuperfaceClient;
+  profile?: Profile | string;
   provider?: Provider | string;
-  useCase?: UseCasePayload;
+  useCase?: UseCase | string;
 }
 
 export type SuperfaceTestRun = SuperfaceTestConfigPayload & {
-  input: unknown;
+  input: NonPrimitive;
 };
 
 export interface SuperfaceTestConfig {
-  client?: Client;
-  profile?: Profile | TypedProfile<any>;
+  client?: SuperfaceClient;
+  profile?: Profile;
   provider?: Provider;
-  useCase?: UseCase | TypedUseCase<any, unknown>;
+  useCase?: UseCase;
 }
 
 export type CompleteSuperfaceTestConfig = Required<SuperfaceTestConfig>;

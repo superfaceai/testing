@@ -3,13 +3,11 @@ import {
   Profile,
   Provider,
   SuperJson,
-  TypedProfile,
 } from '@superfaceai/one-sdk';
 import { join as joinPath } from 'path';
 
 import {
   CompleteSuperfaceTestConfig,
-  ProfilePayload,
   SuperfaceTestConfigPayload,
 } from '.';
 import {
@@ -76,11 +74,10 @@ export function isProviderLocal(
 }
 
 /**
- * Returns profile id if entered profile is either
- * typed instance of Profile or instance of Profile or string
+ * Returns profile id if entered profile is either instance of Profile or string
  */
-export function getProfileId(profile: ProfilePayload): string {
-  if (profile instanceof TypedProfile || profile instanceof Profile) {
+export function getProfileId(profile: Profile | string): string {
+  if (profile instanceof Profile) {
     return profile.configuration.id;
   }
 
@@ -88,8 +85,7 @@ export function getProfileId(profile: ProfilePayload): string {
 }
 
 /**
- * Returns provider id if entered provider is either
- * instance of Provider or string
+ * Returns provider id if entered provider is either instance of Provider or string
  */
 export function getProviderId(provider: Provider | string): string {
   if (provider instanceof Provider) {
