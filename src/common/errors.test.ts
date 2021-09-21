@@ -3,7 +3,6 @@ import {
   ComponentUndefinedError,
   InstanceMissingError,
   MapUndefinedError,
-  NockConfigUndefinedError,
   RecordingPathUndefinedError,
   SuperJsonNotFoundError,
   UnexpectedError,
@@ -72,22 +71,6 @@ describe('errors', () => {
 
       expect(errorUseCase.toString()).toEqual(
         'ComponentUndefinedError: Undefined UseCase'
-      );
-    });
-  });
-
-  describe('when throwing NockConfigUndefinedError', () => {
-    const error = new NockConfigUndefinedError();
-
-    it('throws in correct format', () => {
-      expect(() => {
-        throw error;
-      }).toThrow('Nock configuration missing.');
-    });
-
-    it('returns correct format', () => {
-      expect(error.toString()).toEqual(
-        'NockConfigUndefinedError: Nock configuration missing.'
       );
     });
   });

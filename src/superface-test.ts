@@ -10,7 +10,6 @@ import {
   ComponentUndefinedError,
   FixturesPathUndefinedError,
   MapUndefinedError,
-  NockConfigUndefinedError,
   RecordingPathUndefinedError,
   RecordingsNotFoundError,
   UnexpectedError,
@@ -200,12 +199,8 @@ export class SuperfaceTest {
    * starts recording or loads recording file if exists.
    */
   private async startRecording(record: boolean): Promise<void> {
-    if (!this.nockConfig) {
-      throw new NockConfigUndefinedError();
-    }
-
     if (!this.recordingPath) {
-      throw new UnexpectedError('unreachable');
+      throw new RecordingPathUndefinedError();
     }
 
     if (!record) {
@@ -221,7 +216,7 @@ export class SuperfaceTest {
         throw new RecordingsNotFoundError();
       }
     } else {
-      const hideReqHeaders = this.nockConfig.hideHeaders ?? true;
+      const hideReqHeaders = this.nockConfig?.hideHeaders ?? true;
 
       recorder.rec({
         dont_print: true,
@@ -238,10 +233,6 @@ export class SuperfaceTest {
    * Possible to update recordings with property `update`.
    */
   private async endRecording(record: boolean): Promise<void> {
-    if (!this.nockConfig) {
-      throw new NockConfigUndefinedError();
-    }
-
     if (!this.recordingPath) {
       throw new RecordingPathUndefinedError();
     }

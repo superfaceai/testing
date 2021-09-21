@@ -38,12 +38,6 @@ export class ComponentUndefinedError extends ErrorBase {
   }
 }
 
-export class NockConfigUndefinedError extends ErrorBase {
-  constructor() {
-    super('NockConfigUndefinedError', 'Nock configuration missing.');
-  }
-}
-
 export class FixturesPathUndefinedError extends ErrorBase {
   constructor() {
     super('FixturePathUndefinedError', 'Fixture path missing.');
