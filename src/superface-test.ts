@@ -1,4 +1,5 @@
-import { SuperfaceClient } from '@superfaceai/one-sdk';
+import { Result, SuperfaceClient } from '@superfaceai/one-sdk';
+import { PerformError } from '@superfaceai/one-sdk/dist/client/usecase';
 import {
   load as loadRecording,
   recorder,
@@ -99,9 +100,16 @@ export class SuperfaceTest {
 
     await this.startRecording(record);
 
-    const result = await this.sfConfig.useCase.perform(testCase.input, {
-      provider: this.sfConfig.provider,
-    });
+    let result: Result<unknown, PerformError>;
+    try {
+      result = await this.sfConfig.useCase.perform(testCase.input, {
+        provider: this.sfConfig.provider,
+      });
+    } catch (error: unknown) {
+      restoreRecordings();
+
+      throw error;
+    }
 
     await this.endRecording(record);
 
