@@ -27,7 +27,7 @@ export class MapUndefinedError extends ErrorBase {
   constructor(profile: string, provider: string) {
     super(
       'MapUndefinedError',
-      `Map for ${profile} and ${provider} does not exist. Use \`superface create --map --profileId ${profile} --providerName ${provider}\` to create it.`
+      `Map for ${profile} and ${provider} does not exist. \nUse \`superface create --map --profileId ${profile} --providerName ${provider}\` to create it.`
     );
   }
 }
@@ -66,7 +66,7 @@ export class RecordingsNotFoundError extends ErrorBase {
   constructor() {
     super(
       'RecordingsNotFoundError',
-      'Recordings could not be found for running mocked tests. You must call the live API first to record API traffic. Use the environment variable SUPERFACE_LIVE_API to call the API and record traffic. See https://github.com/superfaceai/testing-lib#recording for details.'
+      'Recordings could not be found for running mocked tests.\nYou must call the live API first to record API traffic.\nUse the environment variable SUPERFACE_LIVE_API to call the API and record traffic.\nSee https://github.com/superfaceai/testing-lib#recording for details.'
     );
   }
 }
