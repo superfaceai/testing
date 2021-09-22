@@ -42,7 +42,7 @@
     "typescript": "4.3.2"
   },
   "dependencies": {
-    "@superfaceai/one-sdk": "^0.0.34-beta.0",
+    "@superfaceai/one-sdk": "^0.0.34-beta.1",
     "debug": "^4.3.2",
     "nock": "^13.1.1"
   }

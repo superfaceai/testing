@@ -1,5 +1,4 @@
-import { Result, SuperfaceClient } from '@superfaceai/one-sdk';
-import { PerformError } from '@superfaceai/one-sdk/dist/client/usecase';
+import { PerformError, Result, SuperfaceClient } from '@superfaceai/one-sdk';
 import {
   load as loadRecording,
   recorder,
