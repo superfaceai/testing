@@ -30,13 +30,13 @@ describe('errors', () => {
       expect(() => {
         throw error;
       }).toThrow(
-        'Map for profile and provider does not exist. Use `superface create --map --profileId profile --providerName provider` to create it.'
+        'Map for profile and provider does not exist.\nUse `superface create --map --profileId profile --providerName provider` to create it.'
       );
     });
 
     it('returns correct format', () => {
       expect(error.toString()).toEqual(
-        'MapUndefinedError: Map for profile and provider does not exist. Use `superface create --map --profileId profile --providerName provider` to create it.'
+        'MapUndefinedError: Map for profile and provider does not exist.\nUse `superface create --map --profileId profile --providerName provider` to create it.'
       );
     });
   });

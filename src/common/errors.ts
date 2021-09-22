@@ -27,7 +27,7 @@ export class MapUndefinedError extends ErrorBase {
   constructor(profile: string, provider: string) {
     super(
       'MapUndefinedError',
-      `Map for ${profile} and ${provider} does not exist. \nUse \`superface create --map --profileId ${profile} --providerName ${provider}\` to create it.`
+      `Map for ${profile} and ${provider} does not exist.\nUse \`superface create --map --profileId ${profile} --providerName ${provider}\` to create it.`
     );
   }
 }
