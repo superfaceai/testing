@@ -1,15 +1,19 @@
 import { PerformError, Result, SuperfaceClient } from '@superfaceai/one-sdk';
 import {
+  disableNetConnect,
+  enableNetConnect,
   load as loadRecording,
   recorder,
   restore as restoreRecordings,
 } from 'nock';
 import { join as joinPath } from 'path';
 
+import { ProcessingFunction, RecordingProcessFunctions } from '.';
 import {
   ComponentUndefinedError,
   FixturesPathUndefinedError,
   MapUndefinedError,
+  ProcessingFunctionError,
   RecordingPathUndefinedError,
   RecordingsNotFoundError,
   UnexpectedError,
@@ -30,9 +34,10 @@ import {
 import {
   assertsPreparedConfig,
   getProfileId,
-  getProviderId,
+  getProviderName,
   getSuperJson,
   isProviderLocal,
+  removeSensitiveInformation,
 } from './superface-test.utils';
 
 export class SuperfaceTest {
@@ -78,7 +83,10 @@ export class SuperfaceTest {
    * Tests current configuration whether all necessary components
    * are defined and ready to use and tries to perform entered usecase.
    */
-  async run(testCase: SuperfaceTestRun): Promise<TestingReturn> {
+  async run(
+    testCase: SuperfaceTestRun,
+    hooks?: RecordingProcessFunctions
+  ): Promise<TestingReturn> {
     this.prepareSuperfaceConfig(testCase);
 
     await this.setupSuperfaceConfig();
@@ -88,7 +96,7 @@ export class SuperfaceTest {
     if (!(await this.isMapLocal())) {
       throw new MapUndefinedError(
         getProfileId(this.sfConfig.profile),
-        getProviderId(this.sfConfig.provider)
+        getProviderName(this.sfConfig.provider)
       );
     }
 
@@ -97,7 +105,7 @@ export class SuperfaceTest {
     // parse env variable and check if test should be recorded
     const record = matchWildCard(this.sfConfig, process.env.SUPERFACE_LIVE_API);
 
-    await this.startRecording(record);
+    await this.startRecording(record, hooks?.before);
 
     let result: Result<unknown, PerformError>;
     try {
@@ -110,7 +118,7 @@ export class SuperfaceTest {
       throw error;
     }
 
-    await this.endRecording(record);
+    await this.endRecording(record, hooks?.after);
 
     if (result.isErr()) {
       return { error: removeTimestamp(result.error.toString()) };
@@ -205,7 +213,10 @@ export class SuperfaceTest {
    * Checks whether nock is configured and
    * starts recording or loads recording file if exists.
    */
-  private async startRecording(record: boolean): Promise<void> {
+  private async startRecording(
+    record: boolean,
+    _preProcess?: ProcessingFunction
+  ): Promise<void> {
     if (!this.recordingPath) {
       throw new RecordingPathUndefinedError();
     }
@@ -221,15 +232,18 @@ export class SuperfaceTest {
 
       if (recording.length === 0) {
         throw new RecordingsNotFoundError();
+      } else {
+        disableNetConnect();
       }
     } else {
-      const hideReqHeaders = this.nockConfig?.hideHeaders ?? true;
+      const enable_reqheaders_recording =
+        this.nockConfig?.enableReqheadersRecording ?? false;
 
       recorder.rec({
         dont_print: true,
         output_objects: true,
         use_separator: false,
-        enable_reqheaders_recording: hideReqHeaders,
+        enable_reqheaders_recording,
       });
     }
   }
@@ -239,17 +253,37 @@ export class SuperfaceTest {
    * saves recording to file specified in nockConfig.
    * Possible to update recordings with property `update`.
    */
-  private async endRecording(record: boolean): Promise<void> {
+  private async endRecording(
+    record: boolean,
+    postProcess?: ProcessingFunction
+  ): Promise<void> {
     if (!this.recordingPath) {
       throw new RecordingPathUndefinedError();
     }
 
     if (!record) {
+      enableNetConnect();
+
       return;
     } else {
+      assertsPreparedConfig(this.sfConfig);
+
+      const recordings = removeSensitiveInformation(
+        this.sfConfig,
+        recorder.play()
+      );
+
+      if (postProcess) {
+        try {
+          await postProcess(recordings);
+        } catch (error) {
+          throw new ProcessingFunctionError();
+        }
+      }
+
       await OutputStream.writeIfAbsent(
         this.recordingPath,
-        JSON.stringify(recorder.play(), null, 2),
+        JSON.stringify(recordings, null, 2),
         {
           dirs: true,
           force: record,

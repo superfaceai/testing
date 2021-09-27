@@ -2,9 +2,16 @@ import {
   NormalizedSuperJsonDocument,
   Profile,
   Provider,
+  SecurityValues,
+  SuperfaceClient,
   SuperJson,
+  UnexpectedError,
+  UseCase,
+  UsecaseDefaults,
 } from '@superfaceai/one-sdk';
+import { Definition as RecordingDefinition } from 'nock/types';
 import { join as joinPath } from 'path';
+import { URL } from 'url';
 
 import { CompleteSuperfaceTestConfig, SuperfaceTestConfigPayload } from '.';
 import {
@@ -19,31 +26,52 @@ import {
 export function assertsPreparedConfig(
   sfConfig: SuperfaceTestConfigPayload
 ): asserts sfConfig is CompleteSuperfaceTestConfig {
-  if (sfConfig.client === undefined) {
+  assertsPreparedClient(sfConfig.client);
+  assertsPreparedProfile(sfConfig.profile);
+  assertsPreparedProvider(sfConfig.provider);
+  assertsPreparedUseCase(sfConfig.useCase);
+}
+
+export function assertsPreparedClient(
+  client: SuperfaceClient | undefined
+): asserts client is SuperfaceClient {
+  if (client === undefined) {
     throw new ComponentUndefinedError('Client');
   }
+}
 
-  if (sfConfig.profile === undefined) {
+export function assertsPreparedProfile(
+  profile: Profile | string | undefined
+): asserts profile is Profile {
+  if (profile === undefined) {
     throw new ComponentUndefinedError('Profile');
   }
 
-  if (typeof sfConfig.profile === 'string') {
+  if (typeof profile === 'string') {
     throw new InstanceMissingError('Profile');
   }
+}
 
-  if (sfConfig.provider === undefined) {
+export function assertsPreparedProvider(
+  provider: Provider | string | undefined
+): asserts provider is Provider {
+  if (provider === undefined) {
     throw new ComponentUndefinedError('Provider');
   }
 
-  if (typeof sfConfig.provider === 'string') {
+  if (typeof provider === 'string') {
     throw new InstanceMissingError('Provider');
   }
+}
 
-  if (sfConfig.useCase === undefined) {
+export function assertsPreparedUseCase(
+  useCase: UseCase | string | undefined
+): asserts useCase is UseCase {
+  if (useCase === undefined) {
     throw new ComponentUndefinedError('UseCase');
   }
 
-  if (typeof sfConfig.useCase === 'string') {
+  if (typeof useCase === 'string') {
     throw new InstanceMissingError('UseCase');
   }
 }
@@ -56,7 +84,7 @@ export function isProviderLocal(
   profileId: string | undefined,
   superJsonNormalized: NormalizedSuperJsonDocument
 ): boolean {
-  const providerId = getProviderId(provider);
+  const providerId = getProviderName(provider);
 
   if (profileId !== undefined) {
     const targetedProfileProvider =
@@ -84,12 +112,23 @@ export function getProfileId(profile: Profile | string): string {
 /**
  * Returns provider id if entered provider is either instance of Provider or string
  */
-export function getProviderId(provider: Provider | string): string {
+export function getProviderName(provider: Provider | string): string {
   if (provider instanceof Provider) {
     return provider.configuration.name;
   }
 
   return provider;
+}
+
+/**
+ * Returns usecase name if entered usecase is either instance of UseCase or string
+ */
+export function getUseCaseName(useCase: UseCase | string): string {
+  if (useCase instanceof UseCase) {
+    return useCase.name;
+  }
+
+  return useCase;
 }
 
 /**
@@ -103,4 +142,100 @@ export async function getSuperJson(): Promise<SuperJson> {
   }
 
   return (await SuperJson.load(joinPath(superPath, 'super.json'))).unwrap();
+}
+
+const HIDDEN_CREDENTIALS_PLACEHOLDER =
+  '{credentials removed to keep them secure}';
+const AUTH_HEADER_NAME = 'Authorization';
+
+export function removeSensitiveInformation(
+  sfConfig: CompleteSuperfaceTestConfig,
+  recordings: string[] | RecordingDefinition[]
+): RecordingDefinition[] {
+  return recordings.map(recording => {
+    if (typeof recording === 'string') {
+      throw new UnexpectedError('unreachable');
+    }
+
+    for (const scheme of sfConfig.provider.configuration.security) {
+      removeCredentialsBasedOnScheme(recording, scheme);
+    }
+
+    // TODO: implement this or wait for integration parameters
+    // removeCredentialsBasedOnDefaults(
+    //   recording,
+    //   sfConfig.client.superJson.normalized.profiles[
+    //     getProfileId(sfConfig.profile)
+    //   ].providers[getProviderName(sfConfig.provider)].defaults,
+    //   getUseCaseName(sfConfig.useCase)
+    // );
+
+    return recording;
+  });
+}
+
+export function removeCredentialsBasedOnScheme(
+  recording: RecordingDefinition,
+  scheme: SecurityValues
+): void {
+  if ('apikey' in scheme) {
+    // TODO: use boolean bellow when typescript update to 4.4
+    // const isRecordingBodyRecord =
+    //   typeof recording.body === 'object' && !Array.isArray(recording.body);
+
+    // check api key in header, body, path or query
+    if (recording.reqheaders?.[scheme.id] !== undefined) {
+      recording.reqheaders[scheme.id] = HIDDEN_CREDENTIALS_PLACEHOLDER;
+    } else if (
+      typeof recording.body === 'object' &&
+      !(recording.body instanceof RegExp) &&
+      !(recording.body instanceof Buffer) &&
+      !Array.isArray(recording.body) &&
+      !('includes' in recording.body) &&
+      recording.body[scheme.id] !== undefined
+    ) {
+      recording.body[scheme.id] = HIDDEN_CREDENTIALS_PLACEHOLDER;
+    }
+
+    // check in query
+    const recordingPath = new URL(recording.path);
+    if (recordingPath.searchParams.has(scheme.id)) {
+      recordingPath.searchParams.set(scheme.id, HIDDEN_CREDENTIALS_PLACEHOLDER);
+    }
+
+    // omit pathname as well?
+    // recordingPath.pathname
+
+    recording.path = recordingPath.toString();
+  } else if ('username' in scheme) {
+    if (recording.reqheaders?.[AUTH_HEADER_NAME] !== undefined) {
+      recording.reqheaders[
+        AUTH_HEADER_NAME
+      ] = `Basic ${HIDDEN_CREDENTIALS_PLACEHOLDER}`;
+    }
+  } else if ('token' in scheme) {
+    if (recording.reqheaders?.[AUTH_HEADER_NAME] !== undefined) {
+      recording.reqheaders[
+        AUTH_HEADER_NAME
+      ] = `Bearer ${HIDDEN_CREDENTIALS_PLACEHOLDER}`;
+    }
+  } else {
+    // check scheme digest
+    throw new UnexpectedError('not implemented');
+  }
+}
+
+export function removeCredentialsBasedOnDefaults(
+  _recording: RecordingDefinition,
+  defaults: UsecaseDefaults,
+  useCaseName: string
+): void {
+  const targetedDefaults = defaults[useCaseName];
+  if (defaults.input !== undefined) {
+    defaults.input;
+  }
+
+  if (targetedDefaults.input !== undefined) {
+    targetedDefaults.input;
+  }
 }

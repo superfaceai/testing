@@ -5,6 +5,7 @@ import {
   UseCase,
 } from '@superfaceai/one-sdk';
 import { NonPrimitive } from '@superfaceai/one-sdk/dist/internal/interpreter/variables';
+import { Definition as RecordingDefinition } from 'nock/types';
 
 export interface SuperfaceTestConfigPayload {
   client?: SuperfaceClient;
@@ -37,5 +38,11 @@ export type TestingReturn =
 export interface NockConfig {
   path?: string;
   fixture?: string;
-  hideHeaders?: boolean;
+  enableReqheadersRecording?: boolean;
 }
+
+export type ProcessingFunction = (
+  recordings: RecordingDefinition[]
+) => Promise<void> | void;
+
+export interface RecordingProcessFunctions { before?: ProcessingFunction; after?: ProcessingFunction }
