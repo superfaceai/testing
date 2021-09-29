@@ -71,12 +71,6 @@ export class RecordingsNotFoundError extends ErrorBase {
   }
 }
 
-export class ProcessingFunctionError extends ErrorBase {
-  constructor() {
-    super('ProcessingFunctionError', 'Running processing function failed.');
-  }
-}
-
 export function assertIsIOError(
   error: unknown
 ): asserts error is { code: string } {

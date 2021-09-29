@@ -148,15 +148,21 @@ const HIDDEN_CREDENTIALS_PLACEHOLDER =
   '{credentials removed to keep them secure}';
 const AUTH_HEADER_NAME = 'Authorization';
 
+export function assertsRecordingsAreNotStrings(
+  recordings: string[] | RecordingDefinition[]
+): asserts recordings is RecordingDefinition[] {
+  for (const recording of recordings) {
+    if (typeof recording === 'string') {
+      throw new UnexpectedError('recording is a string, not object');
+    }
+  }
+}
+
 export function removeSensitiveInformation(
   sfConfig: CompleteSuperfaceTestConfig,
-  recordings: string[] | RecordingDefinition[]
-): RecordingDefinition[] {
-  return recordings.map(recording => {
-    if (typeof recording === 'string') {
-      throw new UnexpectedError('unreachable');
-    }
-
+  recordings: RecordingDefinition[]
+): void {
+  for (const recording of recordings) {
     for (const scheme of sfConfig.provider.configuration.security) {
       removeCredentialsBasedOnScheme(recording, scheme);
     }
@@ -169,9 +175,7 @@ export function removeSensitiveInformation(
     //   ].providers[getProviderName(sfConfig.provider)].defaults,
     //   getUseCaseName(sfConfig.useCase)
     // );
-
-    return recording;
-  });
+  }
 }
 
 export function removeCredentialsBasedOnScheme(

@@ -45,4 +45,7 @@ export type ProcessingFunction = (
   recordings: RecordingDefinition[]
 ) => Promise<void> | void;
 
-export interface RecordingProcessFunctions { before?: ProcessingFunction; after?: ProcessingFunction }
+export interface RecordingProcessFunctions {
+  before?: ProcessingFunction;
+  after?: ProcessingFunction;
+}

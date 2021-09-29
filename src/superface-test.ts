@@ -13,7 +13,6 @@ import {
   ComponentUndefinedError,
   FixturesPathUndefinedError,
   MapUndefinedError,
-  ProcessingFunctionError,
   RecordingPathUndefinedError,
   RecordingsNotFoundError,
   UnexpectedError,
@@ -33,6 +32,7 @@ import {
 } from './superface-test.interfaces';
 import {
   assertsPreparedConfig,
+  assertsRecordingsAreNotStrings,
   getProfileId,
   getProviderName,
   getSuperJson,
@@ -268,27 +268,29 @@ export class SuperfaceTest {
     } else {
       assertsPreparedConfig(this.sfConfig);
 
-      const recordings = removeSensitiveInformation(
-        this.sfConfig,
-        recorder.play()
-      );
+      const recordings = recorder.play();
 
-      if (postProcess) {
-        try {
+      try {
+        assertsRecordingsAreNotStrings(recordings);
+        removeSensitiveInformation(this.sfConfig, recordings);
+
+        if (postProcess) {
           await postProcess(recordings);
-        } catch (error) {
-          throw new ProcessingFunctionError();
         }
-      }
 
-      await OutputStream.writeIfAbsent(
-        this.recordingPath,
-        JSON.stringify(recordings, null, 2),
-        {
-          dirs: true,
-          force: record,
-        }
-      );
+        await OutputStream.writeIfAbsent(
+          this.recordingPath,
+          JSON.stringify(recordings, null, 2),
+          {
+            dirs: true,
+            force: record,
+          }
+        );
+      } catch (error) {
+        restoreRecordings();
+
+        throw error;
+      }
     }
 
     restoreRecordings();
