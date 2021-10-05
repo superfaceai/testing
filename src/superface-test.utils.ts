@@ -149,7 +149,7 @@ export async function getSuperJson(): Promise<SuperJson> {
 }
 
 const HIDDEN_CREDENTIALS_PLACEHOLDER =
-  '{credentials removed to keep them secure}';
+  'credentials-removed-to-keep-them-secure';
 const AUTH_HEADER_NAME = 'Authorization';
 
 export function assertsRecordingsAreNotStrings(
@@ -220,9 +220,10 @@ export function removeCredentialsBasedOnScheme(
             HIDDEN_CREDENTIALS_PLACEHOLDER
           );
         }
-
-        recording.path = recordingPath.toString();
       }
+
+      recording.path =
+        recordingPath.pathname + recordingPath.search + recordingPath.hash;
     }
   } else if (isBasicAuthSecurityScheme(scheme)) {
     if (recording.reqheaders?.[AUTH_HEADER_NAME] !== undefined) {
