@@ -5,7 +5,10 @@ import {
   UseCase,
 } from '@superfaceai/one-sdk';
 import { NonPrimitive } from '@superfaceai/one-sdk/dist/internal/interpreter/variables';
-import { Definition as RecordingDefinition } from 'nock/types';
+import {
+  Definition as RecordingDefinition,
+  Scope as RecordingScope,
+} from 'nock/types';
 
 export interface SuperfaceTestConfigPayload {
   client?: SuperfaceClient;
@@ -42,12 +45,17 @@ export interface NockConfig {
 }
 
 export type RecordingDefinitions = RecordingDefinition[];
+export type RecordingScopes = RecordingScope[];
 
-export type ProcessingFunction = (
+export type BeforeSaveFunction = (
   recordings: RecordingDefinitions
 ) => Promise<void> | void;
 
+export type AfterLoadFunction = (
+  scopes: RecordingScopes
+) => Promise<void> | void;
+
 export interface RecordingProcessFunctions {
-  before?: ProcessingFunction;
-  after?: ProcessingFunction;
+  beforeRecordingSave?: BeforeSaveFunction;
+  afterRecordingLoad?: AfterLoadFunction;
 }

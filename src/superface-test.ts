@@ -8,7 +8,11 @@ import {
 } from 'nock';
 import { join as joinPath } from 'path';
 
-import { ProcessingFunction, RecordingProcessFunctions } from '.';
+import {
+  AfterLoadFunction,
+  BeforeSaveFunction,
+  RecordingProcessFunctions,
+} from '.';
 import {
   ComponentUndefinedError,
   FixturesPathUndefinedError,
@@ -105,7 +109,7 @@ export class SuperfaceTest {
     // parse env variable and check if test should be recorded
     const record = matchWildCard(this.sfConfig, process.env.SUPERFACE_LIVE_API);
 
-    await this.startRecording(record, hooks?.before);
+    await this.startRecording(record, hooks?.afterRecordingLoad);
 
     let result: Result<unknown, PerformError>;
     try {
@@ -118,7 +122,7 @@ export class SuperfaceTest {
       throw error;
     }
 
-    await this.endRecording(record, hooks?.after);
+    await this.endRecording(record, hooks?.beforeRecordingSave);
 
     if (result.isErr()) {
       return { error: removeTimestamp(result.error.toString()) };
@@ -215,7 +219,7 @@ export class SuperfaceTest {
    */
   private async startRecording(
     record: boolean,
-    _preProcess?: ProcessingFunction
+    afterRecordingLoad?: AfterLoadFunction
   ): Promise<void> {
     if (!this.recordingPath) {
       throw new RecordingPathUndefinedError();
@@ -228,9 +232,11 @@ export class SuperfaceTest {
         throw new RecordingsNotFoundError();
       }
 
-      const recording = loadRecording(this.recordingPath);
+      const recordings = loadRecording(this.recordingPath);
 
-      if (recording.length === 0) {
+      await afterRecordingLoad?.(recordings);
+
+      if (recordings.length === 0) {
         throw new RecordingsNotFoundError();
       } else {
         disableNetConnect();
@@ -255,7 +261,7 @@ export class SuperfaceTest {
    */
   private async endRecording(
     record: boolean,
-    postProcess?: ProcessingFunction
+    beforeRecordingSave?: BeforeSaveFunction
   ): Promise<void> {
     if (!this.recordingPath) {
       throw new RecordingPathUndefinedError();
@@ -274,8 +280,8 @@ export class SuperfaceTest {
         assertsRecordingsAreNotStrings(recordings);
         await removeSensitiveInformation(this.sfConfig, recordings);
 
-        if (postProcess) {
-          await postProcess(recordings);
+        if (beforeRecordingSave) {
+          await beforeRecordingSave(recordings);
         }
 
         await OutputStream.writeIfAbsent(
