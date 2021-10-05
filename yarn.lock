@@ -604,19 +604,19 @@
   resolved "https://registry.yarnpkg.com/@superfaceai/ast/-/ast-0.0.23.tgz#0e58a76b45c0a2dadc72499001d32d0c37cf4128"
   integrity sha512-9SKqJmC/g8caDZ9T4RcWm43D4f/UFCX57nX8a1J9dM0/GRtMq1fsPt+qcEmCTyys2Gt9JGzH8MDCBym2F92MBg==
 
-"@superfaceai/ast@^0.0.28":
-  version "0.0.28"
-  resolved "https://registry.yarnpkg.com/@superfaceai/ast/-/ast-0.0.28.tgz#8953bda490515bdffdb18209360be44e8a9fa543"
-  integrity sha512-gPnmjeL/j73gTFRnseqYdXjbyxrJAQVvmM+XrH1cVZbcsNnc3c9e/a3ra2HWOVK2f4e4FbZiXVfre5qrL4Abeg==
+"@superfaceai/ast@^0.0.31":
+  version "0.0.31"
+  resolved "https://registry.yarnpkg.com/@superfaceai/ast/-/ast-0.0.31.tgz#b0ee6db7757d94f1e03bb8b27789ad921ac99f91"
+  integrity sha512-hEnr1LeCKorzR3U12M8q6PIBIS9JLUmmAnKIG+suL1djgxzUegEYcMDE1PX+mlByv/YzSb+7wJ5DGnJspip8eg==
   dependencies:
     typescript-is "^0.18.3"
 
-"@superfaceai/one-sdk@^0.0.35-beta.0":
-  version "0.0.35-beta.0"
-  resolved "https://registry.yarnpkg.com/@superfaceai/one-sdk/-/one-sdk-0.0.35-beta.0.tgz#751cac56c519b38940b4945e370fb81f641099c7"
-  integrity sha512-+OJKlO2D8C1v+ROUw7gZPe6NNtV71TctRqB3p0LFkojkDyS7FbZqRCK7F9WD+qvE5LCQjSME/zc3pIir0+R8iQ==
+"@superfaceai/one-sdk@^0.0.37-beta.0":
+  version "0.0.37-beta.0"
+  resolved "https://registry.yarnpkg.com/@superfaceai/one-sdk/-/one-sdk-0.0.37-beta.0.tgz#f79243dd9d633ba119e1eec5ede568ac24a7689a"
+  integrity sha512-xVBdVXmROQvR6QDM4ihYMyddLxaf6qocNKV6mAd3sNQNv8tB9b5xdKLL0P7gwb0PN6T6PqTAryf5RON5tI1jaw==
   dependencies:
-    "@superfaceai/ast" "^0.0.28"
+    "@superfaceai/ast" "^0.0.31"
     "@superfaceai/parser" "^0.0.19"
     abort-controller "^3.0.0"
     cross-fetch "^3.0.5"
