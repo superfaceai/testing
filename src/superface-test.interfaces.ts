@@ -41,8 +41,10 @@ export interface NockConfig {
   enableReqheadersRecording?: boolean;
 }
 
+export type RecordingDefinitions = RecordingDefinition[];
+
 export type ProcessingFunction = (
-  recordings: RecordingDefinition[]
+  recordings: RecordingDefinitions
 ) => Promise<void> | void;
 
 export interface RecordingProcessFunctions {
