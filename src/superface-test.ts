@@ -272,7 +272,7 @@ export class SuperfaceTest {
 
       try {
         assertsRecordingsAreNotStrings(recordings);
-        removeSensitiveInformation(this.sfConfig, recordings);
+        await removeSensitiveInformation(this.sfConfig, recordings);
 
         if (postProcess) {
           await postProcess(recordings);

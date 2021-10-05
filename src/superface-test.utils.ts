@@ -1,13 +1,17 @@
+import { NormalizedSuperJsonDocument } from '@superfaceai/ast';
 import {
-  NormalizedSuperJsonDocument,
+  ApiKeyPlacement,
+  isApiKeySecurityScheme,
+  isBasicAuthSecurityScheme,
+  isBearerTokenSecurityScheme,
+  isDigestSecurityScheme,
   Profile,
   Provider,
-  SecurityValues,
+  SecurityScheme,
   SuperfaceClient,
   SuperJson,
   UnexpectedError,
   UseCase,
-  UsecaseDefaults,
 } from '@superfaceai/one-sdk';
 import { Definition as RecordingDefinition } from 'nock/types';
 import { join as joinPath } from 'path';
@@ -158,88 +162,81 @@ export function assertsRecordingsAreNotStrings(
   }
 }
 
-export function removeSensitiveInformation(
+export async function removeSensitiveInformation(
   sfConfig: CompleteSuperfaceTestConfig,
   recordings: RecordingDefinition[]
-): void {
-  for (const recording of recordings) {
-    for (const scheme of sfConfig.provider.configuration.security) {
-      removeCredentialsBasedOnScheme(recording, scheme);
-    }
+): Promise<void> {
+  const {
+    configuration: { security, baseUrl },
+  } = await sfConfig.client.cacheBoundProfileProvider(
+    sfConfig.profile.configuration,
+    sfConfig.provider.configuration
+  );
 
-    // TODO: implement this or wait for integration parameters
-    // removeCredentialsBasedOnDefaults(
-    //   recording,
-    //   sfConfig.client.superJson.normalized.profiles[
-    //     getProfileId(sfConfig.profile)
-    //   ].providers[getProviderName(sfConfig.provider)].defaults,
-    //   getUseCaseName(sfConfig.useCase)
-    // );
+  for (const recording of recordings) {
+    for (const scheme of security) {
+      removeCredentialsBasedOnScheme(recording, scheme, baseUrl);
+    }
   }
 }
 
 export function removeCredentialsBasedOnScheme(
   recording: RecordingDefinition,
-  scheme: SecurityValues
+  scheme: SecurityScheme,
+  baseUrl: string
 ): void {
-  if ('apikey' in scheme) {
-    // TODO: use boolean bellow when typescript update to 4.4
-    // const isRecordingBodyRecord =
-    //   typeof recording.body === 'object' && !Array.isArray(recording.body);
+  if (isApiKeySecurityScheme(scheme)) {
+    if (scheme.in === ApiKeyPlacement.HEADER) {
+      if (recording.reqheaders?.[scheme.name] !== undefined) {
+        recording.reqheaders[scheme.name] = HIDDEN_CREDENTIALS_PLACEHOLDER;
+      }
+    } else if (scheme.in === ApiKeyPlacement.BODY) {
+      if (
+        typeof recording.body === 'object' &&
+        !(recording.body instanceof RegExp) &&
+        !(recording.body instanceof Buffer) &&
+        !Array.isArray(recording.body) &&
+        !('includes' in recording.body) &&
+        recording.body[scheme.name] !== undefined
+      ) {
+        recording.body[scheme.name] = HIDDEN_CREDENTIALS_PLACEHOLDER;
+      }
 
-    // check api key in header, body, path or query
-    if (recording.reqheaders?.[scheme.id] !== undefined) {
-      recording.reqheaders[scheme.id] = HIDDEN_CREDENTIALS_PLACEHOLDER;
-    } else if (
-      typeof recording.body === 'object' &&
-      !(recording.body instanceof RegExp) &&
-      !(recording.body instanceof Buffer) &&
-      !Array.isArray(recording.body) &&
-      !('includes' in recording.body) &&
-      recording.body[scheme.id] !== undefined
-    ) {
-      recording.body[scheme.id] = HIDDEN_CREDENTIALS_PLACEHOLDER;
+      // TODO: implement hiding credentials from different types of body
+    } else {
+      const recordingPath = new URL(baseUrl + recording.path);
+
+      if (scheme.in === ApiKeyPlacement.PATH) {
+        const regex = new RegExp(`/${scheme.name}=(.*(?=/))/g`);
+
+        recordingPath.pathname.replace(
+          regex,
+          `${scheme.name}=${HIDDEN_CREDENTIALS_PLACEHOLDER}`
+        );
+      } else if (scheme.in === ApiKeyPlacement.QUERY) {
+        if (recordingPath.searchParams.has(scheme.name)) {
+          recordingPath.searchParams.set(
+            scheme.name,
+            HIDDEN_CREDENTIALS_PLACEHOLDER
+          );
+        }
+
+        recording.path = recordingPath.toString();
+      }
     }
-
-    // check in query
-    const recordingPath = new URL(recording.path);
-    if (recordingPath.searchParams.has(scheme.id)) {
-      recordingPath.searchParams.set(scheme.id, HIDDEN_CREDENTIALS_PLACEHOLDER);
-    }
-
-    // omit pathname as well?
-    // recordingPath.pathname
-
-    recording.path = recordingPath.toString();
-  } else if ('username' in scheme) {
+  } else if (isBasicAuthSecurityScheme(scheme)) {
     if (recording.reqheaders?.[AUTH_HEADER_NAME] !== undefined) {
       recording.reqheaders[
         AUTH_HEADER_NAME
       ] = `Basic ${HIDDEN_CREDENTIALS_PLACEHOLDER}`;
     }
-  } else if ('token' in scheme) {
+  } else if (isBearerTokenSecurityScheme(scheme)) {
     if (recording.reqheaders?.[AUTH_HEADER_NAME] !== undefined) {
       recording.reqheaders[
         AUTH_HEADER_NAME
       ] = `Bearer ${HIDDEN_CREDENTIALS_PLACEHOLDER}`;
     }
-  } else {
-    // check scheme digest
+  } else if (isDigestSecurityScheme(scheme)) {
     throw new UnexpectedError('not implemented');
-  }
-}
-
-export function removeCredentialsBasedOnDefaults(
-  _recording: RecordingDefinition,
-  defaults: UsecaseDefaults,
-  useCaseName: string
-): void {
-  const targetedDefaults = defaults[useCaseName];
-  if (defaults.input !== undefined) {
-    defaults.input;
-  }
-
-  if (targetedDefaults.input !== undefined) {
-    targetedDefaults.input;
   }
 }
