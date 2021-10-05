@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.3-beta.6] - 2021-10-05
+
 ## [0.0.3-beta.5] - 2021-09-29
 
 ## [0.0.3-beta.4] - 2021-09-27
@@ -29,7 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 - nock.back support
 
-[Unreleased]: https://github.com/superfaceai/testing-lib/compare/v0.0.3-beta.5...HEAD
+[Unreleased]: https://github.com/superfaceai/testing-lib/compare/v0.0.3-beta.6...HEAD
+[0.0.3-beta.6]: https://github.com/superfaceai/testing-lib/compare/v0.0.3-beta.5...v0.0.3-beta.6
 [0.0.3-beta.5]: https://github.com/superfaceai/testing-lib/compare/v0.0.3-beta.4...v0.0.3-beta.5
 [0.0.3-beta.4]: https://github.com/superfaceai/testing-lib/compare/v0.0.3-beta.3...v0.0.3-beta.4
 [0.0.3-beta.3]: https://github.com/superfaceai/testing-lib/compare/v0.0.3-beta.2...v0.0.3-beta.3
