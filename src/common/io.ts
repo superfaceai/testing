@@ -3,9 +3,7 @@ import rimrafCallback from 'rimraf';
 import { Writable } from 'stream';
 import { promisify } from 'util';
 
-import { RecordingDefinition } from '..';
 import { assertIsIOError } from './errors';
-import { OutputStream } from './output-stream';
 
 export const mkdir = promisify(fs.mkdir);
 export const access = promisify(fs.access);
@@ -54,15 +52,5 @@ export function streamEnd(stream: Writable): Promise<void> {
     stream.once('error', reject);
     stream.once('close', resolve);
     stream.end();
-  });
-}
-
-export async function writeRecordings(
-  path: string,
-  recordings: string[] | RecordingDefinition[]
-): Promise<void> {
-  await OutputStream.writeIfAbsent(path, JSON.stringify(recordings, null, 2), {
-    dirs: true,
-    force: true,
   });
 }

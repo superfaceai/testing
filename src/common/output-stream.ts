@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import { dirname } from 'path';
 import { Writable } from 'stream';
 
+import { RecordingDefinition } from '..';
 import { exists, streamEnd, streamWrite, WritingOptions } from './io';
 
 export class OutputStream {
@@ -55,4 +56,14 @@ export class OutputStream {
 
     return false;
   }
+}
+
+export async function writeRecordings(
+  path: string,
+  recordings: string[] | RecordingDefinition[]
+): Promise<void> {
+  await OutputStream.writeIfAbsent(path, JSON.stringify(recordings, null, 2), {
+    dirs: true,
+    force: true,
+  });
 }

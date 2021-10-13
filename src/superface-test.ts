@@ -26,7 +26,8 @@ import {
   matchWildCard,
   removeTimestamp,
 } from './common/format';
-import { exists, writeRecordings } from './common/io';
+import { exists } from './common/io';
+import { writeRecordings } from './common/output-stream';
 import {
   NockConfig,
   SuperfaceTestConfigPayload,

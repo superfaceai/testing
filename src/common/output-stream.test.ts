@@ -34,8 +34,11 @@ describe('OutputStream', () => {
     it('calls write to file correctly', async () => {
       const outputStream = new OutputStream('test/test.json', { dirs: true });
       await outputStream.write('testData');
+
       expect(streamWrite).toHaveBeenCalledTimes(1);
       expect(streamWrite).toHaveBeenCalledWith(outputStream.stream, 'testData');
+
+      await outputStream.cleanup();
     }, 10000);
   });
 
