@@ -45,6 +45,6 @@
     "@superfaceai/ast": "^0.0.31",
     "@superfaceai/one-sdk": "^0.0.38-beta.0",
     "debug": "^4.3.2",
-    "nock": "^13.1.1"
+    "nock": "^13.1.3"
   }
 }
