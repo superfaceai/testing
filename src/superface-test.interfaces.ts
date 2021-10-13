@@ -59,3 +59,8 @@ export interface RecordingProcessFunctions {
   beforeRecordingSave?: BeforeSaveFunction;
   afterRecordingLoad?: AfterLoadFunction;
 }
+
+export {
+  Definition as RecordingDefinition,
+  Scope as RecordingScope,
+} from 'nock/types';

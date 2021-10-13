@@ -26,8 +26,7 @@ import {
   matchWildCard,
   removeTimestamp,
 } from './common/format';
-import { exists } from './common/io';
-import { OutputStream } from './common/output-stream';
+import { exists, writeRecordings } from './common/io';
 import {
   NockConfig,
   SuperfaceTestConfigPayload,
@@ -35,8 +34,8 @@ import {
   TestingReturn,
 } from './superface-test.interfaces';
 import {
+  assertsDefinitionsAreNotStrings,
   assertsPreparedConfig,
-  assertsRecordingsAreNotStrings,
   getProfileId,
   getProviderName,
   getSuperJson,
@@ -92,11 +91,9 @@ export class SuperfaceTest {
     hooks?: RecordingProcessFunctions
   ): Promise<TestingReturn> {
     this.prepareSuperfaceConfig(testCase);
-
     await this.setupSuperfaceConfig();
 
     assertsPreparedConfig(this.sfConfig);
-
     if (!(await this.isMapLocal())) {
       throw new MapUndefinedError(
         getProfileId(this.sfConfig.profile),
@@ -232,14 +229,19 @@ export class SuperfaceTest {
         throw new RecordingsNotFoundError();
       }
 
-      const recordings = loadRecording(this.recordingPath);
+      assertsPreparedConfig(this.sfConfig);
+      const scopes = loadRecording(this.recordingPath);
 
-      await afterRecordingLoad?.(recordings);
-
-      if (recordings.length === 0) {
+      if (scopes.length === 0) {
         throw new RecordingsNotFoundError();
-      } else {
-        disableNetConnect();
+      }
+
+      disableNetConnect();
+
+      await removeSensitiveInformation(this.sfConfig, { scopes });
+
+      if (afterRecordingLoad) {
+        await afterRecordingLoad(scopes);
       }
     } else {
       const enable_reqheaders_recording =
@@ -274,31 +276,21 @@ export class SuperfaceTest {
     } else {
       assertsPreparedConfig(this.sfConfig);
 
-      const recordings = recorder.play();
+      const definitions = recorder.play();
+      restoreRecordings();
 
-      try {
-        assertsRecordingsAreNotStrings(recordings);
-        await removeSensitiveInformation(this.sfConfig, recordings);
-
-        if (beforeRecordingSave) {
-          await beforeRecordingSave(recordings);
-        }
-
-        await OutputStream.writeIfAbsent(
-          this.recordingPath,
-          JSON.stringify(recordings, null, 2),
-          {
-            dirs: true,
-            force: record,
-          }
-        );
-      } catch (error) {
-        restoreRecordings();
-
-        throw error;
+      if (definitions === undefined) {
+        return;
       }
-    }
 
-    restoreRecordings();
+      assertsDefinitionsAreNotStrings(definitions);
+      await removeSensitiveInformation(this.sfConfig, { definitions });
+
+      if (beforeRecordingSave) {
+        await beforeRecordingSave(definitions);
+      }
+
+      await writeRecordings(this.recordingPath, definitions);
+    }
   }
 }
