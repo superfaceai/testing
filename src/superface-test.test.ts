@@ -17,6 +17,8 @@ import {
   ComponentUndefinedError,
   SuperJsonNotFoundError,
 } from './common/errors';
+import { matchWildCard } from './common/format';
+import { SuperfaceClientMock } from './superface.mock';
 import { SuperfaceTest } from './superface-test';
 
 // const mockServer = getLocal();
@@ -26,10 +28,10 @@ jest.mock('./common/io', () => ({
   writeIfAbsent: jest.fn(),
 }));
 
-jest.mock('@superfaceai/one-sdk/dist/client/client');
-jest.mock('@superfaceai/one-sdk/dist/client/profile');
-jest.mock('@superfaceai/one-sdk/dist/client/usecase');
-jest.mock('@superfaceai/one-sdk/dist/internal/superjson');
+jest.mock('./common/format', () => ({
+  ...jest.requireActual('./common/format'),
+  matchWildCard: jest.fn(),
+}));
 
 jest.mock('nock');
 
@@ -62,28 +64,6 @@ describe.skip('SuperfaceTest', () => {
         provider: {
           file: 'path/to/provider.json',
           security: [],
-        },
-      },
-    });
-    Object.assign(mockSuperJson, {
-      normalized: {
-        profiles: {
-          profile: {
-            file: 'path/to/profile.supr',
-            defaults: {},
-            providers: {
-              provider: {
-                file: 'path/to/map.suma',
-                defaults: {},
-              },
-            },
-          },
-        },
-        providers: {
-          provider: {
-            file: 'path/to/provider.json',
-            security: [],
-          },
         },
       },
     });
@@ -132,28 +112,6 @@ describe.skip('SuperfaceTest', () => {
           },
         },
       });
-      Object.assign(mockSuperJson, {
-        normalized: {
-          profiles: {
-            profile: {
-              file: 'path/to/profile.supr',
-              defaults: {},
-              providers: {
-                provider: {
-                  file: 'path/to/map.suma',
-                  defaults: {},
-                },
-              },
-            },
-          },
-          providers: {
-            provider: {
-              file: 'path/to/provider.json',
-              security: [],
-            },
-          },
-        },
-      });
 
       const detectSpy = jest
         .spyOn(SuperJson, 'detectSuperJson')
@@ -163,19 +121,10 @@ describe.skip('SuperfaceTest', () => {
         .spyOn(SuperJson, 'load')
         .mockResolvedValue(ok(mockSuperJson));
 
-      const client = new SuperfaceClient();
-      const mockedProfile = new Profile(
-        client,
-        new ProfileConfiguration('profile', '1.0.0')
-      );
-      Object.assign(mockedProfile, {
-        configuration: { id: 'profile', version: '1.0.0' },
-      });
-      const mockedUseCase = new UseCase(mockedProfile, 'some-use-case');
-      const mockedProvider = new Provider(
-        client,
-        new ProviderConfiguration('provider', [])
-      );
+      const client = new SuperfaceClientMock({ superJson: mockSuperJson });
+      const mockedProfile = await client.getProfile('profile');
+      const mockedUseCase = mockedProfile.getUseCase('usecase');
+      const mockedProvider = await client.getProvider('provider');
 
       const superfaceTest1 = new SuperfaceTest({});
       const superfaceTest2 = new SuperfaceTest({
@@ -223,38 +172,27 @@ describe.skip('SuperfaceTest', () => {
       expect(loadSpy).not.toHaveBeenCalled();
     });
 
-    it('retuns error from perform', async () => {
-      const detectSpy = jest
-        .spyOn(SuperJson, 'detectSuperJson')
-        .mockResolvedValue('.');
+    it('returns error from perform', async () => {
+      const detectSpy = jest.spyOn(SuperJson, 'detectSuperJson');
+      const loadSpy = jest.spyOn(SuperJson, 'load');
 
-      const loadSpy = jest
-        .spyOn(SuperJson, 'load')
-        .mockResolvedValue(ok(mockSuperJson));
-
-      const client = new SuperfaceClient();
-      const mockedProfile = new Profile(
-        client,
-        new ProfileConfiguration('profile', '1.0.0')
-      );
-      Object.assign(mockedProfile, {
-        configuration: { id: 'profile', version: '1.0.0' },
-      });
-      const mockedUseCase = new UseCase(mockedProfile, 'some-use-case');
-      const mockedProvider = new Provider(
-        client,
-        new ProviderConfiguration('provider', [])
-      );
+      const client = new SuperfaceClientMock({ superJson: mockSuperJson });
+      const mockedProfile = await client.getProfile('profile');
+      const mockedUseCase = mockedProfile.getUseCase('usecase');
+      const mockedProvider = await client.getProvider('provider');
 
       const performSpy = jest
         .spyOn(mockedUseCase, 'perform')
         .mockResolvedValue(err(new MapASTError('error')));
 
       superfaceTest = new SuperfaceTest({
+        client: client,
         profile: mockedProfile,
         provider: mockedProvider,
         useCase: mockedUseCase,
       });
+
+      mocked(matchWildCard).mockReturnValue(true);
 
       await expect(superfaceTest.run({ input: {} })).resolves.toMatchObject({
         error: new MapASTError('error').toString(),
@@ -263,8 +201,8 @@ describe.skip('SuperfaceTest', () => {
       expect(performSpy).toHaveBeenCalledTimes(1);
       expect(performSpy).toHaveBeenCalledWith({}, { provider: mockedProvider });
 
-      expect(detectSpy).toHaveBeenCalledTimes(1);
-      expect(loadSpy).toHaveBeenCalledTimes(1);
+      expect(detectSpy).toHaveBeenCalledTimes(0);
+      expect(loadSpy).toHaveBeenCalledTimes(0);
     });
 
     it('retuns value from perform', async () => {
@@ -281,9 +219,6 @@ describe.skip('SuperfaceTest', () => {
         client,
         new ProfileConfiguration('profile', '1.0.0')
       );
-      Object.assign(mockedProfile, {
-        configuration: { id: 'profile', version: '1.0.0' },
-      });
       const mockedUseCase = new UseCase(mockedProfile, 'some-use-case');
       const mockedProvider = new Provider(
         client,
@@ -295,6 +230,7 @@ describe.skip('SuperfaceTest', () => {
         .mockResolvedValue(ok('result'));
 
       superfaceTest = new SuperfaceTest({
+        client,
         profile: mockedProfile,
         provider: mockedProvider,
         useCase: mockedUseCase,
@@ -445,28 +381,6 @@ describe.skip('SuperfaceTest', () => {
           },
         },
       });
-      Object.assign(mockSuperJson, {
-        normalized: {
-          profiles: {
-            profile: {
-              file: 'path/to/profile.supr',
-              defaults: {},
-              providers: {
-                provider: {
-                  file: 'path/to/map.suma',
-                  defaults: {},
-                },
-              },
-            },
-          },
-          providers: {
-            provider: {
-              file: 'path/to/provider.json',
-              security: [],
-            },
-          },
-        },
-      });
 
       const client = new SuperfaceClient();
 
@@ -508,28 +422,6 @@ describe.skip('SuperfaceTest', () => {
           provider: {
             file: 'path/to/provider.json',
             security: [],
-          },
-        },
-      });
-      Object.assign(mockSuperJson, {
-        normalized: {
-          profiles: {
-            profile: {
-              file: 'path/to/profile.supr',
-              defaults: {},
-              providers: {
-                provider: {
-                  file: 'path/to/map.suma',
-                  defaults: {},
-                },
-              },
-            },
-          },
-          providers: {
-            provider: {
-              file: 'path/to/provider.json',
-              security: [],
-            },
           },
         },
       });
@@ -617,21 +509,6 @@ describe.skip('SuperfaceTest', () => {
           },
         },
       });
-      Object.assign(mockSuperJson, {
-        normalized: {
-          profiles: {
-            profile: {
-              version: '0.0.1',
-              defaults: {},
-              providers: {
-                provider: {
-                  defaults: {},
-                },
-              },
-            },
-          },
-        },
-      });
 
       const detectSpy = jest
         .spyOn(SuperJson, 'detectSuperJson')
@@ -671,27 +548,6 @@ describe.skip('SuperfaceTest', () => {
           },
         },
       });
-      Object.assign(mockSuperJson, {
-        normalized: {
-          profiles: {
-            profile: {
-              version: '0.0.1',
-              defaults: {},
-              providers: {
-                provider: {
-                  file: 'path/to/map.suma',
-                  defaults: {},
-                },
-              },
-            },
-          },
-          providers: {
-            provider: {
-              security: [],
-            },
-          },
-        },
-      });
 
       const detectSpy = jest
         .spyOn(SuperJson, 'detectSuperJson')
@@ -728,27 +584,6 @@ describe.skip('SuperfaceTest', () => {
         providers: {
           provider: {
             security: [],
-          },
-        },
-      });
-      Object.assign(mockSuperJson, {
-        normalized: {
-          profiles: {
-            profile: {
-              file: 'path/to/profile.supr',
-              defaults: {},
-              providers: {
-                provider: {
-                  file: 'path/to/map.suma',
-                  defaults: {},
-                },
-              },
-            },
-          },
-          providers: {
-            provider: {
-              security: [],
-            },
           },
         },
       });
