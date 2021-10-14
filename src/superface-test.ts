@@ -1,7 +1,9 @@
 import { PerformError, Result, SuperfaceClient } from '@superfaceai/one-sdk';
 import {
+  activate as activateNock,
   disableNetConnect,
   enableNetConnect,
+  isActive as isNockActive,
   load as loadRecording,
   recorder,
   restore as restoreRecordings,
@@ -11,7 +13,7 @@ import { join as joinPath } from 'path';
 import {
   AfterLoadFunction,
   BeforeSaveFunction,
-  RecordingProcessFunctions,
+  RecordingProcessOptions,
 } from '.';
 import {
   ComponentUndefinedError,
@@ -41,7 +43,7 @@ import {
   getProviderName,
   getSuperJson,
   isProviderLocal,
-  removeSensitiveInformation,
+  removeOrLoadCredentials,
 } from './superface-test.utils';
 
 export class SuperfaceTest {
@@ -89,7 +91,7 @@ export class SuperfaceTest {
    */
   async run(
     testCase: SuperfaceTestRun,
-    hooks?: RecordingProcessFunctions
+    options?: RecordingProcessOptions
   ): Promise<TestingReturn> {
     this.prepareSuperfaceConfig(testCase);
     await this.setupSuperfaceConfig();
@@ -102,12 +104,23 @@ export class SuperfaceTest {
       );
     }
 
+    this.sfConfig.boundProfileProvider =
+      await this.sfConfig.client.cacheBoundProfileProvider(
+        this.sfConfig.profile.configuration,
+        this.sfConfig.provider.configuration
+      );
+
     this.setupRecordingPath(getFixtureName(this.sfConfig));
 
     // parse env variable and check if test should be recorded
     const record = matchWildCard(this.sfConfig, process.env.SUPERFACE_LIVE_API);
+    const processRecordings = options?.processRecordings ?? true;
 
-    await this.startRecording(record, hooks?.afterRecordingLoad);
+    await this.startRecording(
+      record,
+      processRecordings,
+      options?.afterRecordingLoad
+    );
 
     let result: Result<unknown, PerformError>;
     try {
@@ -120,7 +133,11 @@ export class SuperfaceTest {
       throw error;
     }
 
-    await this.endRecording(record, hooks?.beforeRecordingSave);
+    await this.endRecording(
+      record,
+      processRecordings,
+      options?.beforeRecordingSave
+    );
 
     if (result.isErr()) {
       return { error: removeTimestamp(result.error.toString()) };
@@ -217,11 +234,17 @@ export class SuperfaceTest {
    */
   private async startRecording(
     record: boolean,
+    loadCredentials: boolean,
     afterRecordingLoad?: AfterLoadFunction
   ): Promise<void> {
     if (!this.recordingPath) {
       throw new RecordingPathUndefinedError();
     }
+
+    assertsPreparedConfig(this.sfConfig);
+    const {
+      configuration: { security, baseUrl },
+    } = this.sfConfig.boundProfileProvider;
 
     if (!record) {
       const recordingExists = await exists(this.recordingPath);
@@ -230,7 +253,6 @@ export class SuperfaceTest {
         throw new RecordingsNotFoundError();
       }
 
-      assertsPreparedConfig(this.sfConfig);
       const scopes = loadRecording(this.recordingPath);
 
       if (scopes.length === 0) {
@@ -239,7 +261,13 @@ export class SuperfaceTest {
 
       disableNetConnect();
 
-      await removeSensitiveInformation(this.sfConfig, { scopes });
+      if (!isNockActive()) {
+        activateNock();
+      }
+
+      if (loadCredentials) {
+        await removeOrLoadCredentials(baseUrl, security, { scopes });
+      }
 
       if (afterRecordingLoad) {
         await afterRecordingLoad(scopes);
@@ -254,6 +282,12 @@ export class SuperfaceTest {
         use_separator: false,
         enable_reqheaders_recording,
       });
+
+      if (security.length > 0) {
+        console.warn(
+          'Your recordings might contain sensitive information. Make sure to check them before publishing.'
+        );
+      }
     }
   }
 
@@ -264,6 +298,7 @@ export class SuperfaceTest {
    */
   private async endRecording(
     record: boolean,
+    removeCredentials: boolean,
     beforeRecordingSave?: BeforeSaveFunction
   ): Promise<void> {
     if (!this.recordingPath) {
@@ -275,8 +310,6 @@ export class SuperfaceTest {
 
       return;
     } else {
-      assertsPreparedConfig(this.sfConfig);
-
       const definitions = recorder.play();
       restoreRecordings();
 
@@ -285,7 +318,14 @@ export class SuperfaceTest {
       }
 
       assertsDefinitionsAreNotStrings(definitions);
-      await removeSensitiveInformation(this.sfConfig, { definitions });
+      assertsPreparedConfig(this.sfConfig);
+      const {
+        configuration: { security, baseUrl },
+      } = this.sfConfig.boundProfileProvider;
+
+      if (removeCredentials) {
+        await removeOrLoadCredentials(baseUrl, security, { definitions });
+      }
 
       if (beforeRecordingSave) {
         await beforeRecordingSave(definitions);

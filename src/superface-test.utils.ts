@@ -168,20 +168,14 @@ export function assertsDefinitionsAreNotStrings(
   }
 }
 
-export async function removeSensitiveInformation(
-  sfConfig: CompleteSuperfaceTestConfig,
+export async function removeOrLoadCredentials(
+  baseUrl: string,
+  security: SecurityScheme[],
   payload: {
     definitions?: RecordingDefinition[];
     scopes?: RecordingScope[];
   }
 ): Promise<void> {
-  const {
-    configuration: { security, baseUrl },
-  } = await sfConfig.client.cacheBoundProfileProvider(
-    sfConfig.profile.configuration,
-    sfConfig.provider.configuration
-  );
-
   if (payload.definitions) {
     for (const definition of payload.definitions) {
       for (const scheme of security) {
@@ -204,24 +198,25 @@ export function loadCredentials(
   scheme: SecurityScheme
 ): void {
   if (isApiKeySecurityScheme(scheme)) {
-    if (scheme.in === ApiKeyPlacement.HEADER) {
-      // TODO: research scope.matchHeader()
-    } else if (scheme.in === ApiKeyPlacement.BODY) {
-      // TODO: research scope.filteringRequestBody
-    } else {
-      if (scheme.in === ApiKeyPlacement.PATH) {
-        // TODO: implement scope.filteringPath here
-      } else if (scheme.in === ApiKeyPlacement.QUERY) {
-        scope = scope.filteringPath(
-          new RegExp(`/${scheme.name}=(.*(?=&))/g`),
-          `${scheme.name}=${HIDDEN_CREDENTIALS_PLACEHOLDER}`
-        );
-      }
+    if (scheme.in === ApiKeyPlacement.QUERY) {
+      scope.filteringPath(
+        new RegExp(scheme.name + '([^&#]+)', 'g'),
+        `${scheme.name}=${HIDDEN_CREDENTIALS_PLACEHOLDER}`
+      );
     }
-  } else if (isBasicAuthSecurityScheme(scheme)) {
-    // TODO: test this case
-  } else if (isBearerTokenSecurityScheme(scheme)) {
-    // TODO: test this case as well
+    // if (scheme.in === ApiKeyPlacement.HEADER) {
+    //   // TODO: research scope.matchHeader()
+    // } else if (scheme.in === ApiKeyPlacement.BODY) {
+    //   // TODO: research scope.filteringRequestBody
+    // } else {
+    //   if (scheme.in === ApiKeyPlacement.PATH) {
+    //     // TODO: implement scope.filteringPath here
+    //   }
+    // }
+    // } else if (isBasicAuthSecurityScheme(scheme)) {
+    //   // TODO: test this case
+    // } else if (isBearerTokenSecurityScheme(scheme)) {
+    //   // TODO: test this case as well
   } else if (isDigestSecurityScheme(scheme)) {
     throw new UnexpectedError('not implemented');
   }

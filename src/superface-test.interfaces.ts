@@ -1,4 +1,5 @@
 import {
+  BoundProfileProvider,
   Profile,
   Provider,
   SuperfaceClient,
@@ -26,6 +27,7 @@ export interface SuperfaceTestConfig {
   profile?: Profile;
   provider?: Provider;
   useCase?: UseCase;
+  boundProfileProvider?: BoundProfileProvider;
 }
 
 export type CompleteSuperfaceTestConfig = Required<SuperfaceTestConfig>;
@@ -55,7 +57,8 @@ export type AfterLoadFunction = (
   scopes: RecordingScopes
 ) => Promise<void> | void;
 
-export interface RecordingProcessFunctions {
+export interface RecordingProcessOptions {
+  processRecordings?: boolean;
   beforeRecordingSave?: BeforeSaveFunction;
   afterRecordingLoad?: AfterLoadFunction;
 }
