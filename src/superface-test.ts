@@ -215,6 +215,8 @@ export class SuperfaceTest {
 
     if (this.sfConfig.profile !== undefined) {
       profileId = getProfileId(this.sfConfig.profile);
+    } else {
+      return false
     }
 
     if (this.sfConfig.provider !== undefined) {

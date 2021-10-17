@@ -89,18 +89,15 @@ export function assertsPreparedUseCase(
  */
 export function isProviderLocal(
   provider: Provider | string,
-  profileId: string | undefined,
+  profileId: string,
   superJsonNormalized: NormalizedSuperJsonDocument
 ): boolean {
   const providerId = getProviderName(provider);
+  const targetedProfileProvider =
+    superJsonNormalized.profiles[profileId].providers[providerId];
 
-  if (profileId !== undefined) {
-    const targetedProfileProvider =
-      superJsonNormalized.profiles[profileId].providers[providerId];
-
-    if (!('file' in targetedProfileProvider)) {
-      return false;
-    }
+  if (!('file' in targetedProfileProvider)) {
+    return false;
   }
 
   return true;

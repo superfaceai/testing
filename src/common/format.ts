@@ -18,6 +18,34 @@ export function getFixtureName(sfConfig: CompleteSuperfaceTestConfig): string {
   );
 }
 
+function testPayload(payload: string, match: string): boolean {
+  if (payload.startsWith('*') && payload.endsWith('*')) {
+    const regex = RegExp(`^.*${payload.substr(1, payload.length - 1)}.*$`);
+
+    if (!regex.test(match)) {
+      return false;
+    }
+  } else if (payload.startsWith('*')) {
+    const regex = RegExp(`.*${payload.substr(1, payload.length)}$`);
+
+    if (!regex.test(match)) {
+      return false;
+    }
+  } else if (payload.endsWith('*')) {
+    const regex = RegExp(`^${payload.substr(0, payload.length - 1)}.*`);
+
+    if (!regex.test(match)) {
+      return false;
+    }
+  } else {
+    if (match !== payload) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 /**
  * SUPERFACE_LIVE_API="*"
  * SUPERFACE_LIVE_API="profile*"
@@ -35,55 +63,16 @@ export function matchWildCard(
   const [profilePayload, providerPayload, usecasePayload] =
     superfaceEnv.split(':');
 
-  // parse profile
   if (profilePayload) {
-    if (profilePayload.endsWith('*')) {
-      const regex = RegExp(
-        `^${profilePayload.substr(0, profilePayload.length - 1)}.`
-      );
-
-      if (!regex.test(profile.configuration.id)) {
-        return false;
-      }
-    } else {
-      if (profile.configuration.id !== profilePayload) {
-        return false;
-      }
-    }
+    testPayload(profilePayload, profile.configuration.id);
   }
 
-  // parse provider
   if (providerPayload) {
-    if (providerPayload.endsWith('*')) {
-      const regex = RegExp(
-        `^${providerPayload.substr(0, providerPayload.length - 1)}.`
-      );
-
-      if (!regex.test(provider.configuration.name)) {
-        return false;
-      }
-    } else {
-      if (provider.configuration.name !== providerPayload) {
-        return false;
-      }
-    }
+    testPayload(providerPayload, provider.configuration.name);
   }
 
-  // parse usecase
   if (usecasePayload) {
-    if (usecasePayload.endsWith('*')) {
-      const regex = RegExp(
-        `^${usecasePayload.substr(0, usecasePayload.length - 1)}.`
-      );
-
-      if (!regex.test(useCase.name)) {
-        return false;
-      }
-    } else {
-      if (useCase.name !== usecasePayload) {
-        return false;
-      }
-    }
+    testPayload(usecasePayload, useCase.name);
   }
 
   return true;
