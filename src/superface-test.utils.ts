@@ -1,13 +1,17 @@
-import { NormalizedSuperJsonDocument } from '@superfaceai/ast';
 import {
   ApiKeyPlacement,
   isApiKeySecurityScheme,
+  isApiKeySecurityValues,
   isBasicAuthSecurityScheme,
   isBearerTokenSecurityScheme,
   isDigestSecurityScheme,
+  NormalizedSuperJsonDocument,
+  SecurityScheme,
+  SecurityValues,
+} from '@superfaceai/ast';
+import {
   Profile,
   Provider,
-  SecurityScheme,
   SuperfaceClient,
   SuperJson,
   UnexpectedError,
@@ -165,51 +169,77 @@ export function assertsDefinitionsAreNotStrings(
   }
 }
 
-export async function removeOrLoadCredentials(
-  baseUrl: string,
-  security: SecurityScheme[],
+export async function removeOrLoadCredentials({
+  securitySchemes,
+  securityValues,
+  baseUrl,
+  payload,
+}: {
+  securitySchemes: SecurityScheme[];
+  securityValues: SecurityValues[];
+  baseUrl: string;
   payload: {
     definitions?: RecordingDefinition[];
     scopes?: RecordingScope[];
-  }
-): Promise<void> {
+  };
+}): Promise<void> {
   if (payload.definitions) {
     for (const definition of payload.definitions) {
-      for (const scheme of security) {
-        removeCredentials(definition, scheme, baseUrl);
+      for (const scheme of securitySchemes) {
+        const securityValue = securityValues.find(val => val.id === scheme.id);
+        removeCredentials({ definition, scheme, securityValue, baseUrl });
       }
     }
   }
 
   if (payload.scopes) {
     for (const scope of payload.scopes) {
-      for (const scheme of security) {
-        loadCredentials(scope, scheme);
+      for (const scheme of securitySchemes) {
+        const securityValue = securityValues.find(val => val.id === scheme.id);
+        loadCredentials({ scope, scheme, securityValue });
       }
     }
   }
 }
 
-export function loadCredentials(
-  scope: RecordingScope,
-  scheme: SecurityScheme
-): void {
+export function loadCredentials({
+  scope,
+  scheme,
+  securityValue,
+}: {
+  scope: RecordingScope;
+  scheme: SecurityScheme;
+  securityValue?: SecurityValues;
+}): void {
   if (isApiKeySecurityScheme(scheme)) {
+    const schemeName = scheme.name ?? AUTH_HEADER_NAME;
+    let loadedCredential: string | undefined;
+
+    if (isApiKeySecurityValues(securityValue)) {
+      if (securityValue.apikey.startsWith('$')) {
+        loadedCredential = process.env[securityValue.apikey.substr(1)];
+      } else {
+        loadedCredential = securityValue.apikey;
+      }
+    }
+
     if (scheme.in === ApiKeyPlacement.QUERY) {
       scope.filteringPath(
-        new RegExp(scheme.name + '([^&#]+)', 'g'),
-        `${scheme.name}=${HIDDEN_CREDENTIALS_PLACEHOLDER}`
+        new RegExp(schemeName + '([^&#]+)', 'g'),
+        `${schemeName}=${HIDDEN_CREDENTIALS_PLACEHOLDER}`
       );
+    } else if (scheme.in === ApiKeyPlacement.PATH) {
+      if (loadedCredential !== undefined) {
+        scope.filteringPath(
+          new RegExp(loadedCredential, 'g'),
+          HIDDEN_CREDENTIALS_PLACEHOLDER
+        );
+      }
     }
     // if (scheme.in === ApiKeyPlacement.HEADER) {
     //   // TODO: research scope.matchHeader()
     // } else if (scheme.in === ApiKeyPlacement.BODY) {
     //   // TODO: research scope.filteringRequestBody
-    // } else {
-    //   if (scheme.in === ApiKeyPlacement.PATH) {
-    //     // TODO: implement scope.filteringPath here
-    //   }
-    // }
     // } else if (isBasicAuthSecurityScheme(scheme)) {
     //   // TODO: test this case
     // } else if (isBearerTokenSecurityScheme(scheme)) {
@@ -219,43 +249,60 @@ export function loadCredentials(
   }
 }
 
-export function removeCredentials(
-  definition: RecordingDefinition,
-  scheme: SecurityScheme,
-  baseUrl: string
-): void {
+export function removeCredentials({
+  definition,
+  scheme,
+  securityValue,
+  baseUrl,
+}: {
+  definition: RecordingDefinition;
+  scheme: SecurityScheme;
+  baseUrl: string;
+  securityValue?: SecurityValues;
+}): void {
   if (isApiKeySecurityScheme(scheme)) {
+    const schemeName = scheme.name ?? AUTH_HEADER_NAME;
+    let loadedCredential: string | undefined;
+
+    if (isApiKeySecurityValues(securityValue)) {
+      if (securityValue.apikey.startsWith('$')) {
+        loadedCredential = process.env[securityValue.apikey.substr(1)];
+      } else {
+        loadedCredential = securityValue.apikey;
+      }
+    }
+
     if (scheme.in === ApiKeyPlacement.HEADER) {
-      if (definition.reqheaders?.[scheme.name] !== undefined) {
-        definition.reqheaders[scheme.name] = HIDDEN_CREDENTIALS_PLACEHOLDER;
+      if (definition.reqheaders?.[schemeName] !== undefined) {
+        definition.reqheaders[schemeName] = HIDDEN_CREDENTIALS_PLACEHOLDER;
       }
     } else if (scheme.in === ApiKeyPlacement.BODY) {
-      if (
-        typeof definition.body === 'object' &&
-        !(definition.body instanceof RegExp) &&
-        !(definition.body instanceof Buffer) &&
-        !Array.isArray(definition.body) &&
-        !('includes' in definition.body) &&
-        definition.body[scheme.name] !== undefined
-      ) {
-        definition.body[scheme.name] = HIDDEN_CREDENTIALS_PLACEHOLDER;
-      }
+      if (definition.body !== undefined) {
+        const body = definition.body.toString();
 
-      // TODO: implement hiding api key from different types of body
+        if (loadedCredential !== undefined) {
+          body.replace(
+            new RegExp(loadedCredential, 'g'),
+            HIDDEN_CREDENTIALS_PLACEHOLDER
+          );
+        }
+
+        definition.body = body;
+      }
     } else {
       const definitionPath = new URL(baseUrl + definition.path);
 
       if (scheme.in === ApiKeyPlacement.PATH) {
-        const regex = new RegExp(`/${scheme.name}=(.*(?=/))/g`);
-
-        definitionPath.pathname.replace(
-          regex,
-          `${scheme.name}=${HIDDEN_CREDENTIALS_PLACEHOLDER}`
-        );
+        if (loadedCredential !== undefined) {
+          definitionPath.pathname.replace(
+            new RegExp(loadedCredential, 'g'),
+            HIDDEN_CREDENTIALS_PLACEHOLDER
+          );
+        }
       } else if (scheme.in === ApiKeyPlacement.QUERY) {
-        if (definitionPath.searchParams.has(scheme.name)) {
+        if (definitionPath.searchParams.has(schemeName)) {
           definitionPath.searchParams.set(
-            scheme.name,
+            schemeName,
             HIDDEN_CREDENTIALS_PLACEHOLDER
           );
         }

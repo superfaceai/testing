@@ -216,7 +216,7 @@ export class SuperfaceTest {
     if (this.sfConfig.profile !== undefined) {
       profileId = getProfileId(this.sfConfig.profile);
     } else {
-      return false
+      return false;
     }
 
     if (this.sfConfig.provider !== undefined) {
@@ -244,9 +244,8 @@ export class SuperfaceTest {
     }
 
     assertsPreparedConfig(this.sfConfig);
-    const {
-      configuration: { security, baseUrl },
-    } = this.sfConfig.boundProfileProvider;
+    const { configuration } = this.sfConfig.boundProfileProvider;
+    const securitySchemes = configuration.security;
 
     if (!record) {
       const recordingExists = await exists(this.recordingPath);
@@ -268,7 +267,15 @@ export class SuperfaceTest {
       }
 
       if (loadCredentials) {
-        await removeOrLoadCredentials(baseUrl, security, { scopes });
+        const securityValues = this.sfConfig.provider.configuration.security;
+        const baseUrl = configuration.baseUrl;
+
+        await removeOrLoadCredentials({
+          securitySchemes,
+          securityValues,
+          baseUrl,
+          payload: { scopes },
+        });
       }
 
       if (afterRecordingLoad) {
@@ -285,7 +292,7 @@ export class SuperfaceTest {
         enable_reqheaders_recording,
       });
 
-      if (security.length > 0) {
+      if (securitySchemes.length > 0) {
         console.warn(
           'Your recordings might contain sensitive information. Make sure to check them before publishing.'
         );
@@ -320,13 +327,20 @@ export class SuperfaceTest {
       }
 
       assertsDefinitionsAreNotStrings(definitions);
-      assertsPreparedConfig(this.sfConfig);
-      const {
-        configuration: { security, baseUrl },
-      } = this.sfConfig.boundProfileProvider;
 
       if (removeCredentials) {
-        await removeOrLoadCredentials(baseUrl, security, { definitions });
+        assertsPreparedConfig(this.sfConfig);
+        const { configuration } = this.sfConfig.boundProfileProvider;
+        const securityValues = this.sfConfig.provider.configuration.security;
+        const securitySchemes = configuration.security;
+        const baseUrl = configuration.baseUrl;
+
+        await removeOrLoadCredentials({
+          securitySchemes,
+          securityValues,
+          baseUrl,
+          payload: { definitions },
+        });
       }
 
       if (beforeRecordingSave) {
