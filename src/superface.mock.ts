@@ -1,6 +1,7 @@
 import {
   MapDocumentNode,
   ProfileDocumentNode,
+  SecurityScheme,
   SecurityValues,
 } from '@superfaceai/ast';
 import {
@@ -11,18 +12,12 @@ import {
   Provider,
   ProviderConfiguration,
   Result,
-  SecurityScheme,
   SuperfaceClient,
   SuperJson,
   UseCase,
 } from '@superfaceai/one-sdk';
 
 /* eslint-disable @typescript-eslint/no-unsafe-return */
-
-const defaultMockedSuperJson = new SuperJson({
-  profiles: {},
-  providers: {},
-});
 
 interface UseCaseOptions {
   isOk?: boolean;
@@ -31,9 +26,9 @@ interface UseCaseOptions {
 }
 
 export const getUseCaseMock = jest.fn<
-  Promise<UseCase>,
-  Parameters<(name: string, options?: UseCaseOptions) => Promise<UseCase>>
->(async (name: string, options?: UseCaseOptions) => ({
+  UseCase,
+  Parameters<(name: string, options?: UseCaseOptions) => UseCase>
+>((name: string, options?: UseCaseOptions) => ({
   ...Object.create(UseCase.prototype),
   perform: jest.fn().mockResolvedValue({
     isOk:
@@ -134,7 +129,7 @@ export const SuperfaceClientMock = jest.fn<
   Parameters<(options?: SuperfaceClientOptions) => SuperfaceClient>
 >((options?: SuperfaceClientOptions) => ({
   ...Object.create(SuperfaceClient.prototype),
-  superJson: options?.superJson ?? defaultMockedSuperJson,
+  superJson: options?.superJson,
   getProfile: getProfileMock,
   getProvider: getProviderMock,
   cacheBoundProfileProvider: cacheBoundProfileProviderMock,
