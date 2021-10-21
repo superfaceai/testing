@@ -1,3 +1,4 @@
+import { SDKExecutionError } from '@superfaceai/one-sdk';
 import { inspect } from 'util';
 
 class ErrorBase extends Error {
@@ -59,6 +60,15 @@ export class InstanceMissingError extends ErrorBase {
 export class SuperJsonNotFoundError extends ErrorBase {
   constructor() {
     super('SuperJsonNotFoundError', 'No super.json found.');
+  }
+}
+
+export class SuperJsonLoadingFailedError extends ErrorBase {
+  constructor(originalError: SDKExecutionError) {
+    super(
+      'SuperJsonNotFoundError',
+      `Loading super.json failed.\n${originalError.toString()}`
+    );
   }
 }
 

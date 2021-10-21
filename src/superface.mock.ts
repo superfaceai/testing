@@ -5,17 +5,16 @@ import {
   SecurityValues,
 } from '@superfaceai/ast';
 import {
-  BoundProfileProvider,
   PerformError,
   Profile,
-  ProfileConfiguration,
   Provider,
-  ProviderConfiguration,
   Result,
   SuperfaceClient,
   SuperJson,
   UseCase,
 } from '@superfaceai/one-sdk';
+
+import { SuperfaceTestConfigPayload } from '.';
 
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 
@@ -68,7 +67,7 @@ export const getProfileMock = jest.fn<
 }));
 
 export interface ProviderOptions {
-  securityValues?: SecurityValues;
+  securityValues?: SecurityValues[];
 }
 
 export const getProviderMock = jest.fn<
@@ -84,7 +83,8 @@ export const getProviderMock = jest.fn<
   },
 }));
 
-export interface BoundProfileProviderOptions {
+export interface SuperfaceClientOptions {
+  superJson?: SuperJson;
   profileAst?: ProfileDocumentNode;
   mapAst?: MapDocumentNode;
   providerName?: string;
@@ -94,22 +94,34 @@ export interface BoundProfileProviderOptions {
   };
 }
 
-export const cacheBoundProfileProviderMock = jest.fn<
-  Promise<BoundProfileProvider>,
-  Parameters<
-    (
-      profileConfig: ProfileConfiguration,
-      providerConfig: ProviderConfiguration,
-      options?: BoundProfileProviderOptions
-    ) => Promise<BoundProfileProvider>
-  >
->(
-  async (
-    _profileConfig: ProfileConfiguration,
-    _providerConfig: ProviderConfiguration,
-    options?: BoundProfileProviderOptions
-  ) => ({
-    ...Object.create(BoundProfileProvider.prototype),
+const defaultSuperJson = new SuperJson({
+  profiles: {
+    profile: {
+      file: 'path/to/profile.supr',
+      providers: {
+        provider: {
+          file: 'path/to/map.suma',
+        },
+      },
+    },
+  },
+  providers: {
+    provider: {
+      file: 'path/to/provider.json',
+      security: [],
+    },
+  },
+});
+
+export const SuperfaceClientMock = jest.fn<
+  SuperfaceClient,
+  Parameters<(options?: SuperfaceClientOptions) => SuperfaceClient>
+>((options?: SuperfaceClientOptions) => ({
+  ...Object.create(SuperfaceClient.prototype),
+  superJson: options?.superJson ?? defaultSuperJson,
+  getProfile: getProfileMock,
+  getProvider: getProviderMock,
+  cacheBoundProfileProvider: jest.fn().mockReturnValue({
     profileAst: options?.profileAst ?? {},
     mapAst: options?.mapAst ?? {},
     providerName: options?.providerName ?? 'provider',
@@ -117,20 +129,32 @@ export const cacheBoundProfileProviderMock = jest.fn<
       baseUrl: options?.configuration?.baseUrl ?? 'https://base.url',
       security: options?.configuration?.securitySchemes ?? [],
     },
-  })
-);
-
-export interface SuperfaceClientOptions {
-  superJson?: SuperJson;
-}
-
-export const SuperfaceClientMock = jest.fn<
-  SuperfaceClient,
-  Parameters<(options?: SuperfaceClientOptions) => SuperfaceClient>
->((options?: SuperfaceClientOptions) => ({
-  ...Object.create(SuperfaceClient.prototype),
-  superJson: options?.superJson,
-  getProfile: getProfileMock,
-  getProvider: getProviderMock,
-  cacheBoundProfileProvider: cacheBoundProfileProviderMock,
+  }),
 }));
+
+export const getMockedSfConfig = async (options?: {
+  superJson?: SuperJson;
+  isOk?: boolean;
+  isErr?: boolean;
+  result?: Result<unknown, PerformError>;
+  baseUrl?: string;
+  securitySchemes?: SecurityScheme[];
+  securityValues?: SecurityValues[];
+}): Promise<SuperfaceTestConfigPayload> => ({
+  client: new SuperfaceClientMock({
+    superJson: options?.superJson ?? defaultSuperJson,
+    configuration: {
+      baseUrl: options?.baseUrl ?? 'root',
+      securitySchemes: options?.securitySchemes,
+    },
+  }),
+  profile: await getProfileMock('profile'),
+  provider: await getProviderMock('provider', {
+    securityValues: options?.securityValues ?? [],
+  }),
+  useCase: getUseCaseMock('usecase', {
+    isOk: options?.isOk ?? true,
+    isErr: options?.isErr,
+    result: options?.result,
+  }),
+});

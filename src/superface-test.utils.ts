@@ -17,6 +17,7 @@ import {
   UnexpectedError,
   UseCase,
 } from '@superfaceai/one-sdk';
+import nock from 'nock/types';
 import { join as joinPath } from 'path';
 import { URL } from 'url';
 
@@ -29,11 +30,13 @@ import {
 import {
   ComponentUndefinedError,
   InstanceMissingError,
+  SuperJsonLoadingFailedError,
   SuperJsonNotFoundError,
 } from './common/errors';
 
 /**
- * Asserts that entered sfConfig contains only instances of classes not strings.
+ * Asserts that entered sfConfig contains every component and
+ * that every component is instance of corresponding class not string.
  */
 export function assertsPreparedConfig(
   sfConfig: SuperfaceTestConfigPayload
@@ -116,8 +119,6 @@ export function getProfileId(profile: Profile | string): string {
   } else {
     return profile.configuration.id;
   }
-
-  // throw new Error('Invalid Profile specified');
 }
 
 /**
@@ -152,10 +153,18 @@ export async function getSuperJson(): Promise<SuperJson> {
     throw new SuperJsonNotFoundError();
   }
 
-  return (await SuperJson.load(joinPath(superPath, 'super.json'))).unwrap();
+  const superJsonResult = await SuperJson.load(
+    joinPath(superPath, 'super.json')
+  );
+
+  if (superJsonResult.isErr()) {
+    throw new SuperJsonLoadingFailedError(superJsonResult.error);
+  }
+
+  return superJsonResult.value;
 }
 
-const HIDDEN_CREDENTIALS_PLACEHOLDER =
+export const HIDDEN_CREDENTIALS_PLACEHOLDER =
   'credentials-removed-to-keep-them-secure';
 const AUTH_HEADER_NAME = 'Authorization';
 
@@ -257,8 +266,8 @@ export function removeCredentials({
 }: {
   definition: RecordingDefinition;
   scheme: SecurityScheme;
-  baseUrl: string;
   securityValue?: SecurityValues;
+  baseUrl: string;
 }): void {
   if (isApiKeySecurityScheme(scheme)) {
     const schemeName = scheme.name ?? AUTH_HEADER_NAME;
@@ -278,23 +287,23 @@ export function removeCredentials({
       }
     } else if (scheme.in === ApiKeyPlacement.BODY) {
       if (definition.body !== undefined) {
-        const body = definition.body.toString();
+        let body = JSON.stringify(definition.body, null, 2);
 
         if (loadedCredential !== undefined) {
-          body.replace(
+          body = body.replace(
             new RegExp(loadedCredential, 'g'),
             HIDDEN_CREDENTIALS_PLACEHOLDER
           );
         }
 
-        definition.body = body;
+        definition.body = JSON.parse(body) as nock.RequestBodyMatcher;
       }
     } else {
       const definitionPath = new URL(baseUrl + definition.path);
 
       if (scheme.in === ApiKeyPlacement.PATH) {
         if (loadedCredential !== undefined) {
-          definitionPath.pathname.replace(
+          definitionPath.pathname = definitionPath.pathname.replace(
             new RegExp(loadedCredential, 'g'),
             HIDDEN_CREDENTIALS_PLACEHOLDER
           );

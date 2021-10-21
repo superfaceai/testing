@@ -147,7 +147,7 @@ export class SuperfaceTest {
       return { value: result.value };
     }
 
-    throw new UnexpectedError('unreachable');
+    throw new UnexpectedError('Unexpected result object');
   }
 
   /**

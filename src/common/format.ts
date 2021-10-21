@@ -13,8 +13,8 @@ export function getFixtureName(sfConfig: CompleteSuperfaceTestConfig): string {
 
   return joinPath(
     profile.configuration.id,
-    provider?.configuration.name,
-    useCase?.name
+    provider.configuration.name,
+    useCase.name
   );
 }
 
@@ -53,7 +53,7 @@ function testPayload(payload: string, match: string): boolean {
  */
 export function matchWildCard(
   sfConfig: CompleteSuperfaceTestConfig,
-  superfaceEnv?: string
+  superfaceEnv: string | undefined
 ): boolean {
   if (superfaceEnv === undefined) {
     return false;
