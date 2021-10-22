@@ -81,7 +81,7 @@ export class SuperfaceTest {
     this.recordingPath = joinPath(
       this.fixturesPath,
       fixtureName,
-      'recording.json'
+      `${this.nockConfig?.fixture ?? 'recording'}.json`
     );
   }
 
