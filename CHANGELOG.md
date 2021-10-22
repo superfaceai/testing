@@ -7,8 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## 0.0.3-beta.9 - 2021-10-22
 ### Added
-
 - One-SDK to peerDependencies and devDependencies
 - Warning about sensitive information in recordings
 - New parameter for method `run()` to enable keeping original recordings
@@ -22,7 +22,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Modules for io, formatting and errors.
 
 ### Changed
-
 - **BREAKING CHANGE**: Rename `before` and `after` processing functions to `afterRecordingLoad` and `beforeRecordingSave`
 - **BREAKING CHANGE**: Rename class `TestConfig` to `SuperfaceTest`
 - **BREAKING CHANGE**: Merge function `test()` and `run()`
@@ -31,15 +30,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `sfConfig` in constructor to optional
 - Require only local map in super.json
 
-### Fixed
+### Removed
+- nock.back support
+- Check for local provider.json
 
+### Fixed
 - Regex in `loadCredentials` for filtering query parameters
 - Process recording path from URL variable correctly
 - Restore recordings before throwing error from perform
 
-### Removed
-
-- nock.back support
-- Check for local provider.json
-
-[unreleased]: https://github.com/superfaceai/testing-lib/compare/v0.0.2-beta.0...HEAD
+[Unreleased]: https://github.com/superfaceai/testing-lib/compare/v0.0.3-beta.9...HEAD
