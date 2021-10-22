@@ -257,7 +257,9 @@ export class SuperfaceTest {
       const scopes = loadRecording(this.recordingPath);
 
       if (scopes.length === 0) {
-        throw new RecordingsNotFoundError();
+        console.warn(
+          'Make sure your recording files contains corresponding HTTP calls.'
+        );
       }
 
       disableNetConnect();

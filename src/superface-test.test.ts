@@ -168,7 +168,7 @@ describe('SuperfaceTest', () => {
           expect(recorderSpy).not.toHaveBeenCalled();
         });
 
-        it('throws when recording fixture contains no recordings', async () => {
+        it('loads fixture if it exists, but contains empty array', async () => {
           superfaceTest = new SuperfaceTest(await getMockedSfConfig());
 
           const recorderSpy = jest.spyOn(nock.recorder, 'rec');
@@ -179,20 +179,29 @@ describe('SuperfaceTest', () => {
           mocked(exists).mockResolvedValueOnce(true);
           mocked(matchWildCard).mockReturnValueOnce(false);
 
-          await expect(superfaceTest.run({ input: {} })).rejects.toThrowError(
-            new RecordingsNotFoundError()
+          await expect(superfaceTest.run({ input: {} })).resolves.toMatchObject(
+            { value: undefined }
           );
 
           expect(loadRecordingSpy).toHaveBeenCalledTimes(1);
           expect(recorderSpy).not.toHaveBeenCalled();
         });
 
-        it('loads fixture if it exists', async () => {
+        it('loads fixture with recordings', async () => {
           superfaceTest = new SuperfaceTest(await getMockedSfConfig());
 
+          const mockedScopes = nock.define([
+            {
+              scope: 'https://localhost',
+              method: 'GET',
+              path: `/path?api_key=${utils.HIDDEN_CREDENTIALS_PLACEHOLDER}`,
+              status: 200,
+              response: { some: 'data' },
+            },
+          ]);
           const loadRecordingSpy = jest
             .spyOn(nock, 'load')
-            .mockReturnValueOnce([expect.anything()]);
+            .mockReturnValueOnce(mockedScopes);
           const disableNetConnectSpy = jest.spyOn(nock, 'disableNetConnect');
           const enableNetConnectSpy = jest.spyOn(nock, 'enableNetConnect');
           const recorderSpy = jest.spyOn(nock.recorder, 'rec');
@@ -203,9 +212,7 @@ describe('SuperfaceTest', () => {
           mocked(matchWildCard).mockReturnValueOnce(false);
 
           await expect(superfaceTest.run({ input: {} })).resolves.toMatchObject(
-            {
-              value: undefined,
-            }
+            { value: undefined }
           );
 
           expect(loadRecordingSpy).toHaveBeenCalledTimes(1);

@@ -92,5 +92,5 @@ export function assertIsIOError(
     }
   }
 
-  throw new UnexpectedError(`${inspect(error)}`);
+  throw new UnexpectedError(inspect(error));
 }
