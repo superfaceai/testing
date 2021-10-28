@@ -14,7 +14,7 @@ import {
   UseCase,
 } from '@superfaceai/one-sdk';
 
-import { SuperfaceTestConfigPayload } from '.';
+import { CompleteSuperfaceTestConfig } from '.';
 
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 
@@ -94,7 +94,7 @@ export interface SuperfaceClientOptions {
   };
 }
 
-const defaultSuperJson = new SuperJson({
+const DEFAULT_SUPERJSON = new SuperJson({
   profiles: {
     profile: {
       file: 'path/to/profile.supr',
@@ -118,7 +118,7 @@ export const SuperfaceClientMock = jest.fn<
   Parameters<(options?: SuperfaceClientOptions) => SuperfaceClient>
 >((options?: SuperfaceClientOptions) => ({
   ...Object.create(SuperfaceClient.prototype),
-  superJson: options?.superJson ?? defaultSuperJson,
+  superJson: options?.superJson ?? DEFAULT_SUPERJSON,
   getProfile: getProfileMock,
   getProvider: getProviderMock,
   cacheBoundProfileProvider: jest.fn().mockReturnValue({
@@ -140,9 +140,9 @@ export const getMockedSfConfig = async (options?: {
   baseUrl?: string;
   securitySchemes?: SecurityScheme[];
   securityValues?: SecurityValues[];
-}): Promise<SuperfaceTestConfigPayload> => ({
+}): Promise<CompleteSuperfaceTestConfig> => ({
   client: new SuperfaceClientMock({
-    superJson: options?.superJson ?? defaultSuperJson,
+    superJson: options?.superJson ?? DEFAULT_SUPERJSON,
     configuration: {
       baseUrl: options?.baseUrl ?? 'root',
       securitySchemes: options?.securitySchemes,

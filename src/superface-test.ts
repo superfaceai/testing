@@ -1,4 +1,9 @@
-import { PerformError, Result, SuperfaceClient } from '@superfaceai/one-sdk';
+import {
+  BoundProfileProvider,
+  PerformError,
+  Result,
+  SuperfaceClient,
+} from '@superfaceai/one-sdk';
 import {
   activate as activateNock,
   disableNetConnect,
@@ -37,17 +42,19 @@ import {
   TestingReturn,
 } from './superface-test.interfaces';
 import {
+  assertBoundProfileProvider,
   assertsDefinitionsAreNotStrings,
   assertsPreparedConfig,
   getProfileId,
   getProviderName,
   getSuperJson,
-  isProviderLocal,
+  isProfileProviderLocal,
   removeOrLoadCredentials,
 } from './superface-test.utils';
 
 export class SuperfaceTest {
   private sfConfig: SuperfaceTestConfigPayload;
+  private boundProfileProvider?: BoundProfileProvider;
   private nockConfig?: NockConfig;
   private fixturesPath?: string;
   private recordingPath?: string;
@@ -97,14 +104,14 @@ export class SuperfaceTest {
     await this.setupSuperfaceConfig();
 
     assertsPreparedConfig(this.sfConfig);
-    if (!(await this.isMapLocal())) {
+    if (!(await this.checkForMapInSuperJson())) {
       throw new MapUndefinedError(
         getProfileId(this.sfConfig.profile),
         getProviderName(this.sfConfig.provider)
       );
     }
 
-    this.sfConfig.boundProfileProvider =
+    this.boundProfileProvider =
       await this.sfConfig.client.cacheBoundProfileProvider(
         this.sfConfig.profile.configuration,
         this.sfConfig.provider.configuration
@@ -207,7 +214,7 @@ export class SuperfaceTest {
    * Checks whether current components in sfConfig
    * are locally linked in super.json.
    */
-  private async isMapLocal(): Promise<boolean> {
+  private async checkForMapInSuperJson(): Promise<boolean> {
     const superJson = this.sfConfig.client?.superJson ?? (await getSuperJson());
     const superJsonNormalized = superJson.normalized;
 
@@ -220,7 +227,7 @@ export class SuperfaceTest {
     }
 
     if (this.sfConfig.provider !== undefined) {
-      return isProviderLocal(
+      return isProfileProviderLocal(
         this.sfConfig.provider,
         profileId,
         superJsonNormalized
@@ -244,7 +251,9 @@ export class SuperfaceTest {
     }
 
     assertsPreparedConfig(this.sfConfig);
-    const { configuration } = this.sfConfig.boundProfileProvider;
+    assertBoundProfileProvider(this.boundProfileProvider);
+
+    const { configuration } = this.boundProfileProvider;
     const securitySchemes = configuration.security;
 
     if (!record) {
@@ -272,7 +281,7 @@ export class SuperfaceTest {
         const securityValues = this.sfConfig.provider.configuration.security;
         const baseUrl = configuration.baseUrl;
 
-        await removeOrLoadCredentials({
+        removeOrLoadCredentials({
           securitySchemes,
           securityValues,
           baseUrl,
@@ -332,12 +341,14 @@ export class SuperfaceTest {
 
       if (removeCredentials) {
         assertsPreparedConfig(this.sfConfig);
-        const { configuration } = this.sfConfig.boundProfileProvider;
+        assertBoundProfileProvider(this.boundProfileProvider);
+
+        const { configuration } = this.boundProfileProvider;
         const securityValues = this.sfConfig.provider.configuration.security;
         const securitySchemes = configuration.security;
         const baseUrl = configuration.baseUrl;
 
-        await removeOrLoadCredentials({
+        removeOrLoadCredentials({
           securitySchemes,
           securityValues,
           baseUrl,

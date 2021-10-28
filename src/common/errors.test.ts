@@ -42,11 +42,19 @@ describe('errors', () => {
   });
 
   describe('when throwing ComponentUndefinedError', () => {
+    const errorClient = new ComponentUndefinedError('Client');
     const errorProfile = new ComponentUndefinedError('Profile');
     const errorProvider = new ComponentUndefinedError('Provider');
     const errorUseCase = new ComponentUndefinedError('UseCase');
+    const errorBoundProfileProvider = new ComponentUndefinedError(
+      'BoundProfileProvider'
+    );
 
     it('throws in correct format', () => {
+      expect(() => {
+        throw errorClient;
+      }).toThrow('Undefined Client');
+
       expect(() => {
         throw errorProfile;
       }).toThrow('Undefined Profile');
@@ -58,9 +66,17 @@ describe('errors', () => {
       expect(() => {
         throw errorUseCase;
       }).toThrow('Undefined UseCase');
+
+      expect(() => {
+        throw errorBoundProfileProvider;
+      }).toThrow('Undefined BoundProfileProvider');
     });
 
     it('returns correct format', () => {
+      expect(errorClient.toString()).toEqual(
+        'ComponentUndefinedError: Undefined Client'
+      );
+
       expect(errorProfile.toString()).toEqual(
         'ComponentUndefinedError: Undefined Profile'
       );
@@ -71,6 +87,10 @@ describe('errors', () => {
 
       expect(errorUseCase.toString()).toEqual(
         'ComponentUndefinedError: Undefined UseCase'
+      );
+
+      expect(errorBoundProfileProvider.toString()).toEqual(
+        'ComponentUndefinedError: Undefined BoundProfileProvider'
       );
     });
   });

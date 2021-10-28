@@ -10,6 +10,7 @@ import {
   SecurityValues,
 } from '@superfaceai/ast';
 import {
+  BoundProfileProvider,
   Profile,
   Provider,
   SuperfaceClient,
@@ -91,10 +92,18 @@ export function assertsPreparedUseCase(
   }
 }
 
+export function assertBoundProfileProvider(
+  boundProfileProvider: BoundProfileProvider | undefined
+): asserts boundProfileProvider is BoundProfileProvider {
+  if (boundProfileProvider === undefined) {
+    throw new ComponentUndefinedError('BoundProfileProvider');
+  }
+}
+
 /**
  * Checks whether provider is local and contains some file path.
  */
-export function isProviderLocal(
+export function isProfileProviderLocal(
   provider: Provider | string,
   profileId: string,
   superJsonNormalized: NormalizedSuperJsonDocument
@@ -178,7 +187,7 @@ export function assertsDefinitionsAreNotStrings(
   }
 }
 
-export async function removeOrLoadCredentials({
+export function removeOrLoadCredentials({
   securitySchemes,
   securityValues,
   baseUrl,
@@ -191,7 +200,7 @@ export async function removeOrLoadCredentials({
     definitions?: RecordingDefinition[];
     scopes?: RecordingScope[];
   };
-}): Promise<void> {
+}): void {
   if (payload.definitions) {
     for (const definition of payload.definitions) {
       for (const scheme of securitySchemes) {
@@ -232,7 +241,14 @@ export function loadCredentials({
       }
     }
 
-    if (scheme.in === ApiKeyPlacement.QUERY) {
+    if (scheme.in === ApiKeyPlacement.BODY) {
+      if (loadedCredential !== undefined) {
+        scope.filteringRequestBody(
+          new RegExp(loadedCredential, 'g'),
+          HIDDEN_CREDENTIALS_PLACEHOLDER
+        );
+      }
+    } else if (scheme.in === ApiKeyPlacement.QUERY) {
       scope.filteringPath(
         new RegExp(schemeName + '([^&#]+)', 'g'),
         `${schemeName}=${HIDDEN_CREDENTIALS_PLACEHOLDER}`
@@ -245,14 +261,6 @@ export function loadCredentials({
         );
       }
     }
-    // if (scheme.in === ApiKeyPlacement.HEADER) {
-    //   // TODO: research scope.matchHeader()
-    // } else if (scheme.in === ApiKeyPlacement.BODY) {
-    //   // TODO: research scope.filteringRequestBody
-    // } else if (isBasicAuthSecurityScheme(scheme)) {
-    //   // TODO: test this case
-    // } else if (isBearerTokenSecurityScheme(scheme)) {
-    //   // TODO: test this case as well
   } else if (isDigestSecurityScheme(scheme)) {
     throw new UnexpectedError('not implemented');
   }
@@ -270,7 +278,6 @@ export function removeCredentials({
   baseUrl: string;
 }): void {
   if (isApiKeySecurityScheme(scheme)) {
-    const schemeName = scheme.name ?? AUTH_HEADER_NAME;
     let loadedCredential: string | undefined;
 
     if (isApiKeySecurityValues(securityValue)) {
@@ -282,8 +289,14 @@ export function removeCredentials({
     }
 
     if (scheme.in === ApiKeyPlacement.HEADER) {
-      if (definition.reqheaders?.[schemeName] !== undefined) {
-        definition.reqheaders[schemeName] = HIDDEN_CREDENTIALS_PLACEHOLDER;
+      if (scheme.name !== undefined) {
+        if (definition.reqheaders?.[scheme.name] !== undefined) {
+          definition.reqheaders[scheme.name] = HIDDEN_CREDENTIALS_PLACEHOLDER;
+        }
+      } else {
+        if (definition.reqheaders?.['X-API-KEY'] !== undefined) {
+          definition.reqheaders['X-API-KEY'] = HIDDEN_CREDENTIALS_PLACEHOLDER;
+        }
       }
     } else if (scheme.in === ApiKeyPlacement.BODY) {
       if (definition.body !== undefined) {
@@ -309,11 +322,29 @@ export function removeCredentials({
           );
         }
       } else if (scheme.in === ApiKeyPlacement.QUERY) {
-        if (definitionPath.searchParams.has(schemeName)) {
+        if (
+          scheme.name !== undefined &&
+          definitionPath.searchParams.has(scheme.name)
+        ) {
           definitionPath.searchParams.set(
-            schemeName,
+            scheme.name,
             HIDDEN_CREDENTIALS_PLACEHOLDER
           );
+        } else if (loadedCredential !== undefined) {
+          for (const [
+            key,
+            queryValue,
+          ] of definitionPath.searchParams.entries()) {
+            if (queryValue.includes(loadedCredential)) {
+              definitionPath.searchParams.set(
+                key,
+                queryValue.replace(
+                  new RegExp(loadedCredential, 'g'),
+                  HIDDEN_CREDENTIALS_PLACEHOLDER
+                )
+              );
+            }
+          }
         }
       }
 

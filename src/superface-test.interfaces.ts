@@ -1,5 +1,4 @@
 import {
-  BoundProfileProvider,
   Profile,
   Provider,
   SuperfaceClient,
@@ -27,7 +26,6 @@ export interface SuperfaceTestConfig {
   profile?: Profile;
   provider?: Provider;
   useCase?: UseCase;
-  boundProfileProvider?: BoundProfileProvider;
 }
 
 export type CompleteSuperfaceTestConfig = Required<SuperfaceTestConfig>;

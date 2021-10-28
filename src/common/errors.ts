@@ -34,7 +34,14 @@ export class MapUndefinedError extends ErrorBase {
 }
 
 export class ComponentUndefinedError extends ErrorBase {
-  constructor(component: 'Client' | 'Profile' | 'Provider' | 'UseCase') {
+  constructor(
+    component:
+      | 'Client'
+      | 'Profile'
+      | 'Provider'
+      | 'UseCase'
+      | 'BoundProfileProvider'
+  ) {
     super('ComponentUndefinedError', `Undefined ${component}`);
   }
 }

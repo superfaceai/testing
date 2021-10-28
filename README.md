@@ -7,7 +7,7 @@
 
 <img src="https://github.com/superfaceai/testing-lib/blob/main/docs/LogoGreen.png" alt="superface logo" width="150" height="150">
 
-This library enables easy testing of Superface capabilities with exported class `SuperfaceTest` and its method `run()`.
+This library enables easy testing of Superface capabilities with `SuperfaceTest` class.
 
 ## Table of Contents
 
@@ -50,6 +50,8 @@ To test Superface capabilities, initialize a new `SuperfaceTest` instance and ca
 
 Superface config should contain `profile`, `provider` and `useCase`. You can enter them either in string format (as ids of corresponding components) or as instances of corresponding components.
 
+Along side profile, provider and usecase, you can also enter your `SuperfaceClient` instance. (More about Superface client [here](https://github.com/superfaceai/one-sdk-js#initializing-the-onesdk-client))
+
 ### Initializing SuperfaceTest instance
 
 ```typescript
@@ -65,9 +67,13 @@ const superface = new SuperfaceTest();
 with superface config:
 
 ```typescript
+const client = new SuperfaceClient();
+const profile = await client.getProfile('profile');
+const provider = await client.getProvider('provider');
 const superface = new SuperfaceTest({
-  profile: 'profile',
-  provider: 'provider',
+  client,
+  profile,
+  provider,
   useCase: 'useCase',
 });
 ```
@@ -95,7 +101,7 @@ Given nock config is also stored in class. Property `path` and `fixture` is used
 
 ### Running
 
-To test your capabilities, you can use method `run()`, which encapsulates nock recording and usecase perform. It expects payload of superface configuration (similar to initializing `SuperfaceTest` class) and input.
+To test your capabilities, use method `run()`, which encapsulates nock recording and usecase perform. It expects superface configuration (similar to initializing `SuperfaceTest` class) and input.
 
 ```typescript
 import { SuperfaceTest } from '@superfaceai/testing-lib';
@@ -152,7 +158,7 @@ superface.run({
 
 ## Support
 
-If you need any additional support, have any questions or you just want to talk you can do that through our [documentation page](https://docs.superface.ai).
+If you need any additional support, have any questions or you just want to talk you can do that through our [support page](https://superface.ai/support).
 
 ## Maintainers
 

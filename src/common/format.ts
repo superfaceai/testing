@@ -19,20 +19,24 @@ export function getFixtureName(sfConfig: CompleteSuperfaceTestConfig): string {
 }
 
 function testPayload(payload: string, match: string): boolean {
+  if (payload === '*') {
+    return true;
+  }
+
   if (payload.startsWith('*') && payload.endsWith('*')) {
-    const regex = RegExp(`^.*${payload.substr(1, payload.length - 1)}.*$`);
+    const regex = RegExp(`^.*${payload.substring(1, payload.length - 1)}.*$`);
 
     if (!regex.test(match)) {
       return false;
     }
   } else if (payload.startsWith('*')) {
-    const regex = RegExp(`.*${payload.substr(1, payload.length)}$`);
+    const regex = RegExp(`.*${payload.substring(1, payload.length)}$`);
 
     if (!regex.test(match)) {
       return false;
     }
   } else if (payload.endsWith('*')) {
-    const regex = RegExp(`^${payload.substr(0, payload.length - 1)}.*`);
+    const regex = RegExp(`^${payload.substring(0, payload.length - 1)}.*`);
 
     if (!regex.test(match)) {
       return false;
@@ -55,7 +59,7 @@ export function matchWildCard(
   sfConfig: CompleteSuperfaceTestConfig,
   superfaceEnv: string | undefined
 ): boolean {
-  if (superfaceEnv === undefined) {
+  if (superfaceEnv === undefined || superfaceEnv === '') {
     return false;
   }
 
@@ -63,16 +67,22 @@ export function matchWildCard(
   const [profilePayload, providerPayload, usecasePayload] =
     superfaceEnv.split(':');
 
-  if (profilePayload) {
-    testPayload(profilePayload, profile.configuration.id);
+  if (profilePayload && profilePayload !== '') {
+    if (!testPayload(profilePayload, profile.configuration.id)) {
+      return false;
+    }
   }
 
-  if (providerPayload) {
-    testPayload(providerPayload, provider.configuration.name);
+  if (providerPayload && providerPayload !== '') {
+    if (!testPayload(providerPayload, provider.configuration.name)) {
+      return false;
+    }
   }
 
-  if (usecasePayload) {
-    testPayload(usecasePayload, useCase.name);
+  if (usecasePayload && usecasePayload !== '') {
+    if (!testPayload(usecasePayload, useCase.name)) {
+      return false;
+    }
   }
 
   return true;

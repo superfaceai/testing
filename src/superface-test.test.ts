@@ -1,7 +1,14 @@
-import { ApiKeyPlacement, SecurityType } from '@superfaceai/ast';
-import { err, MapASTError, ok, SuperJson } from '@superfaceai/one-sdk';
+import {
+  err,
+  MapASTError,
+  ok,
+  Profile,
+  Provider,
+  SuperfaceClient,
+  SuperJson,
+} from '@superfaceai/one-sdk';
 import { getLocal } from 'mockttp';
-import nock from 'nock';
+import nock, { define, pendingMocks, recorder } from 'nock';
 import { join as joinPath } from 'path';
 import { mocked } from 'ts-jest/utils';
 
@@ -60,58 +67,61 @@ describe('SuperfaceTest', () => {
 
   describe('run', () => {
     describe('when preparing configuration', () => {
-      it('throws when config is not prepared', async () => {
-        const client = new SuperfaceClientMock();
-        const mockedProfile = await getProfileMock('profile');
-        const mockedProvider = await getProviderMock('provider');
-        const mockedUseCase = getUseCaseMock('usecase', { isOk: true });
+      let client: SuperfaceClient,
+        mockedProfile: Profile,
+        mockedProvider: Provider;
 
-        const test1 = new SuperfaceTest({ client });
-        const test2 = new SuperfaceTest({ client, useCase: 'some-use-case' });
-        const test3 = new SuperfaceTest({ client, profile: mockedProfile });
-        const test4 = new SuperfaceTest({
-          client,
-          profile: mockedProfile,
-          provider: mockedProvider,
-        });
-        const test5 = new SuperfaceTest({
-          client,
-          profile: mockedProfile,
-          provider: mockedProvider,
-          useCase: mockedUseCase,
-        });
+      beforeAll(async () => {
+        client = new SuperfaceClientMock();
+        mockedProfile = await getProfileMock('profile');
+        mockedProvider = await getProviderMock('provider');
+      });
 
-        mocked(matchWildCard).mockReturnValue(true);
+      it('throws when Profile is not entered', async () => {
+        const superface = new SuperfaceTest({ client });
 
         await expect(
-          test1.run({
+          superface.run({
             input: {},
           })
         ).rejects.toThrowError(new ComponentUndefinedError('Profile'));
+      });
 
-        await expect(test2.run({ client, input: {} })).rejects.toThrowError(
-          new ComponentUndefinedError('Profile')
-        );
+      it('throws when UseCase is entered, but Profile is not entered', async () => {
+        const superface = new SuperfaceTest({
+          client,
+          useCase: 'some-use-case',
+        });
 
         await expect(
-          test3.run({
+          superface.run({
+            input: {},
+          })
+        ).rejects.toThrowError(new ComponentUndefinedError('Profile'));
+      });
+
+      it('throws when Provider is not entered', async () => {
+        const superface = new SuperfaceTest({ client, profile: mockedProfile });
+
+        await expect(
+          superface.run({
             input: {},
           })
         ).rejects.toThrowError(new ComponentUndefinedError('Provider'));
+      });
+
+      it('throws when UseCase is not entered', async () => {
+        const superface = new SuperfaceTest({
+          client,
+          profile: mockedProfile,
+          provider: mockedProvider,
+        });
 
         await expect(
-          test4.run({
+          superface.run({
             input: {},
           })
         ).rejects.toThrowError(new ComponentUndefinedError('UseCase'));
-
-        await expect(
-          test5.run({
-            input: {},
-          })
-        ).resolves.toMatchObject({
-          value: undefined,
-        });
       });
     });
 
@@ -152,253 +162,129 @@ describe('SuperfaceTest', () => {
         await mockServer.stop();
       });
 
-      describe('loading recordings', () => {
-        it('throws when recording fixture does not exist', async () => {
-          superfaceTest = new SuperfaceTest(await getMockedSfConfig());
+      it('writes and restores recordings', async () => {
+        superfaceTest = new SuperfaceTest(await getMockedSfConfig());
 
-          const recorderSpy = jest.spyOn(nock.recorder, 'rec');
+        await mockServer
+          .get('/')
+          .withHeaders({ Accept: 'application/json' })
+          .thenJson(200, { some: 'data' });
 
-          mocked(exists).mockResolvedValueOnce(false);
-          mocked(matchWildCard).mockReturnValueOnce(false);
+        const writeRecordingsSpy = mocked(writeRecordings);
+        const recorderSpy = jest.spyOn(recorder, 'rec');
+        const playSpy = jest.spyOn(recorder, 'play').mockReturnValueOnce([
+          {
+            scope: 'https://localhost',
+            path: '/',
+            status: 200,
+            response: { some: 'data' },
+          },
+        ]);
+        const endRecSpy = jest.spyOn(nock, 'restore');
 
-          await expect(superfaceTest.run({ input: {} })).rejects.toThrowError(
-            new RecordingsNotFoundError()
-          );
+        mocked(exists).mockResolvedValue(true);
+        mocked(matchWildCard).mockReturnValueOnce(true);
 
-          expect(recorderSpy).not.toHaveBeenCalled();
+        await superfaceTest.run({ input: {} });
+
+        expect(recorderSpy).toHaveBeenCalledTimes(1);
+        expect(recorderSpy).toHaveBeenCalledWith({
+          dont_print: true,
+          output_objects: true,
+          use_separator: false,
+          enable_reqheaders_recording: false,
         });
 
-        it('loads fixture if it exists, but contains empty array', async () => {
-          superfaceTest = new SuperfaceTest(await getMockedSfConfig());
+        expect(playSpy).toHaveBeenCalledTimes(1);
+        expect(endRecSpy).toHaveBeenCalledTimes(1);
 
-          const recorderSpy = jest.spyOn(nock.recorder, 'rec');
-          const loadRecordingSpy = jest
-            .spyOn(nock, 'load')
-            .mockReturnValueOnce([]);
-
-          mocked(exists).mockResolvedValueOnce(true);
-          mocked(matchWildCard).mockReturnValueOnce(false);
-
-          await expect(superfaceTest.run({ input: {} })).resolves.toMatchObject(
-            { value: undefined }
-          );
-
-          expect(loadRecordingSpy).toHaveBeenCalledTimes(1);
-          expect(recorderSpy).not.toHaveBeenCalled();
-        });
-
-        it('loads fixture with recordings', async () => {
-          superfaceTest = new SuperfaceTest(await getMockedSfConfig());
-
-          const mockedScopes = nock.define([
+        expect(writeRecordingsSpy).toHaveBeenCalledTimes(1);
+        expect(writeRecordingsSpy).toHaveBeenCalledWith(
+          expect.stringContaining(DEFAULT_RECORDING_PATH),
+          [
             {
               scope: 'https://localhost',
-              method: 'GET',
-              path: `/path?api_key=${utils.HIDDEN_CREDENTIALS_PLACEHOLDER}`,
+              path: '/',
               status: 200,
-              response: { some: 'data' },
+              response: {
+                some: 'data',
+              },
             },
-          ]);
-          const loadRecordingSpy = jest
-            .spyOn(nock, 'load')
-            .mockReturnValueOnce(mockedScopes);
-          const disableNetConnectSpy = jest.spyOn(nock, 'disableNetConnect');
-          const enableNetConnectSpy = jest.spyOn(nock, 'enableNetConnect');
-          const recorderSpy = jest.spyOn(nock.recorder, 'rec');
-          const endRecSpy = jest.spyOn(nock, 'restore');
-          const writeRecordingsSpy = mocked(writeRecordings);
+          ]
+        );
+      });
+    });
 
-          mocked(exists).mockResolvedValueOnce(true);
-          mocked(matchWildCard).mockReturnValueOnce(false);
+    describe('when loading recordings', () => {
+      it('throws when recording fixture does not exist', async () => {
+        superfaceTest = new SuperfaceTest(await getMockedSfConfig());
 
-          await expect(superfaceTest.run({ input: {} })).resolves.toMatchObject(
-            { value: undefined }
-          );
+        const recorderSpy = jest.spyOn(recorder, 'rec');
 
-          expect(loadRecordingSpy).toHaveBeenCalledTimes(1);
-          expect(loadRecordingSpy).toHaveBeenCalledWith(
-            expect.stringContaining(DEFAULT_RECORDING_PATH)
-          );
-          expect(disableNetConnectSpy).toHaveBeenCalledTimes(1);
-          expect(recorderSpy).not.toHaveBeenCalled();
-          expect(enableNetConnectSpy).toHaveBeenCalledTimes(1);
-          expect(endRecSpy).not.toHaveBeenCalled();
-          expect(writeRecordingsSpy).not.toHaveBeenCalled();
-        });
+        mocked(exists).mockResolvedValueOnce(false);
+        mocked(matchWildCard).mockReturnValueOnce(false);
 
-        it.skip('loads credentials that were hidden after recording', async () => {
-          superfaceTest = new SuperfaceTest(
-            await getMockedSfConfig({
-              baseUrl: 'https://localhost',
-              securitySchemes: [
-                {
-                  id: 'api-key',
-                  type: SecurityType.APIKEY,
-                  in: ApiKeyPlacement.QUERY,
-                  name: 'api_key',
-                },
-              ],
-              securityValues: [{ id: 'api-key', apikey: 'XXX' }],
-            })
-          );
-          const mockedScopes = nock.define([
-            {
-              scope: 'https://localhost',
-              method: 'GET',
-              path: `/path?api_key=${utils.HIDDEN_CREDENTIALS_PLACEHOLDER}`,
-              status: 200,
-              response: { some: 'data' },
-            },
-          ]);
-          const loadScopesSpy = jest
-            .spyOn(nock, 'load')
-            .mockReturnValue(mockedScopes);
-          const loadCredentialsSpy = jest.spyOn(utils, 'loadCredentials');
+        await expect(superfaceTest.run({ input: {} })).rejects.toThrowError(
+          new RecordingsNotFoundError()
+        );
 
-          mocked(exists).mockResolvedValue(true);
-          mocked(matchWildCard).mockReturnValueOnce(false);
-
-          await expect(superfaceTest.run({ input: {} })).resolves.toMatchObject(
-            {
-              value: undefined,
-            }
-          );
-
-          expect(loadScopesSpy).toHaveBeenCalledTimes(1);
-          expect(loadCredentialsSpy).toHaveBeenCalledTimes(1);
-          expect(loadCredentialsSpy).toHaveBeenCalledWith({
-            scope: expect.objectContaining({
-              interceptors: [
-                {
-                  queries: {
-                    api_key: utils.HIDDEN_CREDENTIALS_PLACEHOLDER,
-                  },
-                },
-              ],
-            }),
-            scheme: {
-              id: 'api-key',
-              type: 'apiKey',
-              in: 'query',
-              name: 'api_key',
-            },
-            securityValue: { id: 'api-key', apikey: 'XXX' },
-          });
-        });
+        expect(recorderSpy).not.toHaveBeenCalled();
       });
 
-      describe('writing recordings', () => {
-        it('writes and restores recordings', async () => {
-          superfaceTest = new SuperfaceTest(await getMockedSfConfig());
+      it('loads fixture if it exists, but contains no recordings', async () => {
+        superfaceTest = new SuperfaceTest(await getMockedSfConfig());
 
-          await mockServer
-            .get('/')
-            .withHeaders({ Accept: 'application/json' })
-            .thenJson(200, { some: 'data' });
+        const recorderSpy = jest.spyOn(recorder, 'rec');
+        const loadRecordingSpy = jest
+          .spyOn(nock, 'load')
+          .mockReturnValueOnce([]);
 
-          const writeRecordingsSpy = mocked(writeRecordings);
-          const recorderSpy = jest.spyOn(nock.recorder, 'rec');
-          const playSpy = jest
-            .spyOn(nock.recorder, 'play')
-            .mockReturnValueOnce([
-              {
-                scope: 'https://localhost',
-                path: '/',
-                status: 200,
-                response: { some: 'data' },
-              },
-            ]);
-          const endRecSpy = jest.spyOn(nock, 'restore');
+        mocked(exists).mockResolvedValueOnce(true);
+        mocked(matchWildCard).mockReturnValueOnce(false);
 
-          mocked(exists).mockResolvedValue(true);
-          mocked(matchWildCard).mockReturnValueOnce(true);
+        await expect(superfaceTest.run({ input: {} })).resolves.not.toThrow();
 
-          await superfaceTest.run({ input: {} });
+        expect(loadRecordingSpy).toHaveBeenCalledTimes(1);
+        expect(recorderSpy).not.toHaveBeenCalled();
+        expect(pendingMocks()).toEqual([]);
+      });
 
-          expect(recorderSpy).toHaveBeenCalledTimes(1);
-          expect(recorderSpy).toHaveBeenCalledWith({
-            dont_print: true,
-            output_objects: true,
-            use_separator: false,
-            enable_reqheaders_recording: false,
-          });
+      it('loads fixture with recordings', async () => {
+        superfaceTest = new SuperfaceTest(await getMockedSfConfig());
 
-          expect(playSpy).toHaveBeenCalledTimes(1);
-          expect(endRecSpy).toHaveBeenCalledTimes(1);
+        const mockedScopes = define([
+          {
+            scope: 'https://localhost',
+            method: 'GET',
+            path: `/path?api_key=${utils.HIDDEN_CREDENTIALS_PLACEHOLDER}`,
+            status: 200,
+            response: { some: 'data' },
+          },
+        ]);
+        const loadRecordingSpy = jest
+          .spyOn(nock, 'load')
+          .mockReturnValueOnce(mockedScopes);
+        const disableNetConnectSpy = jest.spyOn(nock, 'disableNetConnect');
+        const enableNetConnectSpy = jest.spyOn(nock, 'enableNetConnect');
+        const recorderSpy = jest.spyOn(recorder, 'rec');
+        const endRecSpy = jest.spyOn(nock, 'restore');
+        const writeRecordingsSpy = mocked(writeRecordings);
 
-          expect(writeRecordingsSpy).toHaveBeenCalledTimes(1);
-          expect(writeRecordingsSpy).toHaveBeenCalledWith(
-            expect.stringContaining(DEFAULT_RECORDING_PATH),
-            [
-              {
-                scope: 'https://localhost',
-                path: '/',
-                status: 200,
-                response: {
-                  some: 'data',
-                },
-              },
-            ]
-          );
-        });
+        mocked(exists).mockResolvedValueOnce(true);
+        mocked(matchWildCard).mockReturnValueOnce(false);
 
-        it.skip('writes modified recordings to file', async () => {
-          superfaceTest = new SuperfaceTest(
-            await getMockedSfConfig({
-              baseUrl: 'https://localhost',
-              securitySchemes: [
-                {
-                  id: 'api-key',
-                  type: SecurityType.APIKEY,
-                  in: ApiKeyPlacement.QUERY,
-                  name: 'api_key',
-                },
-              ],
-              securityValues: [{ id: 'api-key', apikey: 'XXX' }],
-            })
-          );
+        await expect(superfaceTest.run({ input: {} })).resolves.not.toThrow();
 
-          const mockedDefinitions = [
-            {
-              scope: 'https://localhost',
-              method: 'GET',
-              path: '/path?api_key=XXX',
-              status: 200,
-              response: { some: 'data' },
-            },
-          ];
-          const expectedDefinitions = [
-            {
-              scope: 'https://localhost',
-              method: 'GET',
-              path: `/path?api_key=${utils.HIDDEN_CREDENTIALS_PLACEHOLDER}`,
-              status: 200,
-              response: { some: 'data' },
-            },
-          ];
-          const playRecorderSpy = jest
-            .spyOn(nock.recorder, 'play')
-            .mockReturnValue(mockedDefinitions);
-          const removeCredentialsSpy = jest.spyOn(utils, 'removeCredentials');
-          const writeRecordingsSpy = mocked(writeRecordings);
-
-          mocked(exists).mockResolvedValue(true);
-          mocked(matchWildCard).mockReturnValueOnce(true);
-
-          await expect(superfaceTest.run({ input: {} })).resolves.toMatchObject(
-            {
-              value: undefined,
-            }
-          );
-
-          expect(playRecorderSpy).toHaveBeenCalledTimes(1);
-          expect(removeCredentialsSpy).toHaveBeenCalledTimes(1);
-          expect(writeRecordingsSpy).toHaveBeenCalledTimes(1);
-          expect(writeRecordingsSpy).toHaveBeenCalledWith(
-            expect.any(String),
-            expectedDefinitions
-          );
-        });
+        expect(loadRecordingSpy).toHaveBeenCalledTimes(1);
+        expect(loadRecordingSpy).toHaveBeenCalledWith(
+          expect.stringContaining(DEFAULT_RECORDING_PATH)
+        );
+        expect(disableNetConnectSpy).toHaveBeenCalledTimes(1);
+        expect(recorderSpy).not.toHaveBeenCalled();
+        expect(enableNetConnectSpy).toHaveBeenCalledTimes(1);
+        expect(endRecSpy).not.toHaveBeenCalled();
+        expect(writeRecordingsSpy).not.toHaveBeenCalled();
+        expect(pendingMocks()).toEqual(['GET https://localhost:443/path']);
       });
     });
 
@@ -419,7 +305,7 @@ describe('SuperfaceTest', () => {
 
         mocked(matchWildCard).mockReturnValueOnce(true);
 
-        await expect(superfaceTest.run({ input: {} })).resolves.toMatchObject({
+        await expect(superfaceTest.run({ input: {} })).resolves.toEqual({
           error: new MapASTError('error').toString(),
         });
 
@@ -445,7 +331,7 @@ describe('SuperfaceTest', () => {
 
         mocked(matchWildCard).mockReturnValueOnce(true);
 
-        await expect(superfaceTest.run({ input: {} })).resolves.toMatchObject({
+        await expect(superfaceTest.run({ input: {} })).resolves.toEqual({
           value: 'result',
         });
 

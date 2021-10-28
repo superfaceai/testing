@@ -1,5 +1,11 @@
-import { ApiKeyPlacement, HttpScheme, SecurityType } from '@superfaceai/ast';
+import {
+  ApiKeyPlacement,
+  HttpScheme,
+  SecurityScheme,
+  SecurityType,
+} from '@superfaceai/ast';
 import { err, SDKExecutionError, SuperJson } from '@superfaceai/one-sdk';
+import { define } from 'nock';
 
 import { RecordingDefinition, RecordingDefinitions } from '.';
 import {
@@ -24,7 +30,8 @@ import {
   getSuperJson,
   getUseCaseName,
   HIDDEN_CREDENTIALS_PLACEHOLDER,
-  isProviderLocal,
+  isProfileProviderLocal,
+  loadCredentials,
   removeCredentials,
 } from './superface-test.utils';
 
@@ -107,7 +114,7 @@ describe('SuperfaceTest', () => {
     });
   });
 
-  describe('isProviderLocal', () => {
+  describe('isProfileProviderLocal', () => {
     it('returns false when provider is not local', async () => {
       const mockSuperJson = new SuperJson({
         profiles: {
@@ -126,7 +133,7 @@ describe('SuperfaceTest', () => {
       });
 
       expect(
-        isProviderLocal('provider', 'profile', mockSuperJson.normalized)
+        isProfileProviderLocal('provider', 'profile', mockSuperJson.normalized)
       ).toBeFalsy();
     });
 
@@ -150,7 +157,7 @@ describe('SuperfaceTest', () => {
       });
 
       expect(
-        isProviderLocal('provider', 'profile', mockSuperJson.normalized)
+        isProfileProviderLocal('provider', 'profile', mockSuperJson.normalized)
       ).toBeTruthy();
     });
   });
@@ -225,8 +232,116 @@ describe('SuperfaceTest', () => {
     });
   });
 
-  // TODO
-  // describe.skip('loadCredentials', () => {});
+  describe('loadCredentials', () => {
+    describe('when loading apikey', () => {
+      it('loads apikey from body', async () => {
+        const securityScheme: SecurityScheme = {
+          id: 'api-key',
+          type: SecurityType.APIKEY,
+          in: ApiKeyPlacement.BODY,
+          name: 'api_key',
+        };
+        const securityValue = { id: 'api-key', apikey: 'XXX' };
+        const mockedScopes = define([
+          {
+            scope: 'https://localhost',
+            method: 'GET',
+            path: '/path',
+            status: 200,
+            response: { some: 'data' },
+            body: {
+              whatever: {
+                my_api_key: 'XXX',
+              },
+            },
+          },
+        ]);
+
+        const filteringBodySpy = jest.spyOn(
+          mockedScopes[0],
+          'filteringRequestBody'
+        );
+
+        loadCredentials({
+          scope: mockedScopes[0],
+          scheme: securityScheme,
+          securityValue,
+        });
+
+        expect(filteringBodySpy).toHaveBeenCalledTimes(1);
+        expect(filteringBodySpy).toHaveBeenCalledWith(
+          /XXX/g,
+          HIDDEN_CREDENTIALS_PLACEHOLDER
+        );
+      });
+
+      it('loads apikey from path', async () => {
+        const securityScheme: SecurityScheme = {
+          id: 'api-key',
+          type: SecurityType.APIKEY,
+          in: ApiKeyPlacement.PATH,
+          name: 'api_key',
+        };
+        const securityValue = { id: 'api-key', apikey: 'XXX' };
+        const mockedScopes = define([
+          {
+            scope: 'https://localhost',
+            method: 'GET',
+            path: '/path/XXX',
+            status: 200,
+            response: { some: 'data' },
+          },
+        ]);
+
+        const filteringPathSpy = jest.spyOn(mockedScopes[0], 'filteringPath');
+
+        loadCredentials({
+          scope: mockedScopes[0],
+          scheme: securityScheme,
+          securityValue,
+        });
+
+        expect(filteringPathSpy).toHaveBeenCalledTimes(1);
+        expect(filteringPathSpy).toHaveBeenCalledWith(
+          /XXX/g,
+          HIDDEN_CREDENTIALS_PLACEHOLDER
+        );
+      });
+
+      it('loads apikey from query', async () => {
+        const securityScheme: SecurityScheme = {
+          id: 'api-key',
+          type: SecurityType.APIKEY,
+          in: ApiKeyPlacement.QUERY,
+          name: 'api_key',
+        };
+        const securityValue = { id: 'api-key', apikey: 'XXX' };
+        const mockedScopes = define([
+          {
+            scope: 'https://localhost',
+            method: 'GET',
+            path: '/path?api_key=XXX',
+            status: 200,
+            response: { some: 'data' },
+          },
+        ]);
+
+        const filteringPathSpy = jest.spyOn(mockedScopes[0], 'filteringPath');
+
+        loadCredentials({
+          scope: mockedScopes[0],
+          scheme: securityScheme,
+          securityValue,
+        });
+
+        expect(filteringPathSpy).toHaveBeenCalledTimes(1);
+        expect(filteringPathSpy).toHaveBeenCalledWith(
+          /api_key([^&#]+)/g,
+          `api_key=${HIDDEN_CREDENTIALS_PLACEHOLDER}`
+        );
+      });
+    });
+  });
 
   describe('removeCredentials', () => {
     describe('when removing apikey', () => {
@@ -253,7 +368,7 @@ describe('SuperfaceTest', () => {
           baseUrl: 'https://localhost',
         });
 
-        expect(definition).toMatchObject({
+        expect(definition).toEqual({
           scope: 'https://localhost',
           path: '/get?text=123',
           method: 'GET',
@@ -287,7 +402,7 @@ describe('SuperfaceTest', () => {
           baseUrl: 'https://localhost',
         });
 
-        expect(definition).toMatchObject({
+        expect(definition).toEqual({
           scope: 'https://localhost',
           path: '/get?text=123',
           method: 'GET',
@@ -318,7 +433,7 @@ describe('SuperfaceTest', () => {
           baseUrl: 'https://localhost',
         });
 
-        expect(definition).toMatchObject({
+        expect(definition).toEqual({
           scope: 'https://localhost',
           path: `/get/${HIDDEN_CREDENTIALS_PLACEHOLDER}?text=123`,
           method: 'GET',
@@ -346,7 +461,7 @@ describe('SuperfaceTest', () => {
           baseUrl: 'https://localhost',
         });
 
-        expect(definition).toMatchObject({
+        expect(definition).toEqual({
           scope: 'https://localhost',
           path: `/get?api_key=${HIDDEN_CREDENTIALS_PLACEHOLDER}&text=123`,
           method: 'GET',
@@ -378,7 +493,7 @@ describe('SuperfaceTest', () => {
           baseUrl: 'https://localhost',
         });
 
-        expect(definition).toMatchObject({
+        expect(definition).toEqual({
           scope: 'https://localhost',
           path: '/get?text=123',
           method: 'GET',
@@ -413,7 +528,7 @@ describe('SuperfaceTest', () => {
           baseUrl: 'https://localhost',
         });
 
-        expect(definition).toMatchObject({
+        expect(definition).toEqual({
           scope: 'https://localhost',
           path: '/get?text=123',
           method: 'GET',
