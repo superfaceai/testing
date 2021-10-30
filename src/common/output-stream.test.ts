@@ -10,9 +10,9 @@ jest.mock('./io', () => ({
   streamEnd: jest.fn(),
 }));
 
-describe('OutputStream', () => {
-  const WORKING_DIR = join('fixtures', 'io');
+const WORKING_DIR = join('fixtures', 'io');
 
+describe('OutputStream', () => {
   let INITIAL_CWD: string;
 
   beforeAll(async () => {
@@ -46,6 +46,7 @@ describe('OutputStream', () => {
     it('calls streamEnd correctly', async () => {
       const outputStream = new OutputStream('test/test.json', { dirs: true });
       await outputStream.cleanup();
+
       expect(streamEnd).toHaveBeenCalledTimes(1);
       expect(streamEnd).toHaveBeenCalledWith(outputStream.stream);
     }, 10000);
@@ -56,6 +57,7 @@ describe('OutputStream', () => {
       await OutputStream.writeOnce('test/test.json', 'testData', {
         dirs: true,
       });
+      
       expect(streamWrite).toHaveBeenCalledTimes(1);
       expect(streamWrite).toHaveBeenCalledWith(expect.anything(), 'testData');
       expect(streamEnd).toHaveBeenCalledTimes(1);

@@ -50,48 +50,64 @@ describe('errors', () => {
       'BoundProfileProvider'
     );
 
-    it('throws in correct format', () => {
-      expect(() => {
-        throw errorClient;
-      }).toThrow('Undefined Client');
+    describe('throws in correct format', () => {
+      it('for Client', () => {
+        expect(() => {
+          throw errorClient;
+        }).toThrow('Undefined Client');
+      });
 
-      expect(() => {
-        throw errorProfile;
-      }).toThrow('Undefined Profile');
+      it('for Profile', () => {
+        expect(() => {
+          throw errorProfile;
+        }).toThrow('Undefined Profile');
+      });
 
-      expect(() => {
-        throw errorProvider;
-      }).toThrow('Undefined Provider');
+      it('for Provider', () => {
+        expect(() => {
+          throw errorProvider;
+        }).toThrow('Undefined Provider');
+      });
 
-      expect(() => {
-        throw errorUseCase;
-      }).toThrow('Undefined UseCase');
+      it('for UseCase', () => {
+        expect(() => {
+          throw errorUseCase;
+        }).toThrow('Undefined UseCase');
+      });
 
-      expect(() => {
-        throw errorBoundProfileProvider;
-      }).toThrow('Undefined BoundProfileProvider');
+      it('for BoundProfileProvider', () => {
+        expect(() => {
+          throw errorBoundProfileProvider;
+        }).toThrow('Undefined BoundProfileProvider');
+      });
     });
 
-    it('returns correct format', () => {
-      expect(errorClient.toString()).toEqual(
-        'ComponentUndefinedError: Undefined Client'
-      );
-
-      expect(errorProfile.toString()).toEqual(
-        'ComponentUndefinedError: Undefined Profile'
-      );
-
-      expect(errorProvider.toString()).toEqual(
-        'ComponentUndefinedError: Undefined Provider'
-      );
-
-      expect(errorUseCase.toString()).toEqual(
-        'ComponentUndefinedError: Undefined UseCase'
-      );
-
-      expect(errorBoundProfileProvider.toString()).toEqual(
-        'ComponentUndefinedError: Undefined BoundProfileProvider'
-      );
+    describe('returns correct format', () => {
+      it('for Client', () => {
+        expect(errorClient.toString()).toEqual(
+          'ComponentUndefinedError: Undefined Client'
+        );
+      });
+      it('for Profile', () => {
+        expect(errorProfile.toString()).toEqual(
+          'ComponentUndefinedError: Undefined Profile'
+        );
+      });
+      it('for Provider', () => {
+        expect(errorProvider.toString()).toEqual(
+          'ComponentUndefinedError: Undefined Provider'
+        );
+      });
+      it('for UseCase', () => {
+        expect(errorUseCase.toString()).toEqual(
+          'ComponentUndefinedError: Undefined UseCase'
+        );
+      });
+      it('for BoundProfileProvider', () => {
+        expect(errorBoundProfileProvider.toString()).toEqual(
+          'ComponentUndefinedError: Undefined BoundProfileProvider'
+        );
+      });
     });
   });
 
@@ -116,32 +132,44 @@ describe('errors', () => {
     const missingProvider = new InstanceMissingError('Provider');
     const missingUseCase = new InstanceMissingError('UseCase');
 
-    it('throws in correct format', () => {
-      expect(() => {
-        throw missingProfile;
-      }).toThrow('Should be Profile instance.');
+    describe('throws in correct format', () => {
+      it('for Profile', () => {
+        expect(() => {
+          throw missingProfile;
+        }).toThrow('Should be Profile instance.');
+      });
 
-      expect(() => {
-        throw missingProvider;
-      }).toThrow('Should be Provider instance.');
+      it('for Provider', () => {
+        expect(() => {
+          throw missingProvider;
+        }).toThrow('Should be Provider instance.');
+      });
 
-      expect(() => {
-        throw missingUseCase;
-      }).toThrow('Should be UseCase instance.');
+      it('for UseCase', () => {
+        expect(() => {
+          throw missingUseCase;
+        }).toThrow('Should be UseCase instance.');
+      });
     });
 
-    it('returns correct format', () => {
-      expect(missingProfile.toString()).toEqual(
-        'InstanceMissingError: Should be Profile instance.'
-      );
+    describe('returns correct format', () => {
+      it('for profile', () => {
+        expect(missingProfile.toString()).toEqual(
+          'InstanceMissingError: Should be Profile instance.'
+        );
+      });
 
-      expect(missingProvider.toString()).toEqual(
-        'InstanceMissingError: Should be Provider instance.'
-      );
+      it('for Provider', () => {
+        expect(missingProvider.toString()).toEqual(
+          'InstanceMissingError: Should be Provider instance.'
+        );
+      });
 
-      expect(missingUseCase.toString()).toEqual(
-        'InstanceMissingError: Should be UseCase instance.'
-      );
+      it('for UseCase', () => {
+        expect(missingUseCase.toString()).toEqual(
+          'InstanceMissingError: Should be UseCase instance.'
+        );
+      });
     });
   });
 

@@ -46,11 +46,22 @@ yarn add -D @superfaceai/testing-lib
 
 ## Usage
 
-To test Superface capabilities, initialize a new `SuperfaceTest` instance and call its method `run()` with corresponding superface config.
+To test Superface capabilities, initialize a new `SuperfaceTest` instance and call its method `run()` with superface configuration.
 
-Superface config should contain `profile`, `provider` and `useCase`. You can enter them either in string format (as ids of corresponding components) or as instances of corresponding components.
+Superface configuration should contain `profile`, `provider` and `useCase`. You can enter them either in string format (as ids of corresponding components) or as instances of corresponding components. Along side profile, provider and usecase, you can also enter your `SuperfaceClient` instance. (More about Superface client [here](https://github.com/superfaceai/one-sdk-js#initializing-the-onesdk-client))
 
-Along side profile, provider and usecase, you can also enter your `SuperfaceClient` instance. (More about Superface client [here](https://github.com/superfaceai/one-sdk-js#initializing-the-onesdk-client))
+```typescript
+import { SuperfaceClient } from '@superfaceai/one-sdk';
+import { SuperfaceTest } from '@superfaceai/testing-lib';
+
+const client = new SuperfaceClient();
+const superface = new SuperfaceTest({
+  client,
+  profile: 'profile',
+  provider: 'provider',
+  useCase: 'useCase',
+});
+```
 
 ### Initializing SuperfaceTest instance
 
@@ -64,21 +75,23 @@ without any arguments:
 const superface = new SuperfaceTest();
 ```
 
-with superface config:
+with superface configuration:
 
 ```typescript
 const client = new SuperfaceClient();
 const profile = await client.getProfile('profile');
 const provider = await client.getProvider('provider');
+const useCase = await profile.getUseCase('useCase');
+
 const superface = new SuperfaceTest({
   client,
   profile,
   provider,
-  useCase: 'useCase',
+  useCase,
 });
 ```
 
-with superface and nock config:
+with superface and nock configuration:
 
 ```typescript
 const superface = new SuperfaceTest(
@@ -95,13 +108,31 @@ const superface = new SuperfaceTest(
 );
 ```
 
-Given superface config is stored in class and used later in `run()` method. You can also pass in instance of `SuperfaceClient`, but it is not required as it gets initialized inside library if not provided.
+Given superface configuration is stored in class and used later in `run()` method. You can also pass in instance of `SuperfaceClient`, but it is not required as it gets initialized inside library if not provided.
 
-Given nock config is also stored in class. Property `path` and `fixture` is used to configure location of recordings and property `enableReqheadersRecording` is used to enable/disable recording of request headers (This is turned off by default).
+Given nock configuration is also stored in class. Property `path` and `fixture` is used to configure location of recordings and property `enableReqheadersRecording` is used to enable/disable recording of request headers (This is turned off by default).
 
 ### Running
 
-To test your capabilities, use method `run()`, which encapsulates nock recording and usecase perform. It expects superface configuration (similar to initializing `SuperfaceTest` class) and input.
+To test your capabilities, use method `run()`, which encapsulates nock recording and usecase perform. It expects superface configuration (similar to initializing `SuperfaceTest` class) and input. You don't need to specify profile, provider or useCase if you already specified them when initializing `SuperfaceTest` class.
+
+```typescript
+import { SuperfaceTest } from '@superfaceai/testing-lib';
+
+const superface = new SuperfaceTest({
+  profile: 'profile',
+  provider: 'provider',
+  useCase: 'useCase',
+});
+
+superface.run({
+  input: {
+    some: 'input',
+  },
+});
+```
+
+Example with jest:
 
 ```typescript
 import { SuperfaceTest } from '@superfaceai/testing-lib';
@@ -128,7 +159,7 @@ describe('test', () => {
 });
 ```
 
-Method `run()` will transform all components that are represented by string to corresponding instances, check whether map is locally present based on super.json, loads recording or starts recording (based on enviromental variable `SUPERFACE_LIVE_API`, learn more in [recording](#recording)), runs perform for given usecase, ends the recording and returns **result** or **error** value from perform.
+Method `run()` will transform all components that are represented by string to corresponding instances, check whether map is locally present based on super.json, loads recording or starts recording, runs perform for given usecase, ends the recording and returns **result** or **error** value from perform.
 
 You can then use this return value to test your capabilities (We recommend you to use jest [snapshot testing](https://jestjs.io/docs/snapshot-testing) as seen in example above).
 

@@ -41,68 +41,82 @@ describe('SuperfaceTest', () => {
   });
 
   describe('assertsPreparedConfig', () => {
-    it('throws if configuration has string representation of some component', async () => {
-      const superfaceTest1 = {
-        ...(await getMockedSfConfig()),
-        profile: 'some-profile',
-      };
+    describe('throws if configuration has string representation of some component', () => {
+      it('profile instance missing', async () => {
+        const superface = {
+          ...(await getMockedSfConfig()),
+          profile: 'some-profile',
+        };
 
-      expect(() => {
-        assertsPreparedConfig(superfaceTest1);
-      }).toThrowError(new InstanceMissingError('Profile'));
+        expect(() => {
+          assertsPreparedConfig(superface);
+        }).toThrowError(new InstanceMissingError('Profile'));
+      });
 
-      const superfaceTest2 = {
-        ...(await getMockedSfConfig()),
-        provider: 'some-provider',
-      };
+      it('provider instance missing', async () => {
+        const superface = {
+          ...(await getMockedSfConfig()),
+          provider: 'some-provider',
+        };
 
-      expect(() => {
-        assertsPreparedConfig(superfaceTest2);
-      }).toThrow(new InstanceMissingError('Provider'));
+        expect(() => {
+          assertsPreparedConfig(superface);
+        }).toThrow(new InstanceMissingError('Provider'));
+      });
 
-      const superfaceTest3 = {
-        ...(await getMockedSfConfig()),
-        useCase: 'some-useCase',
-      };
+      it('usecase instance missing', async () => {
+        const superface = {
+          ...(await getMockedSfConfig()),
+          useCase: 'some-useCase',
+        };
 
-      expect(() => {
-        assertsPreparedConfig(superfaceTest3);
-      }).toThrow(new InstanceMissingError('UseCase'));
+        expect(() => {
+          assertsPreparedConfig(superface);
+        }).toThrow(new InstanceMissingError('UseCase'));
+      });
     });
 
-    it('throws if configuration has some undefined components', async () => {
-      const superfaceTest1 = {};
+    describe('throws if configuration has some undefined components', () => {
+      it('client missing', () => {
+        const superface = {};
 
-      expect(() => {
-        assertsPreparedConfig(superfaceTest1);
-      }).toThrowError(new ComponentUndefinedError('Client'));
+        expect(() => {
+          assertsPreparedConfig(superface);
+        }).toThrowError(new ComponentUndefinedError('Client'));
+      });
 
-      const superfaceTest2 = {
-        client: new SuperfaceClientMock(),
-      };
+      it('profile missing', () => {
+        const superface = {
+          client: new SuperfaceClientMock(),
+        };
 
-      expect(() => {
-        assertsPreparedConfig(superfaceTest2);
-      }).toThrowError(new ComponentUndefinedError('Profile'));
+        expect(() => {
+          assertsPreparedConfig(superface);
+        }).toThrowError(new ComponentUndefinedError('Profile'));
+      });
 
-      const superfaceTest3 = {
-        client: new SuperfaceClientMock(),
-        profile: await getProfileMock('profile'),
-      };
+      it('provider missing', async () => {
+        const superface = {
+          client: new SuperfaceClientMock(),
+          profile: await getProfileMock('profile'),
+        };
 
-      expect(() => {
-        assertsPreparedConfig(superfaceTest3);
-      }).toThrow(new ComponentUndefinedError('Provider'));
+        expect(() => {
+          assertsPreparedConfig(superface);
+        }).toThrow(new ComponentUndefinedError('Provider'));
+      });
 
-      const superfaceTest4 = {
-        client: new SuperfaceClientMock(),
-        profile: await getProfileMock('profile'),
-        provider: await getProviderMock('provider'),
-      };
+      it('usecase missing', async () => {
+        const superface = {
+          client: new SuperfaceClientMock(),
+          profile: await getProfileMock('profile'),
+          provider: await getProviderMock('provider'),
+        };
 
-      expect(() => {
-        assertsPreparedConfig(superfaceTest4);
-      }).toThrow(new ComponentUndefinedError('UseCase'));
+        expect(() => {
+          assertsPreparedConfig(superface);
+        }).toThrow(new ComponentUndefinedError('UseCase'));
+      });
     });
 
     it('does nothing when every instance is present', async () => {
@@ -115,7 +129,7 @@ describe('SuperfaceTest', () => {
   });
 
   describe('isProfileProviderLocal', () => {
-    it('returns false when provider is not local', async () => {
+    it('returns false when provider is not local', () => {
       const mockSuperJson = new SuperJson({
         profiles: {
           profile: {
@@ -137,7 +151,7 @@ describe('SuperfaceTest', () => {
       ).toBeFalsy();
     });
 
-    it('returns true when profile provider is local', async () => {
+    it('returns true when profile provider is local', () => {
       const mockSuperJson = new SuperJson({
         profiles: {
           profile: {
@@ -234,14 +248,14 @@ describe('SuperfaceTest', () => {
 
   describe('loadCredentials', () => {
     describe('when loading apikey', () => {
-      it('loads apikey from body', async () => {
+      it('loads apikey from body', () => {
         const securityScheme: SecurityScheme = {
           id: 'api-key',
           type: SecurityType.APIKEY,
           in: ApiKeyPlacement.BODY,
           name: 'api_key',
         };
-        const securityValue = { id: 'api-key', apikey: 'XXX' };
+        const securityValue = { id: 'api-key', apikey: 'secret' };
         const mockedScopes = define([
           {
             scope: 'https://localhost',
@@ -251,7 +265,7 @@ describe('SuperfaceTest', () => {
             response: { some: 'data' },
             body: {
               whatever: {
-                my_api_key: 'XXX',
+                my_api_key: 'secret',
               },
             },
           },
@@ -270,24 +284,24 @@ describe('SuperfaceTest', () => {
 
         expect(filteringBodySpy).toHaveBeenCalledTimes(1);
         expect(filteringBodySpy).toHaveBeenCalledWith(
-          /XXX/g,
+          /secret/g,
           HIDDEN_CREDENTIALS_PLACEHOLDER
         );
       });
 
-      it('loads apikey from path', async () => {
+      it('loads apikey from path', () => {
         const securityScheme: SecurityScheme = {
           id: 'api-key',
           type: SecurityType.APIKEY,
           in: ApiKeyPlacement.PATH,
           name: 'api_key',
         };
-        const securityValue = { id: 'api-key', apikey: 'XXX' };
+        const securityValue = { id: 'api-key', apikey: 'secret' };
         const mockedScopes = define([
           {
             scope: 'https://localhost',
             method: 'GET',
-            path: '/path/XXX',
+            path: '/path/secret',
             status: 200,
             response: { some: 'data' },
           },
@@ -303,24 +317,24 @@ describe('SuperfaceTest', () => {
 
         expect(filteringPathSpy).toHaveBeenCalledTimes(1);
         expect(filteringPathSpy).toHaveBeenCalledWith(
-          /XXX/g,
+          /secret/g,
           HIDDEN_CREDENTIALS_PLACEHOLDER
         );
       });
 
-      it('loads apikey from query', async () => {
+      it('loads apikey from query', () => {
         const securityScheme: SecurityScheme = {
           id: 'api-key',
           type: SecurityType.APIKEY,
           in: ApiKeyPlacement.QUERY,
           name: 'api_key',
         };
-        const securityValue = { id: 'api-key', apikey: 'XXX' };
+        const securityValue = { id: 'api-key', apikey: 'secret' };
         const mockedScopes = define([
           {
             scope: 'https://localhost',
             method: 'GET',
-            path: '/path?api_key=XXX',
+            path: '/path?api_key=secret',
             status: 200,
             response: { some: 'data' },
           },
@@ -352,7 +366,7 @@ describe('SuperfaceTest', () => {
           method: 'GET',
           status: 200,
           reqheaders: {
-            ['api_key']: 'XXX',
+            ['api_key']: 'secret',
           },
         };
 
@@ -364,7 +378,7 @@ describe('SuperfaceTest', () => {
             in: ApiKeyPlacement.HEADER,
             name: 'api_key',
           },
-          securityValue: { id: 'api-key', apikey: 'XXX' },
+          securityValue: { id: 'api-key', apikey: 'secret' },
           baseUrl: 'https://localhost',
         });
 
@@ -386,7 +400,7 @@ describe('SuperfaceTest', () => {
           method: 'GET',
           status: 200,
           body: {
-            my_api_key: 'XXX',
+            my_api_key: 'secret',
           },
         };
 
@@ -398,7 +412,7 @@ describe('SuperfaceTest', () => {
             in: ApiKeyPlacement.BODY,
             name: 'api_key',
           },
-          securityValue: { id: 'api-key', apikey: 'XXX' },
+          securityValue: { id: 'api-key', apikey: 'secret' },
           baseUrl: 'https://localhost',
         });
 
@@ -416,7 +430,7 @@ describe('SuperfaceTest', () => {
       it('removes apikey from path', () => {
         const definition: RecordingDefinition = {
           scope: 'https://localhost',
-          path: '/get/XXX?text=123',
+          path: '/get/secret?text=123',
           method: 'GET',
           status: 200,
         };
@@ -429,7 +443,7 @@ describe('SuperfaceTest', () => {
             in: ApiKeyPlacement.PATH,
             name: 'api_key',
           },
-          securityValue: { id: 'api-key', apikey: 'XXX' },
+          securityValue: { id: 'api-key', apikey: 'secret' },
           baseUrl: 'https://localhost',
         });
 
@@ -444,7 +458,7 @@ describe('SuperfaceTest', () => {
       it('removes apikey from query', () => {
         const definition: RecordingDefinition = {
           scope: 'https://localhost',
-          path: '/get?api_key=XXX&text=123',
+          path: '/get?api_key=secret&text=123',
           method: 'GET',
           status: 200,
         };
@@ -457,7 +471,7 @@ describe('SuperfaceTest', () => {
             in: ApiKeyPlacement.QUERY,
             name: 'api_key',
           },
-          securityValue: { id: 'api-key', apikey: 'XXX' },
+          securityValue: { id: 'api-key', apikey: 'secret' },
           baseUrl: 'https://localhost',
         });
 
@@ -478,7 +492,7 @@ describe('SuperfaceTest', () => {
           method: 'GET',
           status: 200,
           reqheaders: {
-            ['Authorization']: 'Basic XXX',
+            ['Authorization']: 'Basic secret',
           },
         };
 
@@ -513,7 +527,7 @@ describe('SuperfaceTest', () => {
           method: 'GET',
           status: 200,
           reqheaders: {
-            ['Authorization']: 'Bearer XXX',
+            ['Authorization']: 'Bearer secret',
           },
         };
 
@@ -524,7 +538,7 @@ describe('SuperfaceTest', () => {
             type: SecurityType.HTTP,
             scheme: HttpScheme.BEARER,
           },
-          securityValue: { id: 'bearer', token: 'XXX' },
+          securityValue: { id: 'bearer', token: 'secret' },
           baseUrl: 'https://localhost',
         });
 
