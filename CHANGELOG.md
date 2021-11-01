@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.3-beta.11] - 2021-11-01
+
 ## 0.0.3-beta.10 - 2021-11-01
 ### Added
 - One-SDK to peerDependencies and devDependencies
@@ -22,4 +24,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Modules for io, formatting and errors.
 - SuperfaceTest class
 
-[Unreleased]: https://github.com/superfaceai/testing-lib/compare/v0.0.3-beta.10...HEAD
+[Unreleased]: https://github.com/superfaceai/testing-lib/compare/v0.0.3-beta.11...HEAD
+[0.0.3-beta.11]: https://github.com/superfaceai/testing-lib/compare/v0.0.3-beta.10...v0.0.3-beta.11
