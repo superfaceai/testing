@@ -1,3 +1,4 @@
+import { ApiKeyPlacement, SecurityType } from '@superfaceai/ast';
 import {
   err,
   MapASTError,
@@ -28,6 +29,7 @@ import {
   SuperfaceClientMock,
 } from './superface.mock';
 import { SuperfaceTest } from './superface-test';
+import { HIDDEN_CREDENTIALS_PLACEHOLDER } from './superface-test.utils';
 
 /* eslint-disable @typescript-eslint/unbound-method */
 
@@ -203,6 +205,57 @@ describe('SuperfaceTest', () => {
             {
               scope: 'https://localhost',
               path: '/',
+              status: 200,
+              response: {
+                some: 'data',
+              },
+            },
+          ]
+        );
+      });
+
+      it('writes and restores modified recordings when security is used', async () => {
+        superfaceTest = new SuperfaceTest(
+          await getMockedSfConfig({
+            baseUrl: 'https://localhost',
+            securitySchemes: [
+              {
+                id: 'api-key',
+                type: 'apiKey' as SecurityType.APIKEY,
+                in: 'query' as ApiKeyPlacement.QUERY,
+                name: 'api_key',
+              },
+            ],
+            securityValues: [{ id: 'api-key', apikey: 'secret' }],
+          })
+        );
+
+        const writeRecordingsSpy = mocked(writeRecordings);
+        const playSpy = jest.spyOn(recorder, 'play').mockReturnValueOnce([
+          {
+            scope: 'https://localhost',
+            path: '/?api_key=secret',
+            status: 200,
+            response: { some: 'data' },
+          },
+        ]);
+        const endRecSpy = jest.spyOn(nock, 'restore');
+
+        mocked(exists).mockResolvedValue(true);
+        mocked(matchWildCard).mockReturnValueOnce(true);
+
+        await superfaceTest.run({ input: {} });
+
+        expect(playSpy).toHaveBeenCalledTimes(1);
+        expect(endRecSpy).toHaveBeenCalledTimes(1);
+
+        expect(writeRecordingsSpy).toHaveBeenCalledTimes(1);
+        expect(writeRecordingsSpy).toHaveBeenCalledWith(
+          expect.stringContaining(DEFAULT_RECORDING_PATH),
+          [
+            {
+              scope: 'https://localhost',
+              path: `/?api_key=${HIDDEN_CREDENTIALS_PLACEHOLDER}`,
               status: 200,
               response: {
                 some: 'data',

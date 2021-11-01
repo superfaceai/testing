@@ -1,12 +1,10 @@
 import {
   ApiKeyPlacement,
-  isApiKeySecurityScheme,
+  HttpScheme,
   isApiKeySecurityValues,
-  isBasicAuthSecurityScheme,
-  isBearerTokenSecurityScheme,
-  isDigestSecurityScheme,
   NormalizedSuperJsonDocument,
   SecurityScheme,
+  SecurityType,
   SecurityValues,
 } from '@superfaceai/ast';
 import {
@@ -229,7 +227,7 @@ export function loadCredentials({
   scheme: SecurityScheme;
   securityValue?: SecurityValues;
 }): void {
-  if (isApiKeySecurityScheme(scheme)) {
+  if (scheme.type === SecurityType.APIKEY) {
     const schemeName = scheme.name ?? AUTH_HEADER_NAME;
     let loadedCredential: string | undefined;
 
@@ -261,7 +259,10 @@ export function loadCredentials({
         );
       }
     }
-  } else if (isDigestSecurityScheme(scheme)) {
+  } else if (
+    scheme.type === SecurityType.HTTP &&
+    scheme.scheme === HttpScheme.DIGEST
+  ) {
     throw new UnexpectedError('not implemented');
   }
 }
@@ -277,7 +278,7 @@ export function removeCredentials({
   securityValue?: SecurityValues;
   baseUrl: string;
 }): void {
-  if (isApiKeySecurityScheme(scheme)) {
+  if (scheme.type === SecurityType.APIKEY) {
     let loadedCredential: string | undefined;
 
     if (isApiKeySecurityValues(securityValue)) {
@@ -351,19 +352,28 @@ export function removeCredentials({
       definition.path =
         definitionPath.pathname + definitionPath.search + definitionPath.hash;
     }
-  } else if (isBasicAuthSecurityScheme(scheme)) {
+  } else if (
+    scheme.type === SecurityType.HTTP &&
+    scheme.scheme === HttpScheme.BASIC
+  ) {
     if (definition.reqheaders?.[AUTH_HEADER_NAME] !== undefined) {
       definition.reqheaders[
         AUTH_HEADER_NAME
       ] = `Basic ${HIDDEN_CREDENTIALS_PLACEHOLDER}`;
     }
-  } else if (isBearerTokenSecurityScheme(scheme)) {
+  } else if (
+    scheme.type === SecurityType.HTTP &&
+    scheme.scheme === HttpScheme.BEARER
+  ) {
     if (definition.reqheaders?.[AUTH_HEADER_NAME] !== undefined) {
       definition.reqheaders[
         AUTH_HEADER_NAME
       ] = `Bearer ${HIDDEN_CREDENTIALS_PLACEHOLDER}`;
     }
-  } else if (isDigestSecurityScheme(scheme)) {
+  } else if (
+    scheme.type === SecurityType.HTTP &&
+    scheme.scheme === HttpScheme.DIGEST
+  ) {
     throw new UnexpectedError('not implemented');
   }
 }
