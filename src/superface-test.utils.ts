@@ -1,10 +1,6 @@
 import {
-  ApiKeyPlacement,
-  HttpScheme,
-  isApiKeySecurityValues,
   NormalizedSuperJsonDocument,
   SecurityScheme,
-  SecurityType,
   SecurityValues,
 } from '@superfaceai/ast';
 import {
@@ -16,9 +12,7 @@ import {
   UnexpectedError,
   UseCase,
 } from '@superfaceai/one-sdk';
-import nock from 'nock/types';
 import { join as joinPath } from 'path';
-import { URL } from 'url';
 
 import {
   CompleteSuperfaceTestConfig,
@@ -32,6 +26,7 @@ import {
   SuperJsonLoadingFailedError,
   SuperJsonNotFoundError,
 } from './common/errors';
+import { loadCredentials, removeCredentials } from './nock.utils';
 
 /**
  * Asserts that entered sfConfig contains every component and
@@ -171,10 +166,6 @@ export async function getSuperJson(): Promise<SuperJson> {
   return superJsonResult.value;
 }
 
-export const HIDDEN_CREDENTIALS_PLACEHOLDER =
-  'credentials-removed-to-keep-them-secure';
-const AUTH_HEADER_NAME = 'Authorization';
-
 export function assertsDefinitionsAreNotStrings(
   definitions: string[] | RecordingDefinition[]
 ): asserts definitions is RecordingDefinition[] {
@@ -215,165 +206,5 @@ export function removeOrLoadCredentials({
         loadCredentials({ scope, scheme, securityValue });
       }
     }
-  }
-}
-
-export function loadCredentials({
-  scope,
-  scheme,
-  securityValue,
-}: {
-  scope: RecordingScope;
-  scheme: SecurityScheme;
-  securityValue?: SecurityValues;
-}): void {
-  if (scheme.type === SecurityType.APIKEY) {
-    const schemeName = scheme.name ?? AUTH_HEADER_NAME;
-    let loadedCredential: string | undefined;
-
-    if (isApiKeySecurityValues(securityValue)) {
-      if (securityValue.apikey.startsWith('$')) {
-        loadedCredential = process.env[securityValue.apikey.substr(1)];
-      } else {
-        loadedCredential = securityValue.apikey;
-      }
-    }
-
-    if (scheme.in === ApiKeyPlacement.BODY) {
-      if (loadedCredential !== undefined) {
-        scope.filteringRequestBody(
-          new RegExp(loadedCredential, 'g'),
-          HIDDEN_CREDENTIALS_PLACEHOLDER
-        );
-      }
-    } else if (scheme.in === ApiKeyPlacement.QUERY) {
-      scope.filteringPath(
-        new RegExp(schemeName + '([^&#]+)', 'g'),
-        `${schemeName}=${HIDDEN_CREDENTIALS_PLACEHOLDER}`
-      );
-    } else if (scheme.in === ApiKeyPlacement.PATH) {
-      if (loadedCredential !== undefined) {
-        scope.filteringPath(
-          new RegExp(loadedCredential, 'g'),
-          HIDDEN_CREDENTIALS_PLACEHOLDER
-        );
-      }
-    }
-  } else if (
-    scheme.type === SecurityType.HTTP &&
-    scheme.scheme === HttpScheme.DIGEST
-  ) {
-    throw new UnexpectedError('not implemented');
-  }
-}
-
-export function removeCredentials({
-  definition,
-  scheme,
-  securityValue,
-  baseUrl,
-}: {
-  definition: RecordingDefinition;
-  scheme: SecurityScheme;
-  securityValue?: SecurityValues;
-  baseUrl: string;
-}): void {
-  if (scheme.type === SecurityType.APIKEY) {
-    let loadedCredential: string | undefined;
-
-    if (isApiKeySecurityValues(securityValue)) {
-      if (securityValue.apikey.startsWith('$')) {
-        loadedCredential = process.env[securityValue.apikey.substr(1)];
-      } else {
-        loadedCredential = securityValue.apikey;
-      }
-    }
-
-    if (scheme.in === ApiKeyPlacement.HEADER) {
-      if (scheme.name !== undefined) {
-        if (definition.reqheaders?.[scheme.name] !== undefined) {
-          definition.reqheaders[scheme.name] = HIDDEN_CREDENTIALS_PLACEHOLDER;
-        }
-      } else {
-        if (definition.reqheaders?.['X-API-KEY'] !== undefined) {
-          definition.reqheaders['X-API-KEY'] = HIDDEN_CREDENTIALS_PLACEHOLDER;
-        }
-      }
-    } else if (scheme.in === ApiKeyPlacement.BODY) {
-      if (definition.body !== undefined) {
-        let body = JSON.stringify(definition.body, null, 2);
-
-        if (loadedCredential !== undefined) {
-          body = body.replace(
-            new RegExp(loadedCredential, 'g'),
-            HIDDEN_CREDENTIALS_PLACEHOLDER
-          );
-        }
-
-        definition.body = JSON.parse(body) as nock.RequestBodyMatcher;
-      }
-    } else {
-      const definitionPath = new URL(baseUrl + definition.path);
-
-      if (scheme.in === ApiKeyPlacement.PATH) {
-        if (loadedCredential !== undefined) {
-          definitionPath.pathname = definitionPath.pathname.replace(
-            new RegExp(loadedCredential, 'g'),
-            HIDDEN_CREDENTIALS_PLACEHOLDER
-          );
-        }
-      } else if (scheme.in === ApiKeyPlacement.QUERY) {
-        if (
-          scheme.name !== undefined &&
-          definitionPath.searchParams.has(scheme.name)
-        ) {
-          definitionPath.searchParams.set(
-            scheme.name,
-            HIDDEN_CREDENTIALS_PLACEHOLDER
-          );
-        } else if (loadedCredential !== undefined) {
-          for (const [
-            key,
-            queryValue,
-          ] of definitionPath.searchParams.entries()) {
-            if (queryValue.includes(loadedCredential)) {
-              definitionPath.searchParams.set(
-                key,
-                queryValue.replace(
-                  new RegExp(loadedCredential, 'g'),
-                  HIDDEN_CREDENTIALS_PLACEHOLDER
-                )
-              );
-            }
-          }
-        }
-      }
-
-      definition.path =
-        definitionPath.pathname + definitionPath.search + definitionPath.hash;
-    }
-  } else if (
-    scheme.type === SecurityType.HTTP &&
-    scheme.scheme === HttpScheme.BASIC
-  ) {
-    if (definition.reqheaders?.[AUTH_HEADER_NAME] !== undefined) {
-      definition.reqheaders[
-        AUTH_HEADER_NAME
-      ] = `Basic ${HIDDEN_CREDENTIALS_PLACEHOLDER}`;
-    }
-  } else if (
-    scheme.type === SecurityType.HTTP &&
-    scheme.scheme === HttpScheme.BEARER
-  ) {
-    if (definition.reqheaders?.[AUTH_HEADER_NAME] !== undefined) {
-      definition.reqheaders[
-        AUTH_HEADER_NAME
-      ] = `Bearer ${HIDDEN_CREDENTIALS_PLACEHOLDER}`;
-    }
-  } else if (
-    scheme.type === SecurityType.HTTP &&
-    scheme.scheme === HttpScheme.DIGEST
-  ) {
-    throw new UnexpectedError('not implemented');
   }
 }

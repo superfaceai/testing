@@ -18,7 +18,7 @@ export function getFixtureName(sfConfig: CompleteSuperfaceTestConfig): string {
   );
 }
 
-function testPayload(payload: string, match: string): boolean {
+function isValidPayload(payload: string, match: string): boolean {
   if (payload === '*') {
     return true;
   }
@@ -68,19 +68,19 @@ export function matchWildCard(
     superfaceEnv.split(':');
 
   if (profilePayload && profilePayload !== '') {
-    if (!testPayload(profilePayload, profile.configuration.id)) {
+    if (!isValidPayload(profilePayload, profile.configuration.id)) {
       return false;
     }
   }
 
   if (providerPayload && providerPayload !== '') {
-    if (!testPayload(providerPayload, provider.configuration.name)) {
+    if (!isValidPayload(providerPayload, provider.configuration.name)) {
       return false;
     }
   }
 
   if (usecasePayload && usecasePayload !== '') {
-    if (!testPayload(usecasePayload, useCase.name)) {
+    if (!isValidPayload(usecasePayload, useCase.name)) {
       return false;
     }
   }

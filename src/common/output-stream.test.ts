@@ -57,7 +57,7 @@ describe('OutputStream', () => {
       await OutputStream.writeOnce('test/test.json', 'testData', {
         dirs: true,
       });
-      
+
       expect(streamWrite).toHaveBeenCalledTimes(1);
       expect(streamWrite).toHaveBeenCalledWith(expect.anything(), 'testData');
       expect(streamEnd).toHaveBeenCalledTimes(1);

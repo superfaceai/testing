@@ -7,7 +7,7 @@
 
 <img src="https://github.com/superfaceai/testing-lib/blob/main/docs/LogoGreen.png" alt="superface logo" width="150" height="150">
 
-This library enables easy testing of Superface capabilities with `SuperfaceTest` class.
+This library enables easy testing of local Superface capabilities with `SuperfaceTest` class. It uses these capabilities either with live HTTP traffic or with recorded traffic (More about recording HTTP traffic in section [recording](#recording)).
 
 ## Table of Contents
 
@@ -46,22 +46,7 @@ yarn add -D @superfaceai/testing-lib
 
 ## Usage
 
-To test Superface capabilities, initialize a new `SuperfaceTest` instance and call its method `run()` with superface configuration.
-
-Superface configuration should contain `profile`, `provider` and `useCase`. You can enter them either in string format (as ids of corresponding components) or as instances of corresponding components. Along side profile, provider and usecase, you can also enter your `SuperfaceClient` instance. (More about Superface client [here](https://github.com/superfaceai/one-sdk-js#initializing-the-onesdk-client))
-
-```typescript
-import { SuperfaceClient } from '@superfaceai/one-sdk';
-import { SuperfaceTest } from '@superfaceai/testing-lib';
-
-const client = new SuperfaceClient();
-const superface = new SuperfaceTest({
-  client,
-  profile: 'profile',
-  provider: 'provider',
-  useCase: 'useCase',
-});
-```
+To test Superface capabilities, initialize a new `SuperfaceTest` instance and call its method `run()` with test configuration and input specific for your test run. Test configuration should contain `profile`, `provider` and `useCase`. You can enter them either in string format (as ids of corresponding components) or as instances of corresponding components (more about them in [One-SDK docs](https://github.com/superfaceai/one-sdk-js#using-the-onesdk) or in [Comlink reference](https://superface.ai/docs/comlink)). 
 
 ### Initializing SuperfaceTest instance
 
@@ -69,29 +54,30 @@ const superface = new SuperfaceTest({
 import { SuperfaceTest } from '@superfaceai/testing-lib';
 ```
 
-without any arguments:
+**without any arguments:**
 
 ```typescript
 const superface = new SuperfaceTest();
 ```
 
-with superface configuration:
+**with superface configuration:**
 
 ```typescript
-const client = new SuperfaceClient();
 const profile = await client.getProfile('profile');
 const provider = await client.getProvider('provider');
 const useCase = await profile.getUseCase('useCase');
 
 const superface = new SuperfaceTest({
-  client,
   profile,
   provider,
   useCase,
 });
 ```
 
-with superface and nock configuration:
+Given test configuration is stored in class and used later in `run()` method. 
+
+
+**with superface and nock configuration:**
 
 ```typescript
 const superface = new SuperfaceTest(
@@ -108,13 +94,11 @@ const superface = new SuperfaceTest(
 );
 ```
 
-Given superface configuration is stored in class and used later in `run()` method. You can also pass in instance of `SuperfaceClient`, but it is not required as it gets initialized inside library if not provided.
-
 Given nock configuration is also stored in class. Property `path` and `fixture` is used to configure location of recordings and property `enableReqheadersRecording` is used to enable/disable recording of request headers (This is turned off by default).
 
 ### Running
 
-To test your capabilities, use method `run()`, which encapsulates nock recording and usecase perform. It expects superface configuration (similar to initializing `SuperfaceTest` class) and input. You don't need to specify profile, provider or useCase if you already specified them when initializing `SuperfaceTest` class.
+To test your capabilities, use method `run()`, which encapsulates nock recording and UseCase perform. It expects test configuration (similar to initializing `SuperfaceTest` class) and input. You don't need to specify `profile`, `provider` or `useCase` if you already specified them when initializing `SuperfaceTest` class.
 
 ```typescript
 import { SuperfaceTest } from '@superfaceai/testing-lib';
@@ -159,15 +143,19 @@ describe('test', () => {
 });
 ```
 
-Method `run()` will transform all components that are represented by string to corresponding instances, check whether map is locally present based on super.json, loads recording or starts recording, runs perform for given usecase, ends the recording and returns **result** or **error** value from perform.
+Method `run()` will initialize Superface client, transform all components that are represented by string to corresponding instances, check whether map is locally present based on super.json, runs perform for given usecase and returns **result** or **error** value from perform (More about perform in [One-SDK docs](https://github.com/superfaceai/one-sdk-js#performing-the-use-case)).
 
 You can then use this return value to test your capabilities (We recommend you to use jest [snapshot testing](https://jestjs.io/docs/snapshot-testing) as seen in example above).
 
 ### Recording
 
-Testing library will decide to record HTTP traffic based on environmental variable `SUPERFACE_LIVE_API` and current superface configuration.
+Method `run()` also records HTTP traffic with `nock` library during UseCase perform and saves recorded traffic to json file. Before perform, library will decide to record HTTP traffic based on environmental variable `SUPERFACE_LIVE_API` and current test configuration.
 
-Its format is: `<profile>:<provider>:<usecase>` where each component is separated by `:` and can start or/and end with wildcard `*`.
+Variable `SUPERFACE_LIVE_API` specifies configuration which needs to be matched to record HTTP traffic.
+
+Its format is: `<profile>:<provider>:<UseCase>` where each component is optional and separated by `:`. It can start or/and end with wildcard `*`.
+
+It will be then compared to current test configuration and start recording if they match.
 
 For example in method `run()` bellow, to record HTTP traffic, `SUPERFACE_LIVE_API` has to be one of following:
 

@@ -21,6 +21,7 @@ import {
 import { matchWildCard } from './common/format';
 import { exists } from './common/io';
 import { writeRecordings } from './common/output-stream';
+import { HIDDEN_CREDENTIALS_PLACEHOLDER } from './nock.utils';
 import {
   getMockedSfConfig,
   getProfileMock,
@@ -29,7 +30,6 @@ import {
   SuperfaceClientMock,
 } from './superface.mock';
 import { SuperfaceTest } from './superface-test';
-import { HIDDEN_CREDENTIALS_PLACEHOLDER } from './superface-test.utils';
 
 /* eslint-disable @typescript-eslint/unbound-method */
 
