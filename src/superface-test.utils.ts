@@ -26,7 +26,12 @@ import {
   SuperJsonLoadingFailedError,
   SuperJsonNotFoundError,
 } from './common/errors';
-import { loadCredentials, removeCredentials } from './nock.utils';
+import {
+  loadCredentialsToScope,
+  loadParamsToScope,
+  removeCredentialsFromDefinition,
+  removeParamsFromDefinition,
+} from './nock.utils';
 
 /**
  * Asserts that entered sfConfig contains every component and
@@ -176,35 +181,57 @@ export function assertsDefinitionsAreNotStrings(
   }
 }
 
-export function removeOrLoadCredentials({
+export function loadCredentials({
+  securitySchemes,
+  securityValues,
+  scopes,
+  integrationParameters,
+}: {
+  securitySchemes: SecurityScheme[];
+  securityValues: SecurityValues[];
+  scopes: RecordingScope[];
+  integrationParameters?: Record<string, string>;
+}): void {
+  for (const scope of scopes) {
+    loadParamsToScope(scope, integrationParameters);
+
+    for (const scheme of securitySchemes) {
+      const securityValue = securityValues.find(val => val.id === scheme.id);
+
+      loadCredentialsToScope({
+        scope,
+        scheme,
+        securityValue,
+      });
+    }
+  }
+}
+
+export function removeCredentials({
   securitySchemes,
   securityValues,
   baseUrl,
-  payload,
+  definitions,
+  integrationParameters,
 }: {
   securitySchemes: SecurityScheme[];
   securityValues: SecurityValues[];
   baseUrl: string;
-  payload: {
-    definitions?: RecordingDefinition[];
-    scopes?: RecordingScope[];
-  };
+  definitions: RecordingDefinition[];
+  integrationParameters?: Record<string, string>;
 }): void {
-  if (payload.definitions) {
-    for (const definition of payload.definitions) {
-      for (const scheme of securitySchemes) {
-        const securityValue = securityValues.find(val => val.id === scheme.id);
-        removeCredentials({ definition, scheme, securityValue, baseUrl });
-      }
-    }
-  }
+  for (const definition of definitions) {
+    removeParamsFromDefinition(definition, integrationParameters, baseUrl);
 
-  if (payload.scopes) {
-    for (const scope of payload.scopes) {
-      for (const scheme of securitySchemes) {
-        const securityValue = securityValues.find(val => val.id === scheme.id);
-        loadCredentials({ scope, scheme, securityValue });
-      }
+    for (const scheme of securitySchemes) {
+      const securityValue = securityValues.find(val => val.id === scheme.id);
+
+      removeCredentialsFromDefinition({
+        definition,
+        scheme,
+        baseUrl,
+        securityValue,
+      });
     }
   }
 }

@@ -24,11 +24,76 @@ function replaceCredential(payload: string, credential: string) {
   );
 }
 
+function removeCredentialInHeader(
+  payload: RecordingDefinition,
+  credential: string
+): void {
+  if (payload.reqheaders) {
+    const headers = Object.entries(payload.reqheaders).filter(
+      ([, value]) =>
+        value === credential || value.toString().includes(credential)
+    );
+    for (const [headerName] of headers) {
+      payload.reqheaders[headerName] = HIDDEN_CREDENTIALS_PLACEHOLDER;
+    }
+  }
+}
+
+function removeCredentialInBody(
+  payload: RecordingDefinition,
+  credential: string
+): void {
+  if (payload.body !== undefined) {
+    let body = JSON.stringify(payload.body);
+
+    body = replaceCredential(body, credential);
+
+    payload.body = JSON.parse(body) as RequestBodyMatcher;
+  }
+}
+
+function removeCredentialInQuery(
+  definition: RecordingDefinition,
+  baseUrl: string,
+  credential: string
+): void {
+  const definitionURL = new URL(baseUrl + definition.path);
+
+  for (const [key, queryValue] of definitionURL.searchParams.entries()) {
+    if (queryValue === credential || queryValue.includes(credential)) {
+      definitionURL.searchParams.set(
+        key,
+        replaceCredential(queryValue, credential)
+      );
+    }
+  }
+
+  definition.path =
+    definitionURL.pathname + definitionURL.search + definitionURL.hash;
+}
+
+function removeCredentialInPath(
+  payload: RecordingDefinition,
+  baseUrl: string,
+  credential: string
+): void {
+  const payloadURL = new URL(baseUrl + payload.path);
+
+  if (
+    payloadURL.pathname === credential ||
+    payloadURL.pathname.includes(credential)
+  ) {
+    payloadURL.pathname = replaceCredential(payloadURL.pathname, credential);
+  }
+
+  payload.path = payloadURL.pathname + payloadURL.search + payloadURL.hash;
+}
+
 function removeApiKeyInHeader(
   definition: RecordingDefinition,
   scheme: ApiKeySecurityScheme,
   loadedCredential: string | undefined
-) {
+): void {
   if (scheme.name !== undefined) {
     if (definition.reqheaders?.[scheme.name] !== undefined) {
       definition.reqheaders[scheme.name] = HIDDEN_CREDENTIALS_PLACEHOLDER;
@@ -36,66 +101,48 @@ function removeApiKeyInHeader(
   }
 
   if (loadedCredential) {
-    if (definition.reqheaders) {
-      const headers = Object.entries(definition.reqheaders).filter(
-        ([, value]) =>
-          value === loadedCredential ||
-          value.toString().includes(loadedCredential)
-      );
-      for (const [headerName] of headers) {
-        definition.reqheaders[headerName] = HIDDEN_CREDENTIALS_PLACEHOLDER;
-      }
-    }
+    removeCredentialInHeader(definition, loadedCredential);
   }
 }
 
 function removeApiKeyInBody(
   definition: RecordingDefinition,
   loadedCredential: string | undefined
-) {
-  if (definition.body !== undefined) {
-    let body = JSON.stringify(definition.body, null, 2);
-
-    if (loadedCredential !== undefined) {
-      body = replaceCredential(body, loadedCredential);
-    }
-
-    definition.body = JSON.parse(body) as RequestBodyMatcher;
+): void {
+  if (loadedCredential !== undefined) {
+    removeCredentialInBody(definition, loadedCredential);
   }
 }
 
 function removeApiKeyInPath(
-  definitionURL: URL,
+  definition: RecordingDefinition,
+  baseUrl: string,
   loadedCredential: string | undefined
-) {
+): void {
   if (loadedCredential !== undefined) {
-    definitionURL.pathname = replaceCredential(
-      definitionURL.pathname,
-      loadedCredential
-    );
+    removeCredentialInPath(definition, baseUrl, loadedCredential);
   }
 }
 
 function removeApiKeyInQuery(
-  definitionURL: URL,
+  definition: RecordingDefinition,
   scheme: ApiKeySecurityScheme,
+  baseUrl: string,
   loadedCredential: string | undefined
-) {
+): void {
+  const definitionURL = new URL(baseUrl + definition.path);
+
   if (
     scheme.name !== undefined &&
     definitionURL.searchParams.has(scheme.name)
   ) {
     definitionURL.searchParams.set(scheme.name, HIDDEN_CREDENTIALS_PLACEHOLDER);
   } else if (loadedCredential !== undefined) {
-    for (const [key, queryValue] of definitionURL.searchParams.entries()) {
-      if (queryValue.includes(loadedCredential)) {
-        definitionURL.searchParams.set(
-          key,
-          replaceCredential(queryValue, loadedCredential)
-        );
-      }
-    }
+    removeCredentialInQuery(definition, baseUrl, loadedCredential);
   }
+
+  definition.path =
+    definitionURL.pathname + definitionURL.search + definitionURL.hash;
 }
 
 function removeApiKey(
@@ -103,7 +150,7 @@ function removeApiKey(
   scheme: ApiKeySecurityScheme,
   baseUrl: string,
   securityValue?: SecurityValues
-) {
+): void {
   let loadedCredential: string | undefined;
 
   if (isApiKeySecurityValues(securityValue)) {
@@ -118,21 +165,14 @@ function removeApiKey(
     removeApiKeyInHeader(definition, scheme, loadedCredential);
   } else if (scheme.in === ApiKeyPlacement.BODY) {
     removeApiKeyInBody(definition, loadedCredential);
-  } else {
-    const definitionURL = new URL(baseUrl + definition.path);
-
-    if (scheme.in === ApiKeyPlacement.PATH) {
-      removeApiKeyInPath(definitionURL, loadedCredential);
-    } else if (scheme.in === ApiKeyPlacement.QUERY) {
-      removeApiKeyInQuery(definitionURL, scheme, loadedCredential);
-    }
-
-    definition.path =
-      definitionURL.pathname + definitionURL.search + definitionURL.hash;
+  } else if (scheme.in === ApiKeyPlacement.PATH) {
+    removeApiKeyInPath(definition, baseUrl, loadedCredential);
+  } else if (scheme.in === ApiKeyPlacement.QUERY) {
+    removeApiKeyInQuery(definition, scheme, baseUrl, loadedCredential);
   }
 }
 
-function removeBasicAuth(definition: RecordingDefinition) {
+function removeBasicAuth(definition: RecordingDefinition): void {
   if (definition.reqheaders?.[AUTH_HEADER_NAME] !== undefined) {
     definition.reqheaders[
       AUTH_HEADER_NAME
@@ -140,7 +180,7 @@ function removeBasicAuth(definition: RecordingDefinition) {
   }
 }
 
-function removeBearerAuth(definition: RecordingDefinition) {
+function removeBearerAuth(definition: RecordingDefinition): void {
   if (definition.reqheaders?.[AUTH_HEADER_NAME] !== undefined) {
     definition.reqheaders[
       AUTH_HEADER_NAME
@@ -148,16 +188,29 @@ function removeBearerAuth(definition: RecordingDefinition) {
   }
 }
 
-export function removeCredentials({
+function removeIntegrationParameters(
+  definition: RecordingDefinition,
+  parameters: Record<string, string>,
+  baseUrl: string,
+): void {
+  for (const parameterValue of Object.values(parameters)) {
+    removeCredentialInHeader(definition, parameterValue);
+    removeCredentialInBody(definition, parameterValue);
+    removeCredentialInPath(definition, baseUrl, parameterValue);
+    removeCredentialInQuery(definition, baseUrl, parameterValue);
+  }
+}
+
+export function removeCredentialsFromDefinition({
   definition,
   scheme,
-  securityValue,
   baseUrl,
+  securityValue,
 }: {
   definition: RecordingDefinition;
   scheme: SecurityScheme;
-  securityValue?: SecurityValues;
   baseUrl: string;
+  securityValue?: SecurityValues;
 }): void {
   if (scheme.type === SecurityType.APIKEY) {
     removeApiKey(definition, scheme, baseUrl, securityValue);
@@ -179,7 +232,17 @@ export function removeCredentials({
   }
 }
 
-export function loadCredentials({
+export function removeParamsFromDefinition(
+  definition: RecordingDefinition,
+  integrationParameters: Record<string, string> | undefined,
+  baseUrl: string
+): void {
+  if (integrationParameters !== undefined) {
+    removeIntegrationParameters(definition, integrationParameters, baseUrl);
+  }
+}
+
+export function loadCredentialsToScope({
   scope,
   scheme,
   securityValue,
@@ -225,5 +288,24 @@ export function loadCredentials({
     scheme.scheme === HttpScheme.DIGEST
   ) {
     throw new UnexpectedError('Digest auth not implemented');
+  }
+}
+
+export function loadParamsToScope(
+  scope: RecordingScope,
+  integrationParameters: Record<string, string> | undefined
+): void {
+  if (integrationParameters !== undefined) {
+    const values = Object.values(integrationParameters);
+
+    scope.filteringPath(
+      new RegExp(values.join('|'), 'g'),
+      HIDDEN_CREDENTIALS_PLACEHOLDER
+    );
+
+    scope.filteringRequestBody(
+      new RegExp(values.join('|'), 'g'),
+      HIDDEN_CREDENTIALS_PLACEHOLDER
+    );
   }
 }

@@ -1,5 +1,7 @@
 import {
   BoundProfileProvider,
+  err,
+  ok,
   PerformError,
   Result,
   SuperfaceClient,
@@ -49,7 +51,8 @@ import {
   getProviderName,
   getSuperJson,
   isProfileProviderLocal,
-  removeOrLoadCredentials,
+  loadCredentials,
+  removeCredentials,
 } from './superface-test.utils';
 
 export class SuperfaceTest {
@@ -147,11 +150,11 @@ export class SuperfaceTest {
     );
 
     if (result.isErr()) {
-      return { error: removeTimestamp(result.error.toString()) };
+      return err(removeTimestamp(result.error.toString()));
     }
 
     if (result.isOk()) {
-      return { value: result.value };
+      return ok(result.value)
     }
 
     throw new UnexpectedError('Unexpected result object');
@@ -243,7 +246,7 @@ export class SuperfaceTest {
    */
   private async startRecording(
     record: boolean,
-    loadCredentials: boolean,
+    processRecordings: boolean,
     afterRecordingLoad?: AfterLoadFunction
   ): Promise<void> {
     if (!this.recordingPath) {
@@ -254,7 +257,9 @@ export class SuperfaceTest {
     assertBoundProfileProvider(this.boundProfileProvider);
 
     const { configuration } = this.boundProfileProvider;
+    const integrationParameters = configuration.parameters;
     const securitySchemes = configuration.security;
+    const securityValues = this.sfConfig.provider.configuration.security;
 
     if (!record) {
       const recordingExists = await exists(this.recordingPath);
@@ -277,15 +282,12 @@ export class SuperfaceTest {
         activateNock();
       }
 
-      if (loadCredentials) {
-        const securityValues = this.sfConfig.provider.configuration.security;
-        const baseUrl = configuration.baseUrl;
-
-        removeOrLoadCredentials({
+      if (processRecordings) {
+        loadCredentials({
           securitySchemes,
           securityValues,
-          baseUrl,
-          payload: { scopes },
+          scopes,
+          integrationParameters,
         });
       }
 
@@ -303,7 +305,12 @@ export class SuperfaceTest {
         enable_reqheaders_recording,
       });
 
-      if (securitySchemes.length > 0) {
+      if (
+        securitySchemes.length > 0 ||
+        securityValues.length > 0 ||
+        (integrationParameters &&
+          Object.values(integrationParameters).length > 0)
+      ) {
         console.warn(
           'Your recordings might contain sensitive information. Make sure to check them before publishing.'
         );
@@ -318,7 +325,7 @@ export class SuperfaceTest {
    */
   private async endRecording(
     record: boolean,
-    removeCredentials: boolean,
+    processRecordings: boolean,
     beforeRecordingSave?: BeforeSaveFunction
   ): Promise<void> {
     if (!this.recordingPath) {
@@ -339,20 +346,22 @@ export class SuperfaceTest {
 
       assertsDefinitionsAreNotStrings(definitions);
 
-      if (removeCredentials) {
+      if (processRecordings) {
         assertsPreparedConfig(this.sfConfig);
         assertBoundProfileProvider(this.boundProfileProvider);
 
         const { configuration } = this.boundProfileProvider;
         const securityValues = this.sfConfig.provider.configuration.security;
         const securitySchemes = configuration.security;
+        const integrationParameters = configuration.parameters;
         const baseUrl = configuration.baseUrl;
 
-        removeOrLoadCredentials({
+        removeCredentials({
           securitySchemes,
           securityValues,
           baseUrl,
-          payload: { definitions },
+          definitions,
+          integrationParameters,
         });
       }
 

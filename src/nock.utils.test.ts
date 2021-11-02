@@ -9,8 +9,10 @@ import { define } from 'nock';
 import { RecordingDefinition } from '.';
 import {
   HIDDEN_CREDENTIALS_PLACEHOLDER,
-  loadCredentials,
-  removeCredentials,
+  loadCredentialsToScope,
+  loadParamsToScope,
+  removeCredentialsFromDefinition,
+  removeParamsFromDefinition,
 } from './nock.utils';
 
 describe('nock utils', () => {
@@ -44,7 +46,7 @@ describe('nock utils', () => {
           'filteringRequestBody'
         );
 
-        loadCredentials({
+        loadCredentialsToScope({
           scope: mockedScopes[0],
           scheme: securityScheme,
           securityValue,
@@ -77,7 +79,7 @@ describe('nock utils', () => {
 
         const filteringPathSpy = jest.spyOn(mockedScopes[0], 'filteringPath');
 
-        loadCredentials({
+        loadCredentialsToScope({
           scope: mockedScopes[0],
           scheme: securityScheme,
           securityValue,
@@ -110,7 +112,7 @@ describe('nock utils', () => {
 
         const filteringPathSpy = jest.spyOn(mockedScopes[0], 'filteringPath');
 
-        loadCredentials({
+        loadCredentialsToScope({
           scope: mockedScopes[0],
           scheme: securityScheme,
           securityValue,
@@ -120,6 +122,113 @@ describe('nock utils', () => {
         expect(filteringPathSpy).toHaveBeenCalledWith(
           /api_key([^&#]+)/g,
           `api_key=${HIDDEN_CREDENTIALS_PLACEHOLDER}`
+        );
+      });
+    });
+  });
+
+  describe('loadParameters', () => {
+    describe('when loading integration parameters', () => {
+      it('loads parameter from body', () => {
+        const parameterValue = { param: 'integration-parameter' };
+        const mockedScopes = define([
+          {
+            scope: 'https://localhost',
+            method: 'GET',
+            path: '/path',
+            status: 200,
+            response: { some: 'data' },
+            body: {
+              whatever: {
+                my_api_key: parameterValue.param,
+              },
+            },
+          },
+        ]);
+
+        const filteringBodySpy = jest.spyOn(
+          mockedScopes[0],
+          'filteringRequestBody'
+        );
+
+        loadParamsToScope(mockedScopes[0], parameterValue);
+
+        expect(filteringBodySpy).toHaveBeenCalledTimes(1);
+        expect(filteringBodySpy).toHaveBeenCalledWith(
+          /integration-parameter/g,
+          HIDDEN_CREDENTIALS_PLACEHOLDER
+        );
+      });
+
+      it('loads parameter from path', () => {
+        const parameterValue = { param: 'integration-parameter' };
+        const mockedScopes = define([
+          {
+            scope: 'https://localhost',
+            method: 'GET',
+            path: '/path/' + parameterValue.param,
+            status: 200,
+            response: { some: 'data' },
+          },
+        ]);
+
+        const filteringPathSpy = jest.spyOn(mockedScopes[0], 'filteringPath');
+
+        loadParamsToScope(mockedScopes[0], parameterValue);
+
+        expect(filteringPathSpy).toHaveBeenCalledTimes(1);
+        expect(filteringPathSpy).toHaveBeenCalledWith(
+          /integration-parameter/g,
+          HIDDEN_CREDENTIALS_PLACEHOLDER
+        );
+      });
+
+      it('loads parameter from query', () => {
+        const parameterValue = { param: 'integration-parameter' };
+        const mockedScopes = define([
+          {
+            scope: 'https://localhost',
+            method: 'GET',
+            path: '/path?api_key=' + parameterValue.param,
+            status: 200,
+            response: { some: 'data' },
+          },
+        ]);
+
+        const filteringPathSpy = jest.spyOn(mockedScopes[0], 'filteringPath');
+
+        loadParamsToScope(mockedScopes[0], parameterValue);
+
+        expect(filteringPathSpy).toHaveBeenCalledTimes(1);
+        expect(filteringPathSpy).toHaveBeenCalledWith(
+          /integration-parameter/g,
+          HIDDEN_CREDENTIALS_PLACEHOLDER
+        );
+      });
+
+      it('loads multiple parameters from query', () => {
+        const parameterValue = {
+          param: 'integration-parameter',
+          two: 'secret',
+        };
+        const mockedScopes = define([
+          {
+            scope: 'https://localhost',
+            method: 'GET',
+            path: `/path?api_key=${parameterValue.param}&two=${parameterValue.two}`,
+            status: 200,
+            response: { some: 'data' },
+          },
+        ]);
+
+        const filteringPathSpy = jest.spyOn(mockedScopes[0], 'filteringPath');
+
+        loadParamsToScope(mockedScopes[0], parameterValue);
+
+        expect(filteringPathSpy).toHaveBeenCalledTimes(1);
+        expect(filteringPathSpy).toHaveBeenCalledWith(
+          /integration-parameter|secret/g,
+          HIDDEN_CREDENTIALS_PLACEHOLDER
         );
       });
     });
@@ -138,7 +247,7 @@ describe('nock utils', () => {
           },
         };
 
-        removeCredentials({
+        removeCredentialsFromDefinition({
           definition,
           scheme: {
             id: 'api-key',
@@ -172,7 +281,7 @@ describe('nock utils', () => {
           },
         };
 
-        removeCredentials({
+        removeCredentialsFromDefinition({
           definition,
           scheme: {
             id: 'api-key',
@@ -203,7 +312,7 @@ describe('nock utils', () => {
           status: 200,
         };
 
-        removeCredentials({
+        removeCredentialsFromDefinition({
           definition,
           scheme: {
             id: 'api-key',
@@ -231,7 +340,7 @@ describe('nock utils', () => {
           status: 200,
         };
 
-        removeCredentials({
+        removeCredentialsFromDefinition({
           definition,
           scheme: {
             id: 'api-key',
@@ -264,7 +373,7 @@ describe('nock utils', () => {
           },
         };
 
-        removeCredentials({
+        removeCredentialsFromDefinition({
           definition,
           scheme: {
             id: 'basic',
@@ -299,7 +408,7 @@ describe('nock utils', () => {
           },
         };
 
-        removeCredentials({
+        removeCredentialsFromDefinition({
           definition,
           scheme: {
             id: 'bearer',
@@ -318,6 +427,114 @@ describe('nock utils', () => {
           reqheaders: {
             ['Authorization']: `Bearer ${HIDDEN_CREDENTIALS_PLACEHOLDER}`,
           },
+        });
+      });
+    });
+  });
+
+  describe('removeParameters', () => {
+    describe('when removing integration parameters', () => {
+      it('removes parameter from header', () => {
+        const parameterValue = { param: 'integration-parameter' };
+        const definition: RecordingDefinition = {
+          scope: 'https://localhost',
+          path: '/get?text=123',
+          method: 'GET',
+          status: 200,
+          reqheaders: {
+            ['api_key']: parameterValue.param,
+          },
+        };
+
+        removeParamsFromDefinition(
+          definition,
+          parameterValue,
+          'https://localhost'
+        );
+
+        expect(definition).toEqual({
+          scope: 'https://localhost',
+          path: '/get?text=123',
+          method: 'GET',
+          status: 200,
+          reqheaders: {
+            ['api_key']: HIDDEN_CREDENTIALS_PLACEHOLDER,
+          },
+        });
+      });
+
+      it('removes parameter from body', () => {
+        const parameterValue = { param: 'integration-parameter' };
+        const definition: RecordingDefinition = {
+          scope: 'https://localhost',
+          path: '/get?text=123',
+          method: 'GET',
+          status: 200,
+          body: {
+            my_api_key: parameterValue.param,
+          },
+        };
+
+        removeParamsFromDefinition(
+          definition,
+          parameterValue,
+          'https://localhost'
+        );
+
+        expect(definition).toEqual({
+          scope: 'https://localhost',
+          path: '/get?text=123',
+          method: 'GET',
+          status: 200,
+          body: {
+            my_api_key: HIDDEN_CREDENTIALS_PLACEHOLDER,
+          },
+        });
+      });
+
+      it('removes parameter from path', () => {
+        const parameterValue = { param: 'integration-parameter' };
+        const definition: RecordingDefinition = {
+          scope: 'https://localhost',
+          path: `/get/${parameterValue.param}?text=123`,
+          method: 'GET',
+          status: 200,
+        };
+
+        removeParamsFromDefinition(
+          definition,
+          parameterValue,
+          'https://localhost'
+        );
+
+        expect(definition).toEqual({
+          scope: 'https://localhost',
+          path: `/get/${HIDDEN_CREDENTIALS_PLACEHOLDER}?text=123`,
+          method: 'GET',
+          status: 200,
+        });
+      });
+
+      it('removes parameter from query', () => {
+        const parameterValue = { param: 'integration-parameter' };
+        const definition: RecordingDefinition = {
+          scope: 'https://localhost',
+          path: `/get?api_key=${parameterValue.param}&text=123`,
+          method: 'GET',
+          status: 200,
+        };
+
+        removeParamsFromDefinition(
+          definition,
+          parameterValue,
+          'https://localhost'
+        );
+
+        expect(definition).toEqual({
+          scope: 'https://localhost',
+          path: `/get?api_key=${HIDDEN_CREDENTIALS_PLACEHOLDER}&text=123`,
+          method: 'GET',
+          status: 200,
         });
       });
     });
