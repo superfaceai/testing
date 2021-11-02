@@ -1,5 +1,7 @@
 import {
   BoundProfileProvider,
+  err,
+  ok,
   PerformError,
   Result,
   SuperfaceClient,
@@ -147,11 +149,11 @@ export class SuperfaceTest {
     );
 
     if (result.isErr()) {
-      return { error: removeTimestamp(result.error.toString()) };
+      return err(removeTimestamp(result.error.toString()));
     }
 
     if (result.isOk()) {
-      return { value: result.value };
+      return ok(result.value);
     }
 
     throw new UnexpectedError('Unexpected result object');

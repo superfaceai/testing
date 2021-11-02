@@ -1,6 +1,7 @@
 import {
   Profile,
   Provider,
+  Result,
   SuperfaceClient,
   UseCase,
 } from '@superfaceai/one-sdk';
@@ -30,13 +31,7 @@ export interface SuperfaceTestConfig {
 
 export type CompleteSuperfaceTestConfig = Required<SuperfaceTestConfig>;
 
-export type TestingReturn =
-  | {
-      value: unknown;
-    }
-  | {
-      error: string;
-    };
+export type TestingReturn = Result<unknown, string>;
 
 export interface NockConfig {
   path?: string;
