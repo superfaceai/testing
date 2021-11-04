@@ -6,6 +6,7 @@ import {
   Result,
   SuperfaceClient,
 } from '@superfaceai/one-sdk';
+import { createHash } from 'crypto';
 import {
   activate as activateNock,
   define,
@@ -82,7 +83,7 @@ export class SuperfaceTest {
   /**
    * Sets up path to recording, depends on current Superface configuration.
    */
-  private setupRecordingPath(fixtureName: string) {
+  private setupRecordingPath(fixtureName: string, inputHash: string) {
     if (!this.fixturesPath) {
       throw new FixturesPathUndefinedError();
     }
@@ -90,7 +91,7 @@ export class SuperfaceTest {
     this.recordingPath = joinPath(
       this.fixturesPath,
       fixtureName,
-      `${this.nockConfig?.fixture ?? 'recording'}.json`
+      `${this.nockConfig?.fixture ?? 'recording'}-${inputHash}.json`
     );
   }
 
@@ -119,7 +120,11 @@ export class SuperfaceTest {
         this.sfConfig.provider.configuration
       );
 
-    this.setupRecordingPath(getFixtureName(this.sfConfig));
+    const hash = createHash('md5')
+      .update(JSON.stringify(testCase.input))
+      .digest('hex');
+
+    this.setupRecordingPath(getFixtureName(this.sfConfig), hash);
 
     // parse env variable and check if test should be recorded
     const record = matchWildCard(this.sfConfig, process.env.SUPERFACE_LIVE_API);
@@ -343,11 +348,13 @@ export class SuperfaceTest {
     }
 
     if (!record) {
+      restoreRecordings();
       enableNetConnect();
 
       return;
     } else {
       const definitions = recorder.play();
+      recorder.clear();
       restoreRecordings();
 
       if (definitions === undefined || definitions.length < 0) {

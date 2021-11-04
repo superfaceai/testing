@@ -305,8 +305,8 @@ describe('SuperfaceTest', () => {
         expect(defineRecordingSpy).toHaveBeenCalledTimes(1);
         expect(disableNetConnectSpy).toHaveBeenCalledTimes(1);
         expect(enableNetConnectSpy).toHaveBeenCalledTimes(1);
+        expect(endRecSpy).toHaveBeenCalledTimes(1);
         expect(recorderSpy).not.toHaveBeenCalled();
-        expect(endRecSpy).not.toHaveBeenCalled();
         expect(writeRecordingsSpy).not.toHaveBeenCalled();
       });
     });

@@ -1,8 +1,4 @@
-import {
-  ApiKeyPlacement,
-  HttpScheme,
-  SecurityType,
-} from '@superfaceai/ast';
+import { ApiKeyPlacement, HttpScheme, SecurityType } from '@superfaceai/ast';
 
 import { RecordingDefinition } from '.';
 import {
@@ -130,7 +126,7 @@ describe('nock utils', () => {
           baseUrl: 'https://gitlab.com/api', //Path ends with /api
           credential: 'secret',
         });
-        
+
         expect(definition).toEqual({
           scope: 'https://localhost',
           path: `/api/v4/get/${HIDDEN_CREDENTIALS_PLACEHOLDER}?text=123`,
