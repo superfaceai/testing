@@ -1,7 +1,6 @@
 import {
   ApiKeyPlacement,
   HttpScheme,
-  // SecurityScheme,
   SecurityType,
 } from '@superfaceai/ast';
 

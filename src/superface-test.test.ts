@@ -19,7 +19,7 @@ import {
   RecordingsNotFoundError,
 } from './common/errors';
 import { matchWildCard } from './common/format';
-import { exists } from './common/io';
+import { exists, readFileQuiet } from './common/io';
 import { writeRecordings } from './common/output-stream';
 import { HIDDEN_CREDENTIALS_PLACEHOLDER } from './nock.utils';
 import {
@@ -34,6 +34,7 @@ import { SuperfaceTest } from './superface-test';
 /* eslint-disable @typescript-eslint/unbound-method */
 
 jest.mock('./common/io', () => ({
+  readFileQuiet: jest.fn(),
   exists: jest.fn(),
 }));
 
@@ -285,8 +286,8 @@ describe('SuperfaceTest', () => {
       it('loads fixture if it exists, but contains no recordings', async () => {
         superfaceTest = new SuperfaceTest(await getMockedSfConfig());
 
-        const loadRecordingSpy = jest
-          .spyOn(nock, 'load')
+        const defineRecordingSpy = jest
+          .spyOn(nock, 'define')
           .mockReturnValueOnce([]);
         const disableNetConnectSpy = jest.spyOn(nock, 'disableNetConnect');
         const enableNetConnectSpy = jest.spyOn(nock, 'enableNetConnect');
@@ -295,12 +296,13 @@ describe('SuperfaceTest', () => {
         const writeRecordingsSpy = mocked(writeRecordings);
 
         mocked(exists).mockResolvedValueOnce(true);
+        mocked(readFileQuiet).mockResolvedValueOnce('[]');
         mocked(matchWildCard).mockReturnValueOnce(false);
 
         await expect(superfaceTest.run({ input: {} })).resolves.not.toThrow();
 
         expect(pendingMocks()).toEqual([]);
-        expect(loadRecordingSpy).toHaveBeenCalledTimes(1);
+        expect(defineRecordingSpy).toHaveBeenCalledTimes(1);
         expect(disableNetConnectSpy).toHaveBeenCalledTimes(1);
         expect(enableNetConnectSpy).toHaveBeenCalledTimes(1);
         expect(recorderSpy).not.toHaveBeenCalled();

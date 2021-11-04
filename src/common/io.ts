@@ -41,9 +41,7 @@ export async function exists(path: string): Promise<boolean> {
  */
 export async function readFileQuiet(path: string): Promise<string | undefined> {
   try {
-    const file = await readFile(path, { encoding: 'utf8' });
-
-    return file.toString();
+    return await readFile(path, { encoding: 'utf8' });
   } catch (_) {
     return undefined;
   }
