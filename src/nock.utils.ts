@@ -38,7 +38,7 @@ function replaceCredential({
   isParameter: boolean;
   placeholder?: string;
 }) {
-  return payload.replaceAll(
+  return payload.replace(
     new RegExp(credential, 'g'),
     placeholder ?? defaultPlaceholder(isParameter)
   );
