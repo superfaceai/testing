@@ -228,6 +228,14 @@ superface.run(
 );
 ```
 
+## Known Limitations
+
+### Multiple matching requests for the same use case
+
+Recordings make it possible to run tests without calling the live API. This works by trying to match a request to the requests in the existing recordings. If a match is found, the recorded response is returned. However, since the testing client saves recording for use-cases in a single file, it means multiple matching requests for the same use-case will overwrite each other.
+
+A workaround is to use different inputs for each each test.
+
 ## Support
 
 If you need any additional support, have any questions or you just want to talk you can do that through our [support page](https://superface.ai/support).
