@@ -11,6 +11,13 @@ import { URL } from 'url';
 import { RecordingDefinition } from '.';
 import { UnexpectedError } from './common/errors';
 
+interface ReplaceOptions {
+  definition: RecordingDefinition;
+  credential: string;
+  isParameter: boolean;
+  placeholder?: string;
+}
+
 export const HIDDEN_CREDENTIALS_PLACEHOLDER =
   'credentials-removed-to-keep-them-secure';
 export const HIDDEN_PARAMETERS_PLACEHOLDER =
@@ -42,12 +49,7 @@ function replaceCredentialInHeaders({
   credential,
   isParameter,
   placeholder,
-}: {
-  definition: RecordingDefinition;
-  credential: string;
-  isParameter: boolean;
-  placeholder?: string;
-}): void {
+}: ReplaceOptions): void {
   if (definition.reqheaders) {
     const headers = Object.entries(definition.reqheaders).filter(
       ([, value]) =>
@@ -70,12 +72,7 @@ function replaceCredentialInBody({
   credential,
   isParameter,
   placeholder,
-}: {
-  definition: RecordingDefinition;
-  credential: string;
-  isParameter: boolean;
-  placeholder?: string;
-}): void {
+}: ReplaceOptions): void {
   if (definition.body !== undefined) {
     let body = JSON.stringify(definition.body);
 
@@ -96,14 +93,9 @@ function replaceCredentialInQuery({
   credential,
   isParameter,
   placeholder,
-}: {
-  definition: RecordingDefinition;
-  baseUrl: string;
-  credential: string;
-  isParameter: boolean;
-  placeholder?: string;
-}): void {
-  const definitionURL = new URL(baseUrl + definition.path);
+}: ReplaceOptions & { baseUrl: string }): void {
+  const baseUrlOrigin = new URL(baseUrl).origin;
+  const definitionURL = new URL(baseUrlOrigin + definition.path);
 
   for (const [key, queryValue] of definitionURL.searchParams.entries()) {
     if (queryValue === credential || queryValue.includes(credential)) {
@@ -129,14 +121,9 @@ function replaceCredentialInPath({
   credential,
   isParameter,
   placeholder,
-}: {
-  definition: RecordingDefinition;
-  baseUrl: string;
-  credential: string;
-  isParameter: boolean;
-  placeholder?: string;
-}): void {
-  const definitionURL = new URL(baseUrl + definition.path);
+}: ReplaceOptions & { baseUrl: string }): void {
+  const baseUrlOrigin = new URL(baseUrl).origin;
+  const definitionURL = new URL(baseUrlOrigin + definition.path);
 
   if (
     definitionURL.pathname === credential ||
@@ -160,13 +147,7 @@ function replaceApiKeyInHeader({
   credential,
   isParameter,
   placeholder,
-}: {
-  definition: RecordingDefinition;
-  scheme: ApiKeySecurityScheme;
-  credential: string;
-  isParameter: boolean;
-  placeholder?: string;
-}): void {
+}: ReplaceOptions & { scheme: ApiKeySecurityScheme }): void {
   if (scheme.name !== undefined) {
     if (definition.reqheaders?.[scheme.name] !== undefined) {
       definition.reqheaders[scheme.name] = replaceCredential({
@@ -191,12 +172,7 @@ function replaceApiKeyInBody({
   credential,
   isParameter,
   placeholder,
-}: {
-  definition: RecordingDefinition;
-  credential: string;
-  isParameter: boolean;
-  placeholder?: string;
-}): void {
+}: ReplaceOptions): void {
   replaceCredentialInBody({
     definition,
     credential,
@@ -211,13 +187,7 @@ function replaceApiKeyInPath({
   credential,
   isParameter,
   placeholder,
-}: {
-  definition: RecordingDefinition;
-  baseUrl: string;
-  credential: string;
-  isParameter: boolean;
-  placeholder?: string;
-}): void {
+}: ReplaceOptions & { baseUrl: string }): void {
   replaceCredentialInPath({
     definition,
     baseUrl,
@@ -234,15 +204,9 @@ function replaceApiKeyInQuery({
   credential,
   isParameter,
   placeholder,
-}: {
-  definition: RecordingDefinition;
-  scheme: ApiKeySecurityScheme;
-  baseUrl: string;
-  credential: string;
-  isParameter: boolean;
-  placeholder?: string;
-}): void {
-  const definitionURL = new URL(baseUrl + definition.path);
+}: ReplaceOptions & { baseUrl: string; scheme: ApiKeySecurityScheme }): void {
+  const baseUrlOrigin = new URL(baseUrl).origin;
+  const definitionURL = new URL(baseUrlOrigin + definition.path);
 
   if (
     scheme.name !== undefined &&
@@ -250,7 +214,7 @@ function replaceApiKeyInQuery({
   ) {
     definitionURL.searchParams.set(scheme.name, placeholder ?? '');
   }
-  
+
   replaceCredentialInQuery({
     definition,
     baseUrl,
@@ -270,14 +234,7 @@ function replaceApiKey({
   credential,
   isParameter,
   placeholder,
-}: {
-  definition: RecordingDefinition;
-  scheme: ApiKeySecurityScheme;
-  baseUrl: string;
-  credential: string;
-  isParameter: boolean;
-  placeholder?: string;
-}): void {
+}: ReplaceOptions & { baseUrl: string; scheme: ApiKeySecurityScheme }): void {
   if (scheme.in === ApiKeyPlacement.HEADER) {
     replaceApiKeyInHeader({
       definition,

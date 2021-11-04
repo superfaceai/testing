@@ -18,7 +18,7 @@ import {
 import { join as joinPath } from 'path';
 
 import {
-  BeforeSaveFunction,
+  ProcessingFunction,
   RecordingDefinitions,
   RecordingProcessOptions,
 } from '.';
@@ -246,7 +246,7 @@ export class SuperfaceTest {
   private async startRecording(
     record: boolean,
     processRecordings: boolean,
-    beforeRecordingLoad?: BeforeSaveFunction
+    beforeRecordingLoad?: ProcessingFunction
   ): Promise<void> {
     if (!this.recordingPath) {
       throw new RecordingPathUndefinedError();
@@ -336,7 +336,7 @@ export class SuperfaceTest {
   private async endRecording(
     record: boolean,
     processRecordings: boolean,
-    beforeRecordingSave?: BeforeSaveFunction
+    beforeRecordingSave?: ProcessingFunction
   ): Promise<void> {
     if (!this.recordingPath) {
       throw new RecordingPathUndefinedError();
