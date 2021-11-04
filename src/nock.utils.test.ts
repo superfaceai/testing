@@ -223,6 +223,33 @@ describe('nock utils', () => {
         });
       });
 
+      it('removes apikey from path with non-trivial base url', () => {
+        const definition: RecordingDefinition = {
+          scope: 'https://localhost',
+          path: '/api/v4/get/secret?text=123',
+          method: 'GET',
+          status: 200,
+        };
+
+        removeCredentials({
+          definition,
+          scheme: {
+            id: 'api-key',
+            type: SecurityType.APIKEY,
+            in: ApiKeyPlacement.PATH,
+            name: 'api_key',
+          },
+          securityValue: { id: 'api-key', apikey: 'secret' },
+          baseUrl: 'https://gitlab.com/api', //Path ends with /api
+        });
+
+        expect(definition).toEqual({
+          scope: 'https://localhost',
+          path: `/api/v4/get/${HIDDEN_CREDENTIALS_PLACEHOLDER}?text=123`,
+          method: 'GET',
+          status: 200,
+        });
+      });
       it('removes apikey from query', () => {
         const definition: RecordingDefinition = {
           scope: 'https://localhost',
