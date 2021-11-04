@@ -15,7 +15,7 @@ import {
   recorder,
   restore as restoreRecordings,
 } from 'nock';
-import hash from 'object-hash';
+import { createHash } from 'crypto';
 import { join as joinPath } from 'path';
 
 import {
@@ -120,10 +120,11 @@ export class SuperfaceTest {
         this.sfConfig.provider.configuration
       );
 
-    this.setupRecordingPath(
-      getFixtureName(this.sfConfig),
-      hash(testCase.input)
-    );
+    const hash = createHash('md5')
+      .update(JSON.stringify(testCase.input))
+      .digest('hex');
+
+    this.setupRecordingPath(getFixtureName(this.sfConfig), hash);
 
     // parse env variable and check if test should be recorded
     const record = matchWildCard(this.sfConfig, process.env.SUPERFACE_LIVE_API);
