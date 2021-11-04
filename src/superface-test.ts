@@ -6,6 +6,7 @@ import {
   Result,
   SuperfaceClient,
 } from '@superfaceai/one-sdk';
+import { createHash } from 'crypto';
 import {
   activate as activateNock,
   disableNetConnect,
@@ -15,7 +16,6 @@ import {
   recorder,
   restore as restoreRecordings,
 } from 'nock';
-import { createHash } from 'crypto';
 import { join as joinPath } from 'path';
 
 import {
