@@ -212,7 +212,10 @@ function replaceApiKeyInQuery({
     scheme.name !== undefined &&
     definitionURL.searchParams.has(scheme.name)
   ) {
-    definitionURL.searchParams.set(scheme.name, placeholder ?? '');
+    definitionURL.searchParams.set(
+      scheme.name,
+      placeholder ? placeholder : defaultPlaceholder(isParameter)
+    );
   }
 
   replaceCredentialInQuery({
