@@ -46,7 +46,7 @@ yarn add -D @superfaceai/testing-lib
 
 ## Usage
 
-To test Superface capabilities, initialize a new `SuperfaceTest` instance and call its method `run()` with test configuration and input specific for your test run. Test configuration should contain `profile`, `provider` and `useCase`. You can enter them either in string format (as ids of corresponding components) or as instances of corresponding components (more about them in [One-SDK docs](https://github.com/superfaceai/one-sdk-js#using-the-onesdk) or in [Comlink reference](https://superface.ai/docs/comlink)). 
+To test Superface capabilities, initialize a new `SuperfaceTest` instance and call its method `run()` with test configuration and input specific for your test run. Test configuration should contain `profile`, `provider` and `useCase`. You can enter them either in string format (as ids of corresponding components) or as instances of corresponding components (more about them in [One-SDK docs](https://github.com/superfaceai/one-sdk-js#using-the-onesdk) or in [Comlink reference](https://superface.ai/docs/comlink)).
 
 ### Initializing SuperfaceTest instance
 
@@ -74,8 +74,7 @@ const superface = new SuperfaceTest({
 });
 ```
 
-Given test configuration is stored in class and used later in `run()` method. 
-
+Given test configuration is stored in class and used later in `run()` method.
 
 **with superface and nock configuration:**
 
@@ -173,6 +172,60 @@ superface.run({
     some: 'input',
   },
 });
+```
+
+Testing library process recordings to hide sensitive information that might get recorded based on security schemes and integration parameters from provider.json and super.json. To turn this off, specify boolean `processRecordings` in second parameter for method `run()`:
+
+```typescript
+superface.run(
+  {
+    profile: 'profile',
+    provider: 'provider',
+    useCase: 'useCase',
+    input: {
+      some: 'input',
+    },
+  },
+  {
+    processRecordings: false,
+  }
+);
+```
+
+You can enter your own processing functions along side `processRecordings` parameter. Both have same function signature and are called either before load or before save of recordings.
+
+```typescript
+import { RecordingDefinitions, SuperfaceTest } from '@superfaceai/testing-lib';
+
+const beforeRecordingLoad = (definitions: RecordingDefinitions) => {
+  definitions.forEach(def => {
+    def.path = def.path.replace('PLACEHOLDER', process.env.YOUR_SECRET);
+  });
+};
+
+const beforeRecordingSave = (definitions: RecordingDefinitions) => {
+  definitions.forEach(def => {
+    def.path = def.path.replace(process.env.YOUR_SECRET, 'PLACEHOLDER');
+  });
+};
+
+const superface = new SuperfaceTest();
+
+superface.run(
+  {
+    profile: 'profile',
+    provider: 'provider',
+    useCase: 'useCase',
+    input: {
+      some: 'input',
+    },
+  },
+  {
+    processRecordings: false,
+    beforeRecordingSave,
+    beforeRecordingLoad,
+  }
+);
 ```
 
 ## Support

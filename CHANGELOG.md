@@ -7,10 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.0.3-beta.11] - 2021-11-01
-
-## 0.0.3-beta.10 - 2021-11-01
 ### Added
+- Hiding integration parameters
+- Hashing input for unique name of recording files
+- Rewrap perform result to Result<unknown, string>
 - One-SDK to peerDependencies and devDependencies
 - Warning about sensitive informations in recordings
 - New parameter for method `run()` for keeping credentials in recordings
@@ -25,4 +25,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - SuperfaceTest class
 
 [Unreleased]: https://github.com/superfaceai/testing-lib/compare/v0.0.3-beta.11...HEAD
-[0.0.3-beta.11]: https://github.com/superfaceai/testing-lib/compare/v0.0.3-beta.10...v0.0.3-beta.11
