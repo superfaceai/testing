@@ -243,6 +243,35 @@ describe('nock utils', () => {
     describe('when removing integration parameters', () => {
       const baseUrl = 'https://localhost';
 
+      it('does not mutate recording when parameter is empty', () => {
+        const parameterValue = '';
+        const definition: RecordingDefinition = {
+          scope: baseUrl,
+          path: '/get?text=123',
+          method: 'GET',
+          status: 200,
+          reqheaders: {
+            ['api_key']: parameterValue,
+          },
+        };
+
+        replaceParameterInDefinition({
+          definition,
+          baseUrl,
+          credential: parameterValue,
+        });
+
+        expect(definition).toEqual({
+          scope: baseUrl,
+          path: '/get?text=123',
+          method: 'GET',
+          status: 200,
+          reqheaders: {
+            ['api_key']: '',
+          },
+        });
+      });
+
       it('removes parameter from header', () => {
         const parameterValue = 'integration-parameter';
         const definition: RecordingDefinition = {

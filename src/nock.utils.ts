@@ -38,10 +38,12 @@ function replaceCredential({
   isParameter: boolean;
   placeholder?: string;
 }) {
-  return payload.replace(
-    new RegExp(credential, 'g'),
-    placeholder ?? defaultPlaceholder(isParameter)
-  );
+  return credential !== ''
+    ? payload.replace(
+        new RegExp(credential, 'g'),
+        placeholder ?? defaultPlaceholder(isParameter)
+      )
+    : payload;
 }
 
 function replaceCredentialInHeaders({
