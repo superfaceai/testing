@@ -1,130 +1,14 @@
-import {
-  ApiKeyPlacement,
-  HttpScheme,
-  SecurityScheme,
-  SecurityType,
-} from '@superfaceai/ast';
-import { define } from 'nock';
+import { ApiKeyPlacement, HttpScheme, SecurityType } from '@superfaceai/ast';
 
 import { RecordingDefinition } from '.';
 import {
   HIDDEN_CREDENTIALS_PLACEHOLDER,
-  loadCredentials,
-  removeCredentials,
+  HIDDEN_PARAMETERS_PLACEHOLDER,
+  replaceCredentialInDefinition,
+  replaceParameterInDefinition,
 } from './nock.utils';
 
 describe('nock utils', () => {
-  describe('loadCredentials', () => {
-    describe('when loading apikey', () => {
-      it('loads apikey from body', () => {
-        const securityScheme: SecurityScheme = {
-          id: 'api-key',
-          type: SecurityType.APIKEY,
-          in: ApiKeyPlacement.BODY,
-          name: 'api_key',
-        };
-        const securityValue = { id: 'api-key', apikey: 'secret' };
-        const mockedScopes = define([
-          {
-            scope: 'https://localhost',
-            method: 'GET',
-            path: '/path',
-            status: 200,
-            response: { some: 'data' },
-            body: {
-              whatever: {
-                my_api_key: 'secret',
-              },
-            },
-          },
-        ]);
-
-        const filteringBodySpy = jest.spyOn(
-          mockedScopes[0],
-          'filteringRequestBody'
-        );
-
-        loadCredentials({
-          scope: mockedScopes[0],
-          scheme: securityScheme,
-          securityValue,
-        });
-
-        expect(filteringBodySpy).toHaveBeenCalledTimes(1);
-        expect(filteringBodySpy).toHaveBeenCalledWith(
-          /secret/g,
-          HIDDEN_CREDENTIALS_PLACEHOLDER
-        );
-      });
-
-      it('loads apikey from path', () => {
-        const securityScheme: SecurityScheme = {
-          id: 'api-key',
-          type: SecurityType.APIKEY,
-          in: ApiKeyPlacement.PATH,
-          name: 'api_key',
-        };
-        const securityValue = { id: 'api-key', apikey: 'secret' };
-        const mockedScopes = define([
-          {
-            scope: 'https://localhost',
-            method: 'GET',
-            path: '/path/secret',
-            status: 200,
-            response: { some: 'data' },
-          },
-        ]);
-
-        const filteringPathSpy = jest.spyOn(mockedScopes[0], 'filteringPath');
-
-        loadCredentials({
-          scope: mockedScopes[0],
-          scheme: securityScheme,
-          securityValue,
-        });
-
-        expect(filteringPathSpy).toHaveBeenCalledTimes(1);
-        expect(filteringPathSpy).toHaveBeenCalledWith(
-          /secret/g,
-          HIDDEN_CREDENTIALS_PLACEHOLDER
-        );
-      });
-
-      it('loads apikey from query', () => {
-        const securityScheme: SecurityScheme = {
-          id: 'api-key',
-          type: SecurityType.APIKEY,
-          in: ApiKeyPlacement.QUERY,
-          name: 'api_key',
-        };
-        const securityValue = { id: 'api-key', apikey: 'secret' };
-        const mockedScopes = define([
-          {
-            scope: 'https://localhost',
-            method: 'GET',
-            path: '/path?api_key=secret',
-            status: 200,
-            response: { some: 'data' },
-          },
-        ]);
-
-        const filteringPathSpy = jest.spyOn(mockedScopes[0], 'filteringPath');
-
-        loadCredentials({
-          scope: mockedScopes[0],
-          scheme: securityScheme,
-          securityValue,
-        });
-
-        expect(filteringPathSpy).toHaveBeenCalledTimes(1);
-        expect(filteringPathSpy).toHaveBeenCalledWith(
-          /api_key([^&#]+)/g,
-          `api_key=${HIDDEN_CREDENTIALS_PLACEHOLDER}`
-        );
-      });
-    });
-  });
-
   describe('removeCredentials', () => {
     describe('when removing apikey', () => {
       it('removes apikey from header', () => {
@@ -138,7 +22,7 @@ describe('nock utils', () => {
           },
         };
 
-        removeCredentials({
+        replaceCredentialInDefinition({
           definition,
           scheme: {
             id: 'api-key',
@@ -146,8 +30,8 @@ describe('nock utils', () => {
             in: ApiKeyPlacement.HEADER,
             name: 'api_key',
           },
-          securityValue: { id: 'api-key', apikey: 'secret' },
           baseUrl: 'https://localhost',
+          credential: 'secret',
         });
 
         expect(definition).toEqual({
@@ -172,7 +56,7 @@ describe('nock utils', () => {
           },
         };
 
-        removeCredentials({
+        replaceCredentialInDefinition({
           definition,
           scheme: {
             id: 'api-key',
@@ -180,8 +64,8 @@ describe('nock utils', () => {
             in: ApiKeyPlacement.BODY,
             name: 'api_key',
           },
-          securityValue: { id: 'api-key', apikey: 'secret' },
           baseUrl: 'https://localhost',
+          credential: 'secret',
         });
 
         expect(definition).toEqual({
@@ -203,7 +87,7 @@ describe('nock utils', () => {
           status: 200,
         };
 
-        removeCredentials({
+        replaceCredentialInDefinition({
           definition,
           scheme: {
             id: 'api-key',
@@ -211,8 +95,8 @@ describe('nock utils', () => {
             in: ApiKeyPlacement.PATH,
             name: 'api_key',
           },
-          securityValue: { id: 'api-key', apikey: 'secret' },
           baseUrl: 'https://localhost',
+          credential: 'secret',
         });
 
         expect(definition).toEqual({
@@ -231,7 +115,7 @@ describe('nock utils', () => {
           status: 200,
         };
 
-        removeCredentials({
+        replaceCredentialInDefinition({
           definition,
           scheme: {
             id: 'api-key',
@@ -239,8 +123,8 @@ describe('nock utils', () => {
             in: ApiKeyPlacement.PATH,
             name: 'api_key',
           },
-          securityValue: { id: 'api-key', apikey: 'secret' },
           baseUrl: 'https://gitlab.com/api', //Path ends with /api
+          credential: 'secret',
         });
 
         expect(definition).toEqual({
@@ -250,6 +134,7 @@ describe('nock utils', () => {
           status: 200,
         });
       });
+
       it('removes apikey from query', () => {
         const definition: RecordingDefinition = {
           scope: 'https://localhost',
@@ -258,7 +143,7 @@ describe('nock utils', () => {
           status: 200,
         };
 
-        removeCredentials({
+        replaceCredentialInDefinition({
           definition,
           scheme: {
             id: 'api-key',
@@ -266,8 +151,8 @@ describe('nock utils', () => {
             in: ApiKeyPlacement.QUERY,
             name: 'api_key',
           },
-          securityValue: { id: 'api-key', apikey: 'secret' },
           baseUrl: 'https://localhost',
+          credential: 'secret',
         });
 
         expect(definition).toEqual({
@@ -291,15 +176,15 @@ describe('nock utils', () => {
           },
         };
 
-        removeCredentials({
+        replaceCredentialInDefinition({
           definition,
           scheme: {
             id: 'basic',
             type: SecurityType.HTTP,
             scheme: HttpScheme.BASIC,
           },
-          securityValue: { id: 'basic', username: 'user', password: 'pass' },
           baseUrl: 'https://localhost',
+          credential: 'secret',
         });
 
         expect(definition).toEqual({
@@ -326,15 +211,15 @@ describe('nock utils', () => {
           },
         };
 
-        removeCredentials({
+        replaceCredentialInDefinition({
           definition,
           scheme: {
             id: 'bearer',
             type: SecurityType.HTTP,
             scheme: HttpScheme.BEARER,
           },
-          securityValue: { id: 'bearer', token: 'secret' },
           baseUrl: 'https://localhost',
+          credential: 'secret',
         });
 
         expect(definition).toEqual({
@@ -345,6 +230,145 @@ describe('nock utils', () => {
           reqheaders: {
             ['Authorization']: `Bearer ${HIDDEN_CREDENTIALS_PLACEHOLDER}`,
           },
+        });
+      });
+    });
+  });
+
+  describe('removeParameters', () => {
+    describe('when removing integration parameters', () => {
+      const baseUrl = 'https://localhost';
+
+      it('does not mutate recording when parameter is empty', () => {
+        const parameterValue = '';
+        const definition: RecordingDefinition = {
+          scope: baseUrl,
+          path: '/get?text=123',
+          method: 'GET',
+          status: 200,
+          reqheaders: {
+            ['api_key']: parameterValue,
+          },
+        };
+
+        replaceParameterInDefinition({
+          definition,
+          baseUrl,
+          credential: parameterValue,
+        });
+
+        expect(definition).toEqual({
+          scope: baseUrl,
+          path: '/get?text=123',
+          method: 'GET',
+          status: 200,
+          reqheaders: {
+            ['api_key']: '',
+          },
+        });
+      });
+
+      it('removes parameter from header', () => {
+        const parameterValue = 'integration-parameter';
+        const definition: RecordingDefinition = {
+          scope: baseUrl,
+          path: '/get?text=123',
+          method: 'GET',
+          status: 200,
+          reqheaders: {
+            ['api_key']: parameterValue,
+          },
+        };
+
+        replaceParameterInDefinition({
+          definition,
+          baseUrl,
+          credential: parameterValue,
+        });
+
+        expect(definition).toEqual({
+          scope: baseUrl,
+          path: '/get?text=123',
+          method: 'GET',
+          status: 200,
+          reqheaders: {
+            ['api_key']: HIDDEN_PARAMETERS_PLACEHOLDER,
+          },
+        });
+      });
+
+      it('removes parameter from body', () => {
+        const parameterValue = 'integration-parameter';
+        const definition: RecordingDefinition = {
+          scope: baseUrl,
+          path: '/get?text=123',
+          method: 'GET',
+          status: 200,
+          body: {
+            my_api_key: parameterValue,
+          },
+        };
+
+        replaceParameterInDefinition({
+          definition,
+          baseUrl,
+          credential: parameterValue,
+        });
+
+        expect(definition).toEqual({
+          scope: baseUrl,
+          path: '/get?text=123',
+          method: 'GET',
+          status: 200,
+          body: {
+            my_api_key: HIDDEN_PARAMETERS_PLACEHOLDER,
+          },
+        });
+      });
+
+      it('removes parameter from path', () => {
+        const parameterValue = 'integration-parameter';
+        const definition: RecordingDefinition = {
+          scope: baseUrl,
+          path: `/get/${parameterValue}?text=123`,
+          method: 'GET',
+          status: 200,
+        };
+
+        replaceParameterInDefinition({
+          definition,
+          baseUrl,
+          credential: parameterValue,
+        });
+
+        expect(definition).toEqual({
+          scope: baseUrl,
+          path: `/get/${HIDDEN_PARAMETERS_PLACEHOLDER}?text=123`,
+          method: 'GET',
+          status: 200,
+        });
+      });
+
+      it('removes parameter from query', () => {
+        const parameterValue = 'integration-parameter';
+        const definition: RecordingDefinition = {
+          scope: baseUrl,
+          path: `/get?api_key=${parameterValue}&text=123`,
+          method: 'GET',
+          status: 200,
+        };
+
+        replaceParameterInDefinition({
+          definition,
+          baseUrl,
+          credential: parameterValue,
+        });
+
+        expect(definition).toEqual({
+          scope: baseUrl,
+          path: `/get?api_key=${HIDDEN_PARAMETERS_PLACEHOLDER}&text=123`,
+          method: 'GET',
+          status: 200,
         });
       });
     });

@@ -9,18 +9,18 @@ import {
 import { createHash } from 'crypto';
 import {
   activate as activateNock,
+  define,
   disableNetConnect,
   enableNetConnect,
   isActive as isNockActive,
-  load as loadRecording,
   recorder,
   restore as restoreRecordings,
 } from 'nock';
 import { join as joinPath } from 'path';
 
 import {
-  AfterLoadFunction,
-  BeforeSaveFunction,
+  ProcessingFunction,
+  RecordingDefinitions,
   RecordingProcessOptions,
 } from '.';
 import {
@@ -36,7 +36,7 @@ import {
   matchWildCard,
   removeTimestamp,
 } from './common/format';
-import { exists } from './common/io';
+import { exists, readFileQuiet } from './common/io';
 import { writeRecordings } from './common/output-stream';
 import {
   NockConfig,
@@ -52,7 +52,7 @@ import {
   getProviderName,
   getSuperJson,
   isProfileProviderLocal,
-  removeOrLoadCredentials,
+  replaceCredentials,
 } from './superface-test.utils';
 
 export class SuperfaceTest {
@@ -133,7 +133,7 @@ export class SuperfaceTest {
     await this.startRecording(
       record,
       processRecordings,
-      options?.afterRecordingLoad
+      options?.beforeRecordingLoad
     );
 
     let result: Result<unknown, PerformError>;
@@ -250,8 +250,8 @@ export class SuperfaceTest {
    */
   private async startRecording(
     record: boolean,
-    loadCredentials: boolean,
-    afterRecordingLoad?: AfterLoadFunction
+    processRecordings: boolean,
+    beforeRecordingLoad?: ProcessingFunction
   ): Promise<void> {
     if (!this.recordingPath) {
       throw new RecordingPathUndefinedError();
@@ -261,7 +261,10 @@ export class SuperfaceTest {
     assertBoundProfileProvider(this.boundProfileProvider);
 
     const { configuration } = this.boundProfileProvider;
+    const integrationParameters = configuration.parameters ?? {};
     const securitySchemes = configuration.security;
+    const securityValues = this.sfConfig.provider.configuration.security;
+    const baseUrl = configuration.baseUrl;
 
     if (!record) {
       const recordingExists = await exists(this.recordingPath);
@@ -270,7 +273,30 @@ export class SuperfaceTest {
         throw new RecordingsNotFoundError();
       }
 
-      const scopes = loadRecording(this.recordingPath);
+      const definitionFile = await readFileQuiet(this.recordingPath);
+
+      if (definitionFile === undefined) {
+        throw new UnexpectedError('Reading recording file failed');
+      }
+
+      const definitions = JSON.parse(definitionFile) as RecordingDefinitions;
+
+      if (processRecordings) {
+        replaceCredentials({
+          definitions,
+          securitySchemes,
+          securityValues,
+          integrationParameters,
+          baseUrl,
+          beforeSave: false,
+        });
+      }
+
+      if (beforeRecordingLoad) {
+        await beforeRecordingLoad(definitions);
+      }
+
+      const scopes = define(definitions);
 
       if (scopes.length === 0) {
         console.warn(
@@ -283,22 +309,6 @@ export class SuperfaceTest {
       if (!isNockActive()) {
         activateNock();
       }
-
-      if (loadCredentials) {
-        const securityValues = this.sfConfig.provider.configuration.security;
-        const baseUrl = configuration.baseUrl;
-
-        removeOrLoadCredentials({
-          securitySchemes,
-          securityValues,
-          baseUrl,
-          payload: { scopes },
-        });
-      }
-
-      if (afterRecordingLoad) {
-        await afterRecordingLoad(scopes);
-      }
     } else {
       const enable_reqheaders_recording =
         this.nockConfig?.enableReqheadersRecording ?? false;
@@ -310,7 +320,12 @@ export class SuperfaceTest {
         enable_reqheaders_recording,
       });
 
-      if (securitySchemes.length > 0) {
+      if (
+        securitySchemes.length > 0 ||
+        securityValues.length > 0 ||
+        (integrationParameters &&
+          Object.values(integrationParameters).length > 0)
+      ) {
         console.warn(
           'Your recordings might contain sensitive information. Make sure to check them before publishing.'
         );
@@ -325,8 +340,8 @@ export class SuperfaceTest {
    */
   private async endRecording(
     record: boolean,
-    removeCredentials: boolean,
-    beforeRecordingSave?: BeforeSaveFunction
+    processRecordings: boolean,
+    beforeRecordingSave?: ProcessingFunction
   ): Promise<void> {
     if (!this.recordingPath) {
       throw new RecordingPathUndefinedError();
@@ -342,26 +357,29 @@ export class SuperfaceTest {
       recorder.clear();
       restoreRecordings();
 
-      if (definitions === undefined) {
+      if (definitions === undefined || definitions.length < 0) {
         return;
       }
 
       assertsDefinitionsAreNotStrings(definitions);
 
-      if (removeCredentials) {
+      if (processRecordings) {
         assertsPreparedConfig(this.sfConfig);
         assertBoundProfileProvider(this.boundProfileProvider);
 
         const { configuration } = this.boundProfileProvider;
         const securityValues = this.sfConfig.provider.configuration.security;
         const securitySchemes = configuration.security;
+        const integrationParameters = configuration.parameters ?? {};
         const baseUrl = configuration.baseUrl;
 
-        removeOrLoadCredentials({
+        replaceCredentials({
+          definitions,
           securitySchemes,
           securityValues,
+          integrationParameters,
           baseUrl,
-          payload: { definitions },
+          beforeSave: true,
         });
       }
 
