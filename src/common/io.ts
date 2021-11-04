@@ -5,8 +5,9 @@ import { promisify } from 'util';
 
 import { assertIsIOError } from './errors';
 
-export const mkdir = promisify(fs.mkdir);
 export const access = promisify(fs.access);
+export const mkdir = promisify(fs.mkdir);
+export const readFile = promisify(fs.readFile);
 export const rimraf = promisify(rimrafCallback);
 
 export interface WritingOptions {
@@ -32,6 +33,20 @@ export async function exists(path: string): Promise<boolean> {
 
   // No error, no problem.
   return true;
+}
+
+/**
+ * Reads a file and converts to string.
+ * Returns `undefined` if reading fails for any reason.
+ */
+export async function readFileQuiet(path: string): Promise<string | undefined> {
+  try {
+    const file = await readFile(path, { encoding: 'utf8' });
+
+    return file.toString();
+  } catch (_) {
+    return undefined;
+  }
 }
 
 export function streamWrite(stream: Writable, data: string): Promise<void> {

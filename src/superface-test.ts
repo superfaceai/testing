@@ -8,18 +8,18 @@ import {
 } from '@superfaceai/one-sdk';
 import {
   activate as activateNock,
+  define,
   disableNetConnect,
   enableNetConnect,
   isActive as isNockActive,
-  load as loadRecording,
   recorder,
   restore as restoreRecordings,
 } from 'nock';
 import { join as joinPath } from 'path';
 
 import {
-  AfterLoadFunction,
   BeforeSaveFunction,
+  RecordingDefinitions,
   RecordingProcessOptions,
 } from '.';
 import {
@@ -35,7 +35,7 @@ import {
   matchWildCard,
   removeTimestamp,
 } from './common/format';
-import { exists } from './common/io';
+import { exists, readFileQuiet } from './common/io';
 import { writeRecordings } from './common/output-stream';
 import {
   NockConfig,
@@ -51,8 +51,7 @@ import {
   getProviderName,
   getSuperJson,
   isProfileProviderLocal,
-  loadCredentials,
-  removeCredentials,
+  replaceCredentials,
 } from './superface-test.utils';
 
 export class SuperfaceTest {
@@ -129,7 +128,7 @@ export class SuperfaceTest {
     await this.startRecording(
       record,
       processRecordings,
-      options?.afterRecordingLoad
+      options?.beforeRecordingLoad
     );
 
     let result: Result<unknown, PerformError>;
@@ -154,7 +153,7 @@ export class SuperfaceTest {
     }
 
     if (result.isOk()) {
-      return ok(result.value)
+      return ok(result.value);
     }
 
     throw new UnexpectedError('Unexpected result object');
@@ -247,7 +246,7 @@ export class SuperfaceTest {
   private async startRecording(
     record: boolean,
     processRecordings: boolean,
-    afterRecordingLoad?: AfterLoadFunction
+    beforeRecordingLoad?: BeforeSaveFunction
   ): Promise<void> {
     if (!this.recordingPath) {
       throw new RecordingPathUndefinedError();
@@ -257,9 +256,10 @@ export class SuperfaceTest {
     assertBoundProfileProvider(this.boundProfileProvider);
 
     const { configuration } = this.boundProfileProvider;
-    const integrationParameters = configuration.parameters;
+    const integrationParameters = configuration.parameters ?? {};
     const securitySchemes = configuration.security;
     const securityValues = this.sfConfig.provider.configuration.security;
+    const baseUrl = configuration.baseUrl;
 
     if (!record) {
       const recordingExists = await exists(this.recordingPath);
@@ -268,7 +268,30 @@ export class SuperfaceTest {
         throw new RecordingsNotFoundError();
       }
 
-      const scopes = loadRecording(this.recordingPath);
+      const definitionFile = await readFileQuiet(this.recordingPath);
+
+      if (definitionFile === undefined) {
+        throw new UnexpectedError('Reading recording file failed');
+      }
+
+      const definitions = JSON.parse(definitionFile) as RecordingDefinitions;
+
+      if (processRecordings) {
+        replaceCredentials({
+          definitions,
+          securitySchemes,
+          securityValues,
+          integrationParameters,
+          baseUrl,
+          beforeSave: false,
+        });
+      }
+
+      if (beforeRecordingLoad) {
+        await beforeRecordingLoad(definitions);
+      }
+
+      const scopes = define(definitions);
 
       if (scopes.length === 0) {
         console.warn(
@@ -280,19 +303,6 @@ export class SuperfaceTest {
 
       if (!isNockActive()) {
         activateNock();
-      }
-
-      if (processRecordings) {
-        loadCredentials({
-          securitySchemes,
-          securityValues,
-          scopes,
-          integrationParameters,
-        });
-      }
-
-      if (afterRecordingLoad) {
-        await afterRecordingLoad(scopes);
       }
     } else {
       const enable_reqheaders_recording =
@@ -340,7 +350,7 @@ export class SuperfaceTest {
       const definitions = recorder.play();
       restoreRecordings();
 
-      if (definitions === undefined) {
+      if (definitions === undefined || definitions.length > 0) {
         return;
       }
 
@@ -353,15 +363,16 @@ export class SuperfaceTest {
         const { configuration } = this.boundProfileProvider;
         const securityValues = this.sfConfig.provider.configuration.security;
         const securitySchemes = configuration.security;
-        const integrationParameters = configuration.parameters;
+        const integrationParameters = configuration.parameters ?? {};
         const baseUrl = configuration.baseUrl;
 
-        removeCredentials({
+        replaceCredentials({
+          definitions,
           securitySchemes,
           securityValues,
-          baseUrl,
-          definitions,
           integrationParameters,
+          baseUrl,
+          beforeSave: true,
         });
       }
 

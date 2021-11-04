@@ -1,4 +1,7 @@
 import {
+  isApiKeySecurityValues,
+  isBasicAuthSecurityValues,
+  isBearerTokenSecurityValues,
   NormalizedSuperJsonDocument,
   SecurityScheme,
   SecurityValues,
@@ -17,7 +20,6 @@ import { join as joinPath } from 'path';
 import {
   CompleteSuperfaceTestConfig,
   RecordingDefinition,
-  RecordingScope,
   SuperfaceTestConfigPayload,
 } from '.';
 import {
@@ -27,10 +29,10 @@ import {
   SuperJsonNotFoundError,
 } from './common/errors';
 import {
-  loadCredentialsToScope,
-  loadParamsToScope,
-  removeCredentialsFromDefinition,
-  removeParamsFromDefinition,
+  HIDDEN_CREDENTIALS_PLACEHOLDER,
+  HIDDEN_PARAMETERS_PLACEHOLDER,
+  replaceCredentialInDefinition,
+  replaceParameterInDefinition,
 } from './nock.utils';
 
 /**
@@ -181,56 +183,103 @@ export function assertsDefinitionsAreNotStrings(
   }
 }
 
-export function loadCredentials({
-  securitySchemes,
-  securityValues,
-  scopes,
-  integrationParameters,
-}: {
-  securitySchemes: SecurityScheme[];
-  securityValues: SecurityValues[];
-  scopes: RecordingScope[];
-  integrationParameters?: Record<string, string>;
-}): void {
-  for (const scope of scopes) {
-    loadParamsToScope(scope, integrationParameters);
-
-    for (const scheme of securitySchemes) {
-      const securityValue = securityValues.find(val => val.id === scheme.id);
-
-      loadCredentialsToScope({
-        scope,
-        scheme,
-        securityValue,
-      });
+function resolveCredential(securityValue: SecurityValues): string {
+  if (isApiKeySecurityValues(securityValue)) {
+    if (securityValue.apikey.startsWith('$')) {
+      return process.env[securityValue.apikey.substr(1)] ?? '';
+    } else {
+      return securityValue.apikey;
     }
   }
+
+  if (isBasicAuthSecurityValues(securityValue)) {
+    let user: string, password: string;
+
+    if (securityValue.username.startsWith('$')) {
+      user = process.env[securityValue.username.substr(1)] ?? '';
+    } else {
+      user = securityValue.username;
+    }
+
+    if (securityValue.password.startsWith('$')) {
+      password = process.env[securityValue.password.substr(1)] ?? '';
+    } else {
+      password = securityValue.password;
+    }
+
+    return Buffer.from(user + ':' + password).toString('base64');
+  }
+
+  if (isBearerTokenSecurityValues(securityValue)) {
+    if (securityValue.token.startsWith('$')) {
+      return process.env[securityValue.token.substr(1)] ?? '';
+    } else {
+      return securityValue.token;
+    }
+  }
+
+  throw new UnexpectedError('Unexpected security value');
 }
 
-export function removeCredentials({
+export function replaceCredentials({
+  definitions,
   securitySchemes,
   securityValues,
-  baseUrl,
-  definitions,
   integrationParameters,
+  beforeSave,
+  baseUrl,
 }: {
+  definitions: RecordingDefinition[];
   securitySchemes: SecurityScheme[];
   securityValues: SecurityValues[];
+  integrationParameters: Record<string, string>;
+  beforeSave: boolean;
   baseUrl: string;
-  definitions: RecordingDefinition[];
-  integrationParameters?: Record<string, string>;
 }): void {
   for (const definition of definitions) {
-    removeParamsFromDefinition(definition, integrationParameters, baseUrl);
-
     for (const scheme of securitySchemes) {
+      let credential = '';
+      let placeholder: string | undefined = undefined;
+
       const securityValue = securityValues.find(val => val.id === scheme.id);
 
-      removeCredentialsFromDefinition({
+      if (beforeSave) {
+        if (securityValue) {
+          credential = resolveCredential(securityValue);
+        }
+      } else {
+        credential = HIDDEN_CREDENTIALS_PLACEHOLDER;
+
+        if (securityValue) {
+          placeholder = resolveCredential(securityValue);
+        }
+      }
+
+      replaceCredentialInDefinition({
         definition,
         scheme,
         baseUrl,
-        securityValue,
+        credential,
+        placeholder,
+      });
+    }
+
+    for (const parameterValue of Object.values(integrationParameters)) {
+      let credential = '';
+      let placeholder: string | undefined = undefined;
+
+      if (beforeSave) {
+        credential = parameterValue;
+      } else {
+        credential = HIDDEN_PARAMETERS_PLACEHOLDER;
+        placeholder = parameterValue;
+      }
+
+      replaceParameterInDefinition({
+        definition,
+        baseUrl,
+        credential,
+        placeholder,
       });
     }
   }

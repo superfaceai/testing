@@ -42,7 +42,7 @@ export interface NockConfig {
 export type RecordingDefinitions = RecordingDefinition[];
 export type RecordingScopes = RecordingScope[];
 
-export type BeforeSaveFunction = (
+export type ProcessingFunction = (
   recordings: RecordingDefinitions
 ) => Promise<void> | void;
 
@@ -52,8 +52,8 @@ export type AfterLoadFunction = (
 
 export interface RecordingProcessOptions {
   processRecordings?: boolean;
-  beforeRecordingSave?: BeforeSaveFunction;
-  afterRecordingLoad?: AfterLoadFunction;
+  beforeRecordingSave?: ProcessingFunction;
+  beforeRecordingLoad?: ProcessingFunction;
 }
 
 export {
