@@ -53,9 +53,8 @@ function replaceCredentialInHeaders({
   placeholder,
 }: ReplaceOptions): void {
   if (definition.reqheaders) {
-    const headers = Object.entries(definition.reqheaders).filter(
-      ([, value]) =>
-        value === credential || value.toString().includes(credential)
+    const headers = Object.entries(definition.reqheaders).filter(([, value]) =>
+      value.toString().includes(credential)
     );
 
     for (const [headerName, headerValue] of headers) {
@@ -100,7 +99,7 @@ function replaceCredentialInQuery({
   const definitionURL = new URL(baseUrlOrigin + definition.path);
 
   for (const [key, queryValue] of definitionURL.searchParams.entries()) {
-    if (queryValue === credential || queryValue.includes(credential)) {
+    if (queryValue.includes(credential)) {
       definitionURL.searchParams.set(
         key,
         replaceCredential({
@@ -127,10 +126,7 @@ function replaceCredentialInPath({
   const baseUrlOrigin = new URL(baseUrl).origin;
   const definitionURL = new URL(baseUrlOrigin + definition.path);
 
-  if (
-    definitionURL.pathname === credential ||
-    definitionURL.pathname.includes(credential)
-  ) {
+  if (definitionURL.pathname.includes(credential)) {
     definitionURL.pathname = replaceCredential({
       payload: definitionURL.pathname,
       credential,

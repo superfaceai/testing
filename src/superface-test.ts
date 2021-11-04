@@ -357,7 +357,7 @@ export class SuperfaceTest {
       recorder.clear();
       restoreRecordings();
 
-      if (definitions === undefined || definitions.length < 0) {
+      if (definitions === undefined || definitions.length === 0) {
         return;
       }
 

@@ -46,10 +46,6 @@ export type ProcessingFunction = (
   recordings: RecordingDefinitions
 ) => Promise<void> | void;
 
-export type AfterLoadFunction = (
-  scopes: RecordingScopes
-) => Promise<void> | void;
-
 export interface RecordingProcessOptions {
   processRecordings?: boolean;
   beforeRecordingSave?: ProcessingFunction;
