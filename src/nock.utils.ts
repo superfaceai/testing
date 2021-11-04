@@ -119,7 +119,8 @@ function removeApiKey(
   } else if (scheme.in === ApiKeyPlacement.BODY) {
     removeApiKeyInBody(definition, loadedCredential);
   } else {
-    const definitionURL = new URL(baseUrl + definition.path);
+    const baseUrlOrigin = new URL(baseUrl).origin;
+    const definitionURL = new URL(baseUrlOrigin + definition.path);
 
     if (scheme.in === ApiKeyPlacement.PATH) {
       removeApiKeyInPath(definitionURL, loadedCredential);
