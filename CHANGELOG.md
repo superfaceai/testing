@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.3-beta.13] - 2021-11-04
+
 ## [0.0.3-beta.12] - 2021-11-02
 
 ## [0.0.3-beta.11] - 2021-11-01
@@ -26,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Modules for io, formatting and errors.
 - SuperfaceTest class
 
-[Unreleased]: https://github.com/superfaceai/testing-lib/compare/v0.0.3-beta.12...HEAD
+[Unreleased]: https://github.com/superfaceai/testing-lib/compare/v0.0.3-beta.13...HEAD
+[0.0.3-beta.13]: https://github.com/superfaceai/testing-lib/compare/v0.0.3-beta.12...v0.0.3-beta.13
 [0.0.3-beta.12]: https://github.com/superfaceai/testing-lib/compare/v0.0.3-beta.11...v0.0.3-beta.12
 [0.0.3-beta.11]: https://github.com/superfaceai/testing-lib/compare/v0.0.3-beta.10...v0.0.3-beta.11
