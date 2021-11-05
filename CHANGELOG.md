@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Hiding integration parameters
+- Hiding integration parameters in headers, body, baseUrl, path and query
 - Hashing input for unique name of recording files
 - Rewrap perform result to Result<unknown, string>
 - One-SDK to peerDependencies and devDependencies
