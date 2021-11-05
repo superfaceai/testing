@@ -83,7 +83,7 @@ export class RecordingsNotFoundError extends ErrorBase {
   constructor() {
     super(
       'RecordingsNotFoundError',
-      'Recordings could not be found for running mocked tests.\nYou must call the live API first to record API traffic.\nUse the environment variable SUPERFACE_LIVE_API to call the API and record traffic.\nSee https://github.com/superfaceai/testing-lib#recording to learn more.'
+      'Recordings could not be found for running mocked tests.\nYou must call the live API first to record API traffic.\nUse the environment variable SUPERFACE_LIVE_API to call the API and record traffic.\nSee https://github.com/superfaceai/testing#recording to learn more.'
     );
   }
 }
