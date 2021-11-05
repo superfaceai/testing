@@ -7,7 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## 0.0.3-beta.14 - 2021-11-04
 ### Added
 - Hiding integration parameters
 - Hashing input for unique name of recording files
@@ -25,4 +24,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Modules for io, formatting and errors.
 - SuperfaceTest class
 
-[Unreleased]: https://github.com/superfaceai/testing-lib/compare/v0.0.3-beta.14...HEAD
+[Unreleased]: https://github.com/superfaceai/testing/compare/v0.0.2-beta.0...HEAD
