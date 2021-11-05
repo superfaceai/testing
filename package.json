@@ -1,6 +1,6 @@
 {
   "name": "@superfaceai/testing",
-  "version": "0.0.3-beta.14",
+  "version": "1.0.0",
   "description": "Testing library for Superface capabilities.",
   "main": "dist/index.js",
   "source": "src/index.ts",
