@@ -1,11 +1,11 @@
 # Superface Testing Library
 
-![GitHub Workflow Status](https://img.shields.io/github/workflow/status/superfaceai/testing-lib/CI)
-![NPM](https://img.shields.io/npm/v/@superfaceai/testing-lib)
-[![NPM](https://img.shields.io/npm/l/@superfaceai/testing-lib)](LICENSE)
+![GitHub Workflow Status](https://img.shields.io/github/workflow/status/superfaceai/testing/CI)
+![NPM](https://img.shields.io/npm/v/@superfaceai/testing)
+[![NPM](https://img.shields.io/npm/l/@superfaceai/testing)](LICENSE)
 ![TypeScript](https://img.shields.io/badge/%3C%2F%3E-Typescript-blue)
 
-<img src="https://github.com/superfaceai/testing-lib/blob/main/docs/LogoGreen.png" alt="superface logo" width="150" height="150">
+<img src="https://github.com/superfaceai/testing/blob/main/docs/LogoGreen.png" alt="superface logo" width="150" height="150">
 
 This library enables easy testing of local Superface capabilities with `SuperfaceTest` class. It uses these capabilities either with live HTTP traffic or with recorded traffic (More about recording HTTP traffic in section [recording](#recording)).
 
@@ -39,9 +39,9 @@ To install the package, run in the project directory:
 
 ```
 # npm users
-npm install -D @superfaceai/testing-lib
+npm install -D @superfaceai/testing
 # yarn users
-yarn add -D @superfaceai/testing-lib
+yarn add -D @superfaceai/testing
 ```
 
 ## Usage
@@ -51,7 +51,7 @@ To test Superface capabilities, initialize a new `SuperfaceTest` instance and ca
 ### Initializing SuperfaceTest instance
 
 ```typescript
-import { SuperfaceTest } from '@superfaceai/testing-lib';
+import { SuperfaceTest } from '@superfaceai/testing';
 ```
 
 **without any arguments:**
@@ -100,7 +100,7 @@ Given nock configuration is also stored in class. Property `path` and `fixture` 
 To test your capabilities, use method `run()`, which encapsulates nock recording and UseCase perform. It expects test configuration (similar to initializing `SuperfaceTest` class) and input. You don't need to specify `profile`, `provider` or `useCase` if you already specified them when initializing `SuperfaceTest` class.
 
 ```typescript
-import { SuperfaceTest } from '@superfaceai/testing-lib';
+import { SuperfaceTest } from '@superfaceai/testing';
 
 const superface = new SuperfaceTest({
   profile: 'profile',
@@ -118,7 +118,7 @@ superface.run({
 Example with jest:
 
 ```typescript
-import { SuperfaceTest } from '@superfaceai/testing-lib';
+import { SuperfaceTest } from '@superfaceai/testing';
 
 describe('test', () => {
   let superface: SuperfaceTest;
@@ -195,7 +195,7 @@ superface.run(
 You can enter your own processing functions along side `processRecordings` parameter. Both have same function signature and are called either before load or before save of recordings.
 
 ```typescript
-import { RecordingDefinitions, SuperfaceTest } from '@superfaceai/testing-lib';
+import { RecordingDefinitions, SuperfaceTest } from '@superfaceai/testing';
 
 const beforeRecordingLoad = (definitions: RecordingDefinitions) => {
   definitions.forEach(def => {
