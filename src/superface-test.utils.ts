@@ -112,11 +112,11 @@ export function isProfileProviderLocal(
   const targetedProfileProvider =
     superJsonNormalized.profiles[profileId].providers[providerId];
 
-  if (!('file' in targetedProfileProvider)) {
-    return false;
+  if ('file' in targetedProfileProvider) {
+    return true;
   }
 
-  return true;
+  return false;
 }
 
 /**

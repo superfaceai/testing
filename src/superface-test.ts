@@ -266,7 +266,28 @@ export class SuperfaceTest {
     const securityValues = this.sfConfig.provider.configuration.security;
     const baseUrl = configuration.baseUrl;
 
-    if (!record) {
+    if (record) {
+      const enable_reqheaders_recording =
+        this.nockConfig?.enableReqheadersRecording ?? false;
+
+      recorder.rec({
+        dont_print: true,
+        output_objects: true,
+        use_separator: false,
+        enable_reqheaders_recording,
+      });
+
+      if (
+        securitySchemes.length > 0 ||
+        securityValues.length > 0 ||
+        (integrationParameters &&
+          Object.values(integrationParameters).length > 0)
+      ) {
+        console.warn(
+          'Your recordings might contain sensitive information. Make sure to check them before publishing.'
+        );
+      }
+    } else {
       const recordingExists = await exists(this.recordingPath);
 
       if (!recordingExists) {
@@ -309,27 +330,6 @@ export class SuperfaceTest {
       if (!isNockActive()) {
         activateNock();
       }
-    } else {
-      const enable_reqheaders_recording =
-        this.nockConfig?.enableReqheadersRecording ?? false;
-
-      recorder.rec({
-        dont_print: true,
-        output_objects: true,
-        use_separator: false,
-        enable_reqheaders_recording,
-      });
-
-      if (
-        securitySchemes.length > 0 ||
-        securityValues.length > 0 ||
-        (integrationParameters &&
-          Object.values(integrationParameters).length > 0)
-      ) {
-        console.warn(
-          'Your recordings might contain sensitive information. Make sure to check them before publishing.'
-        );
-      }
     }
   }
 
@@ -347,12 +347,7 @@ export class SuperfaceTest {
       throw new RecordingPathUndefinedError();
     }
 
-    if (!record) {
-      restoreRecordings();
-      enableNetConnect();
-
-      return;
-    } else {
+    if (record) {
       const definitions = recorder.play();
       recorder.clear();
       restoreRecordings();
@@ -388,6 +383,11 @@ export class SuperfaceTest {
       }
 
       await writeRecordings(this.recordingPath, definitions);
+    } else {
+      restoreRecordings();
+      enableNetConnect();
+
+      return;
     }
   }
 }
