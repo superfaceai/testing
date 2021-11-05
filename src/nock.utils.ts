@@ -88,6 +88,20 @@ function replaceCredentialInBody({
   }
 }
 
+function replaceCredentialInScope({
+  definition,
+  credential,
+  isParameter,
+  placeholder,
+}: ReplaceOptions): void {
+  definition.scope = replaceCredential({
+    payload: definition.scope,
+    credential,
+    isParameter,
+    placeholder,
+  });
+}
+
 function replaceCredentialInQuery({
   definition,
   baseUrl,
@@ -348,6 +362,12 @@ export function replaceParameterInDefinition({
     placeholder,
   });
   replaceCredentialInBody({
+    definition,
+    credential,
+    isParameter,
+    placeholder,
+  });
+  replaceCredentialInScope({
     definition,
     credential,
     isParameter,

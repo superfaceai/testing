@@ -371,6 +371,30 @@ describe('nock utils', () => {
           status: 200,
         });
       });
+
+      it('removes parameter from scope', () => {
+        const baseUrl = 'https://api.integration-parameter.com';
+        const parameterValue = 'integration-parameter';
+        const definition: RecordingDefinition = {
+          scope: baseUrl,
+          path: `/get?text=123`,
+          method: 'GET',
+          status: 200,
+        };
+
+        replaceParameterInDefinition({
+          definition,
+          baseUrl,
+          credential: parameterValue,
+        });
+
+        expect(definition).toEqual({
+          scope: `https://api.${HIDDEN_PARAMETERS_PLACEHOLDER}.com`,
+          path: `/get?text=123`,
+          method: 'GET',
+          status: 200,
+        });
+      });
     });
   });
 });
