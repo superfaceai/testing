@@ -8,7 +8,6 @@ import {
   SuperfaceClient,
   SuperJson,
 } from '@superfaceai/one-sdk';
-import { getLocal } from 'mockttp';
 import nock, { pendingMocks, recorder } from 'nock';
 import { join as joinPath } from 'path';
 import { mocked } from 'ts-jest/utils';
@@ -48,7 +47,6 @@ jest.mock('./common/output-stream', () => ({
   writeRecordings: jest.fn(),
 }));
 
-const mockServer = getLocal();
 const DEFAULT_RECORDING_PATH = joinPath(process.cwd(), 'nock');
 
 describe('SuperfaceTest', () => {
@@ -155,21 +153,8 @@ describe('SuperfaceTest', () => {
     });
 
     describe('when recording', () => {
-      beforeAll(async () => {
-        await mockServer.start();
-      });
-
-      afterAll(async () => {
-        await mockServer.stop();
-      });
-
       it('writes and restores recordings', async () => {
         superfaceTest = new SuperfaceTest(await getMockedSfConfig());
-
-        await mockServer
-          .get('/')
-          .withHeaders({ Accept: 'application/json' })
-          .thenJson(200, { some: 'data' });
 
         const writeRecordingsSpy = mocked(writeRecordings);
         const recorderSpy = jest.spyOn(recorder, 'rec');
@@ -212,6 +197,37 @@ describe('SuperfaceTest', () => {
               },
             },
           ]
+        );
+      });
+
+      it('writes recordings when no traffic was recorded', async () => {
+        superfaceTest = new SuperfaceTest(await getMockedSfConfig());
+
+        const writeRecordingsSpy = mocked(writeRecordings);
+        const recorderSpy = jest.spyOn(recorder, 'rec');
+        const playSpy = jest.spyOn(recorder, 'play').mockReturnValueOnce([]);
+        const endRecSpy = jest.spyOn(nock, 'restore');
+
+        mocked(exists).mockResolvedValue(true);
+        mocked(matchWildCard).mockReturnValueOnce(true);
+
+        await superfaceTest.run({ input: {} });
+
+        expect(recorderSpy).toHaveBeenCalledTimes(1);
+        expect(recorderSpy).toHaveBeenCalledWith({
+          dont_print: true,
+          output_objects: true,
+          use_separator: false,
+          enable_reqheaders_recording: false,
+        });
+
+        expect(playSpy).toHaveBeenCalledTimes(1);
+        expect(endRecSpy).toHaveBeenCalledTimes(1);
+
+        expect(writeRecordingsSpy).toHaveBeenCalledTimes(1);
+        expect(writeRecordingsSpy).toHaveBeenCalledWith(
+          expect.stringContaining(DEFAULT_RECORDING_PATH),
+          []
         );
       });
 
