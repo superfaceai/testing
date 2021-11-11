@@ -5,6 +5,7 @@ import {
   SecurityScheme,
   SecurityType,
 } from '@superfaceai/ast';
+import createDebug from 'debug';
 import { RequestBodyMatcher } from 'nock/types';
 import { URL } from 'url';
 
@@ -17,6 +18,16 @@ interface ReplaceOptions {
   isParameter: boolean;
   placeholder?: string;
 }
+
+const debug = createDebug('superface:testing:recordings');
+const debugSensitive = createDebug('superface:testing:recordings:sensitive');
+debugSensitive(
+  `
+WARNING: YOU HAVE ALLOWED LOGGING SENSITIVE INFORMATION.
+THIS LOGGING LEVEL DOES NOT PREVENT LEAKING SECRETS AND SHOULD NOT BE USED IF THE LOGS ARE GOING TO BE SHARED.
+CONSIDER DISABLING SENSITIVE INFORMATION LOGGING BY APPENDING THE DEBUG ENVIRONMENT VARIABLE WITH ",-*:sensitive".
+`
+);
 
 export const HIDDEN_CREDENTIALS_PLACEHOLDER =
   'credentials-removed-to-keep-them-secure';
@@ -38,12 +49,20 @@ function replaceCredential({
   isParameter: boolean;
   placeholder?: string;
 }) {
-  return credential !== ''
-    ? payload.replace(
-        new RegExp(credential, 'g'),
+  if (credential !== '') {
+    debugSensitive(
+      `Replacing credential: '${credential}' for placeholder: '${
         placeholder ?? defaultPlaceholder(isParameter)
-      )
-    : payload;
+      }'`
+    );
+
+    return payload.replace(
+      new RegExp(credential, 'g'),
+      placeholder ?? defaultPlaceholder(isParameter)
+    );
+  }
+
+  return payload;
 }
 
 function replaceCredentialInHeaders({
@@ -58,6 +77,10 @@ function replaceCredentialInHeaders({
     );
 
     for (const [headerName, headerValue] of headers) {
+      debug('Replacing credentials in request header');
+      debugSensitive('Request header name:', headerName);
+      debugSensitive('Request header value:', headerValue);
+
       definition.reqheaders[headerName] = replaceCredential({
         payload: headerValue.toString(),
         credential,
@@ -77,6 +100,9 @@ function replaceCredentialInBody({
   if (definition.body !== undefined) {
     let body = JSON.stringify(definition.body);
 
+    debug('Replacing credentials in request body');
+    debugSensitive('Request body:', body);
+
     body = replaceCredential({
       payload: body,
       credential,
@@ -94,6 +120,9 @@ function replaceCredentialInScope({
   isParameter,
   placeholder,
 }: ReplaceOptions): void {
+  debug('Replacing credentials in scope');
+  debugSensitive('Scope:', definition.scope);
+
   definition.scope = replaceCredential({
     payload: definition.scope,
     credential,
@@ -114,6 +143,10 @@ function replaceCredentialInQuery({
 
   for (const [key, queryValue] of definitionURL.searchParams.entries()) {
     if (queryValue.includes(credential)) {
+      debug('Replacing credentials in query');
+      debugSensitive('Query name:', key);
+      debugSensitive('Query value:', queryValue);
+
       definitionURL.searchParams.set(
         key,
         replaceCredential({
@@ -141,6 +174,9 @@ function replaceCredentialInPath({
   const definitionURL = new URL(baseUrlOrigin + definition.path);
 
   if (definitionURL.pathname.includes(credential)) {
+    debug('Replacing credentials in path');
+    debugSensitive('Request path:', definitionURL.pathname);
+
     definitionURL.pathname = replaceCredential({
       payload: definitionURL.pathname,
       credential,
@@ -162,6 +198,10 @@ function replaceApiKeyInHeader({
 }: ReplaceOptions & { scheme: ApiKeySecurityScheme }): void {
   if (scheme.name !== undefined) {
     if (definition.reqheaders?.[scheme.name] !== undefined) {
+      debug('Replacing api-key in request header');
+      debugSensitive('Request header name:', scheme.name);
+      debugSensitive('Request header value:', definition.reqheaders[scheme.name]);
+
       definition.reqheaders[scheme.name] = replaceCredential({
         payload: definition.reqheaders[scheme.name].toString(),
         credential,
@@ -224,6 +264,11 @@ function replaceApiKeyInQuery({
     scheme.name !== undefined &&
     definitionURL.searchParams.has(scheme.name)
   ) {
+
+    debug('Replacing api-key in query');
+    debugSensitive('Query name:', scheme.name);
+    debugSensitive('Query value:', definitionURL.searchParams.get(scheme.name));
+
     definitionURL.searchParams.set(
       scheme.name,
       placeholder ? placeholder : defaultPlaceholder(isParameter)
@@ -250,6 +295,8 @@ function replaceApiKey({
   isParameter,
   placeholder,
 }: ReplaceOptions & { baseUrl: string; scheme: ApiKeySecurityScheme }): void {
+  debug('Replacing api-key');
+  
   if (scheme.in === ApiKeyPlacement.HEADER) {
     replaceApiKeyInHeader({
       definition,
@@ -285,6 +332,8 @@ function replaceBasicAuth(
   placeholder?: string
 ): void {
   if (definition.reqheaders?.[AUTH_HEADER_NAME] !== undefined) {
+    debug('Replacing Basic token');
+
     definition.reqheaders[AUTH_HEADER_NAME] = `Basic ${
       placeholder ?? HIDDEN_CREDENTIALS_PLACEHOLDER
     }`;
@@ -296,6 +345,8 @@ function replaceBearerAuth(
   placeholder?: string
 ): void {
   if (definition.reqheaders?.[AUTH_HEADER_NAME] !== undefined) {
+    debug('Replacing Bearer token');
+
     definition.reqheaders[AUTH_HEADER_NAME] = `Bearer ${
       placeholder ?? HIDDEN_CREDENTIALS_PLACEHOLDER
     }`;
@@ -315,6 +366,8 @@ export function replaceCredentialInDefinition({
   credential: string;
   placeholder?: string;
 }): void {
+  debug('Replacing credentials based on security schemes');
+
   if (scheme.type === SecurityType.APIKEY) {
     replaceApiKey({
       definition,
@@ -353,6 +406,7 @@ export function replaceParameterInDefinition({
   credential: string;
   placeholder?: string;
 }): void {
+  debug('Replacing integration parameters');
   const isParameter = true;
 
   replaceCredentialInHeaders({

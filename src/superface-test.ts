@@ -7,6 +7,7 @@ import {
   SuperfaceClient,
 } from '@superfaceai/one-sdk';
 import { createHash } from 'crypto';
+import createDebug from 'debug';
 import {
   activate as activateNock,
   define,
@@ -55,6 +56,8 @@ import {
   replaceCredentials,
 } from './superface-test.utils';
 
+const debug = createDebug('superface:testing');
+
 export class SuperfaceTest {
   private sfConfig: SuperfaceTestConfigPayload;
   private boundProfileProvider?: BoundProfileProvider;
@@ -78,6 +81,8 @@ export class SuperfaceTest {
     if (this.fixturesPath === undefined) {
       this.fixturesPath = path ?? joinPath(process.cwd(), 'nock');
     }
+
+    debug('Prepare path to recording fixtures:', this.fixturesPath);
   }
 
   /**
@@ -93,6 +98,8 @@ export class SuperfaceTest {
       fixtureName,
       `${this.nockConfig?.fixture ?? 'recording'}-${inputHash}.json`
     );
+
+    debug('Prepare path to recording:', this.recordingPath);
   }
 
   /**
@@ -123,6 +130,8 @@ export class SuperfaceTest {
     const hash = createHash('md5')
       .update(JSON.stringify(testCase.input))
       .digest('hex');
+      
+    debug('Created hash based on input value:', hash)
 
     this.setupRecordingPath(getFixtureName(this.sfConfig), hash);
 
@@ -154,10 +163,14 @@ export class SuperfaceTest {
     );
 
     if (result.isErr()) {
+      debug('Perform failed with error:', result.error.toString());
+
       return err(removeTimestamp(result.error.toString()));
     }
 
     if (result.isOk()) {
+      debug('Perform succeeded with result:', result.value);
+      
       return ok(result.value);
     }
 
@@ -183,6 +196,8 @@ export class SuperfaceTest {
     if (payload.useCase !== undefined) {
       this.sfConfig.useCase = payload.useCase;
     }
+
+    debug('Superface configuration prepared:', this.sfConfig);
   }
 
   /**
@@ -192,18 +207,24 @@ export class SuperfaceTest {
   private async setupSuperfaceConfig(): Promise<void> {
     if (!this.sfConfig.client) {
       this.sfConfig.client = new SuperfaceClient();
+
+      debug('Superface client initialized:', this.sfConfig.client);
     }
 
     if (typeof this.sfConfig.profile === 'string') {
       this.sfConfig.profile = await this.sfConfig.client.getProfile(
         this.sfConfig.profile
       );
+
+      debug('Superface Profile transformed:', this.sfConfig.profile);
     }
 
     if (typeof this.sfConfig.provider === 'string') {
       this.sfConfig.provider = await this.sfConfig.client.getProvider(
         this.sfConfig.provider
       );
+
+      debug('Superface Provider transformed:', this.sfConfig.provider);
     }
 
     if (typeof this.sfConfig.useCase === 'string') {
@@ -214,6 +235,8 @@ export class SuperfaceTest {
       this.sfConfig.useCase = this.sfConfig.profile.getUseCase(
         this.sfConfig.useCase
       );
+
+      debug('Superface UseCase transformed:', this.sfConfig.useCase);
     }
   }
 
@@ -222,9 +245,6 @@ export class SuperfaceTest {
    * are locally linked in super.json.
    */
   private async checkForMapInSuperJson(): Promise<boolean> {
-    const superJson = this.sfConfig.client?.superJson ?? (await getSuperJson());
-    const superJsonNormalized = superJson.normalized;
-
     let profileId: string | undefined;
 
     if (this.sfConfig.profile !== undefined) {
@@ -234,6 +254,10 @@ export class SuperfaceTest {
     }
 
     if (this.sfConfig.provider !== undefined) {
+      const superJson =
+        this.sfConfig.client?.superJson ?? (await getSuperJson());
+      const superJsonNormalized = superJson.normalized;
+
       return isProfileProviderLocal(
         this.sfConfig.provider,
         profileId,
@@ -277,6 +301,8 @@ export class SuperfaceTest {
         enable_reqheaders_recording,
       });
 
+      debug('Recording HTTP traffic started')
+
       if (
         securitySchemes.length > 0 ||
         securityValues.length > 0 ||
@@ -314,10 +340,14 @@ export class SuperfaceTest {
       }
 
       if (beforeRecordingLoad) {
+        debug('Calling custom \'beforeRecordingLoad\' hook on loaded recording definitions');
+
         await beforeRecordingLoad(definitions);
       }
 
       const scopes = define(definitions);
+      
+      debug('Loaded and mocked recorded traffic based on recording fixture')
 
       if (scopes.length === 0) {
         console.warn(
@@ -352,6 +382,8 @@ export class SuperfaceTest {
       recorder.clear();
       restoreRecordings();
 
+      debug('Recording HTTP traffic ended')
+
       if (definitions === undefined || definitions.length === 0) {
         return;
       }
@@ -379,10 +411,13 @@ export class SuperfaceTest {
       }
 
       if (beforeRecordingSave) {
+        debug('Calling custom \'beforeRecordingSave\' hook on recorded definitions');
+
         await beforeRecordingSave(definitions);
       }
 
       await writeRecordings(this.recordingPath, definitions);
+      debug('Recorded definitions written')
     } else {
       restoreRecordings();
       enableNetConnect();
