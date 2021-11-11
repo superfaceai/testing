@@ -288,30 +288,31 @@ export function replaceCredentials({
 
 export function checkSensitiveInformation(
   definitions: RecordingDefinitions,
-  securitySchemes: SecurityScheme[],
+  schemes: SecurityScheme[],
   securityValues: SecurityValues[],
-  integrationParameters: Record<string, string>
+  params: Record<string, string>
 ): void {
-  const warningMessage =
-    'Your recordings contain sensitive information. Make sure to check them before publishing.';
-
   for (const definition of definitions) {
     const stringifiedDef = JSON.stringify(definition);
 
-    for (const scheme of securitySchemes) {
+    for (const scheme of schemes) {
       const securityValue = securityValues.find(val => val.id === scheme.id);
 
       if (
         securityValue &&
         stringifiedDef.includes(resolveCredential(securityValue))
       ) {
-        console.warn(warningMessage);
+        console.warn(
+          `Value for security scheme '${scheme.id}' of type '${scheme.type}' was found in recorded HTTP traffic.`
+        );
       }
     }
 
-    for (const parameterValue of Object.values(integrationParameters)) {
-      if (stringifiedDef.includes(parameterValue)) {
-        console.warn(warningMessage);
+    for (const [paramName, paramValue] of Object.entries(params)) {
+      if (stringifiedDef.includes(paramValue)) {
+        console.warn(
+          `Value for integration parameter '${paramName}' was found in recorded HTTP traffic.`
+        );
       }
     }
   }
