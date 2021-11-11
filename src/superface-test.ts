@@ -165,86 +165,6 @@ export class SuperfaceTest {
   }
 
   /**
-   * Sets up entered payload to current Superface configuration
-   */
-  private prepareSuperfaceConfig(payload: SuperfaceTestConfigPayload): void {
-    if (payload.client !== undefined) {
-      this.sfConfig.client = payload.client;
-    }
-
-    if (payload.profile !== undefined) {
-      this.sfConfig.profile = payload.profile;
-    }
-
-    if (payload.provider !== undefined) {
-      this.sfConfig.provider = payload.provider;
-    }
-
-    if (payload.useCase !== undefined) {
-      this.sfConfig.useCase = payload.useCase;
-    }
-  }
-
-  /**
-   * Sets up current configuration - transforms every component
-   * that is represented by string to instance of that corresponding component.
-   */
-  private async setupSuperfaceConfig(): Promise<void> {
-    if (!this.sfConfig.client) {
-      this.sfConfig.client = new SuperfaceClient();
-    }
-
-    if (typeof this.sfConfig.profile === 'string') {
-      this.sfConfig.profile = await this.sfConfig.client.getProfile(
-        this.sfConfig.profile
-      );
-    }
-
-    if (typeof this.sfConfig.provider === 'string') {
-      this.sfConfig.provider = await this.sfConfig.client.getProvider(
-        this.sfConfig.provider
-      );
-    }
-
-    if (typeof this.sfConfig.useCase === 'string') {
-      if (this.sfConfig.profile === undefined) {
-        throw new ComponentUndefinedError('Profile');
-      }
-
-      this.sfConfig.useCase = this.sfConfig.profile.getUseCase(
-        this.sfConfig.useCase
-      );
-    }
-  }
-
-  /**
-   * Checks whether current components in sfConfig
-   * are locally linked in super.json.
-   */
-  private async checkForMapInSuperJson(): Promise<boolean> {
-    const superJson = this.sfConfig.client?.superJson ?? (await getSuperJson());
-    const superJsonNormalized = superJson.normalized;
-
-    let profileId: string | undefined;
-
-    if (this.sfConfig.profile !== undefined) {
-      profileId = getProfileId(this.sfConfig.profile);
-    } else {
-      return false;
-    }
-
-    if (this.sfConfig.provider !== undefined) {
-      return isProfileProviderLocal(
-        this.sfConfig.provider,
-        profileId,
-        superJsonNormalized
-      );
-    }
-
-    return true;
-  }
-
-  /**
    * Checks whether nock is configured and
    * starts recording or loads recording file if exists.
    */
@@ -389,5 +309,85 @@ export class SuperfaceTest {
 
       return;
     }
+  }
+
+  /**
+   * Sets up entered payload to current Superface configuration
+   */
+  private prepareSuperfaceConfig(payload: SuperfaceTestConfigPayload): void {
+    if (payload.client !== undefined) {
+      this.sfConfig.client = payload.client;
+    }
+
+    if (payload.profile !== undefined) {
+      this.sfConfig.profile = payload.profile;
+    }
+
+    if (payload.provider !== undefined) {
+      this.sfConfig.provider = payload.provider;
+    }
+
+    if (payload.useCase !== undefined) {
+      this.sfConfig.useCase = payload.useCase;
+    }
+  }
+
+  /**
+   * Sets up current configuration - transforms every component
+   * that is represented by string to instance of that corresponding component.
+   */
+  private async setupSuperfaceConfig(): Promise<void> {
+    if (!this.sfConfig.client) {
+      this.sfConfig.client = new SuperfaceClient();
+    }
+
+    if (typeof this.sfConfig.profile === 'string') {
+      this.sfConfig.profile = await this.sfConfig.client.getProfile(
+        this.sfConfig.profile
+      );
+    }
+
+    if (typeof this.sfConfig.provider === 'string') {
+      this.sfConfig.provider = await this.sfConfig.client.getProvider(
+        this.sfConfig.provider
+      );
+    }
+
+    if (typeof this.sfConfig.useCase === 'string') {
+      if (this.sfConfig.profile === undefined) {
+        throw new ComponentUndefinedError('Profile');
+      }
+
+      this.sfConfig.useCase = this.sfConfig.profile.getUseCase(
+        this.sfConfig.useCase
+      );
+    }
+  }
+
+  /**
+   * Checks whether current components in sfConfig
+   * are locally linked in super.json.
+   */
+  private async checkForMapInSuperJson(): Promise<boolean> {
+    const superJson = this.sfConfig.client?.superJson ?? (await getSuperJson());
+    const superJsonNormalized = superJson.normalized;
+
+    let profileId: string | undefined;
+
+    if (this.sfConfig.profile !== undefined) {
+      profileId = getProfileId(this.sfConfig.profile);
+    } else {
+      return false;
+    }
+
+    if (this.sfConfig.provider !== undefined) {
+      return isProfileProviderLocal(
+        this.sfConfig.provider,
+        profileId,
+        superJsonNormalized
+      );
+    }
+
+    return true;
   }
 }
