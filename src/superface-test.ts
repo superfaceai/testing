@@ -130,8 +130,8 @@ export class SuperfaceTest {
     const hash = createHash('md5')
       .update(JSON.stringify(testCase.input))
       .digest('hex');
-      
-    debug('Created hash based on input value:', hash)
+
+    debug('Created hash based on input value:', hash);
 
     this.setupRecordingPath(getFixtureName(this.sfConfig), hash);
 
@@ -170,7 +170,7 @@ export class SuperfaceTest {
 
     if (result.isOk()) {
       debug('Perform succeeded with result:', result.value);
-      
+
       return ok(result.value);
     }
 
@@ -301,7 +301,7 @@ export class SuperfaceTest {
         enable_reqheaders_recording,
       });
 
-      debug('Recording HTTP traffic started')
+      debug('Recording HTTP traffic started');
 
       if (
         securitySchemes.length > 0 ||
@@ -340,14 +340,16 @@ export class SuperfaceTest {
       }
 
       if (beforeRecordingLoad) {
-        debug('Calling custom \'beforeRecordingLoad\' hook on loaded recording definitions');
+        debug(
+          "Calling custom 'beforeRecordingLoad' hook on loaded recording definitions"
+        );
 
         await beforeRecordingLoad(definitions);
       }
 
       const scopes = define(definitions);
-      
-      debug('Loaded and mocked recorded traffic based on recording fixture')
+
+      debug('Loaded and mocked recorded traffic based on recording fixture');
 
       if (scopes.length === 0) {
         console.warn(
@@ -382,7 +384,7 @@ export class SuperfaceTest {
       recorder.clear();
       restoreRecordings();
 
-      debug('Recording HTTP traffic ended')
+      debug('Recording HTTP traffic ended');
 
       if (definitions === undefined || definitions.length === 0) {
         return;
@@ -411,13 +413,15 @@ export class SuperfaceTest {
       }
 
       if (beforeRecordingSave) {
-        debug('Calling custom \'beforeRecordingSave\' hook on recorded definitions');
+        debug(
+          "Calling custom 'beforeRecordingSave' hook on recorded definitions"
+        );
 
         await beforeRecordingSave(definitions);
       }
 
       await writeRecordings(this.recordingPath, definitions);
-      debug('Recorded definitions written')
+      debug('Recorded definitions written');
     } else {
       restoreRecordings();
       enableNetConnect();

@@ -168,7 +168,7 @@ export function getUseCaseName(useCase: UseCase | string): string {
 export async function getSuperJson(): Promise<SuperJson> {
   const superPath = await SuperJson.detectSuperJson(process.cwd(), 3);
 
-  debug('Loading super.json from path:', superPath)
+  debug('Loading super.json from path:', superPath);
 
   if (superPath === undefined) {
     throw new SuperJsonNotFoundError();

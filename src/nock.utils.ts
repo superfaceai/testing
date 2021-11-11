@@ -200,7 +200,10 @@ function replaceApiKeyInHeader({
     if (definition.reqheaders?.[scheme.name] !== undefined) {
       debug('Replacing api-key in request header');
       debugSensitive('Request header name:', scheme.name);
-      debugSensitive('Request header value:', definition.reqheaders[scheme.name]);
+      debugSensitive(
+        'Request header value:',
+        definition.reqheaders[scheme.name]
+      );
 
       definition.reqheaders[scheme.name] = replaceCredential({
         payload: definition.reqheaders[scheme.name].toString(),
@@ -264,7 +267,6 @@ function replaceApiKeyInQuery({
     scheme.name !== undefined &&
     definitionURL.searchParams.has(scheme.name)
   ) {
-
     debug('Replacing api-key in query');
     debugSensitive('Query name:', scheme.name);
     debugSensitive('Query value:', definitionURL.searchParams.get(scheme.name));
@@ -296,7 +298,7 @@ function replaceApiKey({
   placeholder,
 }: ReplaceOptions & { baseUrl: string; scheme: ApiKeySecurityScheme }): void {
   debug('Replacing api-key');
-  
+
   if (scheme.in === ApiKeyPlacement.HEADER) {
     replaceApiKeyInHeader({
       definition,
