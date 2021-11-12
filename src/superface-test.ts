@@ -384,7 +384,7 @@ export class SuperfaceTest {
       recorder.clear();
       restoreRecordings();
 
-      debug('Recording HTTP traffic ended');
+      debug('Recording ended - Restored HTTP requests and cleared recorded traffic');
 
       if (definitions === undefined || definitions.length === 0) {
         return;
@@ -425,6 +425,8 @@ export class SuperfaceTest {
     } else {
       restoreRecordings();
       enableNetConnect();
+
+      debug('Restored HTTP requests and enabled outgoing requests')
 
       return;
     }
