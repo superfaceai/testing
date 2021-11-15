@@ -49,6 +49,7 @@ import {
   assertBoundProfileProvider,
   assertsDefinitionsAreNotStrings,
   assertsPreparedConfig,
+  checkSensitiveInformation,
   getProfileId,
   getProviderName,
   getSuperJson,
@@ -181,17 +182,6 @@ export class SuperfaceTest {
       });
 
       debug('Recording HTTP traffic started');
-
-      if (
-        securitySchemes.length > 0 ||
-        securityValues.length > 0 ||
-        (integrationParameters &&
-          Object.values(integrationParameters).length > 0)
-      ) {
-        console.warn(
-          'Your recordings might contain sensitive information. Make sure to check them before publishing.'
-        );
-      }
     } else {
       const recordingExists = await exists(this.recordingPath);
 
@@ -272,15 +262,15 @@ export class SuperfaceTest {
       }
 
       assertsDefinitionsAreNotStrings(definitions);
+      assertsPreparedConfig(this.sfConfig);
+      assertBoundProfileProvider(this.boundProfileProvider);
+
+      const { configuration } = this.boundProfileProvider;
+      const securityValues = this.sfConfig.provider.configuration.security;
+      const securitySchemes = configuration.security;
+      const integrationParameters = configuration.parameters ?? {};
 
       if (processRecordings) {
-        assertsPreparedConfig(this.sfConfig);
-        assertBoundProfileProvider(this.boundProfileProvider);
-
-        const { configuration } = this.boundProfileProvider;
-        const securityValues = this.sfConfig.provider.configuration.security;
-        const securitySchemes = configuration.security;
-        const integrationParameters = configuration.parameters ?? {};
         const baseUrl = configuration.baseUrl;
 
         replaceCredentials({
@@ -299,6 +289,20 @@ export class SuperfaceTest {
         );
 
         await beforeRecordingSave(definitions);
+      }
+
+      if (
+        securitySchemes.length > 0 ||
+        securityValues.length > 0 ||
+        (integrationParameters &&
+          Object.values(integrationParameters).length > 0)
+      ) {
+        checkSensitiveInformation(
+          definitions,
+          securitySchemes,
+          securityValues,
+          integrationParameters
+        );
       }
 
       await writeRecordings(this.recordingPath, definitions);
