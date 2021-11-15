@@ -37,7 +37,7 @@ import {
   replaceParameterInDefinition,
 } from './nock.utils';
 
-const debug = createDebug('superface:testing:utils');
+const debug = createDebug('superface:testing');
 
 /**
  * Asserts that entered sfConfig contains every component and
