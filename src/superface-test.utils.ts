@@ -20,6 +20,7 @@ import { join as joinPath } from 'path';
 import {
   CompleteSuperfaceTestConfig,
   RecordingDefinition,
+  RecordingDefinitions,
   SuperfaceTestConfigPayload,
 } from '.';
 import {
@@ -183,7 +184,7 @@ export function assertsDefinitionsAreNotStrings(
   }
 }
 
-function resolveCredential(securityValue: SecurityValues): string {
+export function resolveCredential(securityValue: SecurityValues): string {
   if (isApiKeySecurityValues(securityValue)) {
     if (securityValue.apikey.startsWith('$')) {
       return process.env[securityValue.apikey.substr(1)] ?? '';
@@ -281,6 +282,38 @@ export function replaceCredentials({
         credential,
         placeholder,
       });
+    }
+  }
+}
+
+export function checkSensitiveInformation(
+  definitions: RecordingDefinitions,
+  schemes: SecurityScheme[],
+  securityValues: SecurityValues[],
+  params: Record<string, string>
+): void {
+  for (const definition of definitions) {
+    const stringifiedDef = JSON.stringify(definition);
+
+    for (const scheme of schemes) {
+      const securityValue = securityValues.find(val => val.id === scheme.id);
+
+      if (
+        securityValue &&
+        stringifiedDef.includes(resolveCredential(securityValue))
+      ) {
+        console.warn(
+          `Value for security scheme '${scheme.id}' of type '${scheme.type}' was found in recorded HTTP traffic.`
+        );
+      }
+    }
+
+    for (const [paramName, paramValue] of Object.entries(params)) {
+      if (stringifiedDef.includes(paramValue)) {
+        console.warn(
+          `Value for integration parameter '${paramName}' was found in recorded HTTP traffic.`
+        );
+      }
     }
   }
 }

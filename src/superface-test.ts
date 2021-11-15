@@ -48,6 +48,7 @@ import {
   assertBoundProfileProvider,
   assertsDefinitionsAreNotStrings,
   assertsPreparedConfig,
+  checkSensitiveInformation,
   getProfileId,
   getProviderName,
   getSuperJson,
@@ -165,6 +166,156 @@ export class SuperfaceTest {
   }
 
   /**
+   * Checks whether nock is configured and
+   * starts recording or loads recording file if exists.
+   */
+  private async startRecording(
+    record: boolean,
+    processRecordings: boolean,
+    beforeRecordingLoad?: ProcessingFunction
+  ): Promise<void> {
+    if (!this.recordingPath) {
+      throw new RecordingPathUndefinedError();
+    }
+
+    assertsPreparedConfig(this.sfConfig);
+    assertBoundProfileProvider(this.boundProfileProvider);
+
+    const { configuration } = this.boundProfileProvider;
+    const integrationParameters = configuration.parameters ?? {};
+    const securitySchemes = configuration.security;
+    const securityValues = this.sfConfig.provider.configuration.security;
+    const baseUrl = configuration.baseUrl;
+
+    if (record) {
+      const enable_reqheaders_recording =
+        this.nockConfig?.enableReqheadersRecording ?? false;
+
+      recorder.rec({
+        dont_print: true,
+        output_objects: true,
+        use_separator: false,
+        enable_reqheaders_recording,
+      });
+    } else {
+      const recordingExists = await exists(this.recordingPath);
+
+      if (!recordingExists) {
+        throw new RecordingsNotFoundError();
+      }
+
+      const definitionFile = await readFileQuiet(this.recordingPath);
+
+      if (definitionFile === undefined) {
+        throw new UnexpectedError('Reading recording file failed');
+      }
+
+      const definitions = JSON.parse(definitionFile) as RecordingDefinitions;
+
+      if (processRecordings) {
+        replaceCredentials({
+          definitions,
+          securitySchemes,
+          securityValues,
+          integrationParameters,
+          baseUrl,
+          beforeSave: false,
+        });
+      }
+
+      if (beforeRecordingLoad) {
+        await beforeRecordingLoad(definitions);
+      }
+
+      const scopes = define(definitions);
+
+      if (scopes.length === 0) {
+        console.warn(
+          'Make sure your recording files contains corresponding HTTP calls.'
+        );
+      }
+
+      disableNetConnect();
+
+      if (!isNockActive()) {
+        activateNock();
+      }
+    }
+  }
+
+  /**
+   * Checks if recording started and if yes, it ends recording and
+   * saves recording to file specified in nockConfig.
+   * Possible to update recordings with property `update`.
+   */
+  private async endRecording(
+    record: boolean,
+    processRecordings: boolean,
+    beforeRecordingSave?: ProcessingFunction
+  ): Promise<void> {
+    if (!this.recordingPath) {
+      throw new RecordingPathUndefinedError();
+    }
+
+    if (record) {
+      const definitions = recorder.play();
+      recorder.clear();
+      restoreRecordings();
+
+      if (definitions === undefined || definitions.length === 0) {
+        return;
+      }
+
+      assertsDefinitionsAreNotStrings(definitions);
+      assertsPreparedConfig(this.sfConfig);
+      assertBoundProfileProvider(this.boundProfileProvider);
+
+      const { configuration } = this.boundProfileProvider;
+      const securityValues = this.sfConfig.provider.configuration.security;
+      const securitySchemes = configuration.security;
+      const integrationParameters = configuration.parameters ?? {};
+
+      if (processRecordings) {
+        const baseUrl = configuration.baseUrl;
+
+        replaceCredentials({
+          definitions,
+          securitySchemes,
+          securityValues,
+          integrationParameters,
+          baseUrl,
+          beforeSave: true,
+        });
+      }
+
+      if (beforeRecordingSave) {
+        await beforeRecordingSave(definitions);
+      }
+
+      if (
+        securitySchemes.length > 0 ||
+        securityValues.length > 0 ||
+        (integrationParameters &&
+          Object.values(integrationParameters).length > 0)
+      ) {
+        checkSensitiveInformation(
+          definitions,
+          securitySchemes,
+          securityValues,
+          integrationParameters
+        );
+      }
+
+      await writeRecordings(this.recordingPath, definitions);
+    } else {
+      restoreRecordings();
+      enableNetConnect();
+
+      return;
+    }
+  }
+
+  /**
    * Sets up entered payload to current Superface configuration
    */
   private prepareSuperfaceConfig(payload: SuperfaceTestConfigPayload): void {
@@ -242,152 +393,5 @@ export class SuperfaceTest {
     }
 
     return true;
-  }
-
-  /**
-   * Checks whether nock is configured and
-   * starts recording or loads recording file if exists.
-   */
-  private async startRecording(
-    record: boolean,
-    processRecordings: boolean,
-    beforeRecordingLoad?: ProcessingFunction
-  ): Promise<void> {
-    if (!this.recordingPath) {
-      throw new RecordingPathUndefinedError();
-    }
-
-    assertsPreparedConfig(this.sfConfig);
-    assertBoundProfileProvider(this.boundProfileProvider);
-
-    const { configuration } = this.boundProfileProvider;
-    const integrationParameters = configuration.parameters ?? {};
-    const securitySchemes = configuration.security;
-    const securityValues = this.sfConfig.provider.configuration.security;
-    const baseUrl = configuration.baseUrl;
-
-    if (record) {
-      const enable_reqheaders_recording =
-        this.nockConfig?.enableReqheadersRecording ?? false;
-
-      recorder.rec({
-        dont_print: true,
-        output_objects: true,
-        use_separator: false,
-        enable_reqheaders_recording,
-      });
-
-      if (
-        securitySchemes.length > 0 ||
-        securityValues.length > 0 ||
-        (integrationParameters &&
-          Object.values(integrationParameters).length > 0)
-      ) {
-        console.warn(
-          'Your recordings might contain sensitive information. Make sure to check them before publishing.'
-        );
-      }
-    } else {
-      const recordingExists = await exists(this.recordingPath);
-
-      if (!recordingExists) {
-        throw new RecordingsNotFoundError();
-      }
-
-      const definitionFile = await readFileQuiet(this.recordingPath);
-
-      if (definitionFile === undefined) {
-        throw new UnexpectedError('Reading recording file failed');
-      }
-
-      const definitions = JSON.parse(definitionFile) as RecordingDefinitions;
-
-      if (processRecordings) {
-        replaceCredentials({
-          definitions,
-          securitySchemes,
-          securityValues,
-          integrationParameters,
-          baseUrl,
-          beforeSave: false,
-        });
-      }
-
-      if (beforeRecordingLoad) {
-        await beforeRecordingLoad(definitions);
-      }
-
-      const scopes = define(definitions);
-
-      if (scopes.length === 0) {
-        console.warn(
-          'Make sure your recording files contains corresponding HTTP calls.'
-        );
-      }
-
-      disableNetConnect();
-
-      if (!isNockActive()) {
-        activateNock();
-      }
-    }
-  }
-
-  /**
-   * Checks if recording started and if yes, it ends recording and
-   * saves recording to file specified in nockConfig.
-   * Possible to update recordings with property `update`.
-   */
-  private async endRecording(
-    record: boolean,
-    processRecordings: boolean,
-    beforeRecordingSave?: ProcessingFunction
-  ): Promise<void> {
-    if (!this.recordingPath) {
-      throw new RecordingPathUndefinedError();
-    }
-
-    if (record) {
-      const definitions = recorder.play();
-      recorder.clear();
-      restoreRecordings();
-
-      if (definitions === undefined || definitions.length === 0) {
-        return;
-      }
-
-      assertsDefinitionsAreNotStrings(definitions);
-
-      if (processRecordings) {
-        assertsPreparedConfig(this.sfConfig);
-        assertBoundProfileProvider(this.boundProfileProvider);
-
-        const { configuration } = this.boundProfileProvider;
-        const securityValues = this.sfConfig.provider.configuration.security;
-        const securitySchemes = configuration.security;
-        const integrationParameters = configuration.parameters ?? {};
-        const baseUrl = configuration.baseUrl;
-
-        replaceCredentials({
-          definitions,
-          securitySchemes,
-          securityValues,
-          integrationParameters,
-          baseUrl,
-          beforeSave: true,
-        });
-      }
-
-      if (beforeRecordingSave) {
-        await beforeRecordingSave(definitions);
-      }
-
-      await writeRecordings(this.recordingPath, definitions);
-    } else {
-      restoreRecordings();
-      enableNetConnect();
-
-      return;
-    }
   }
 }
