@@ -73,36 +73,6 @@ export class SuperfaceTest {
   }
 
   /**
-   * Sets up path to all fixtures.
-   */
-  private setupFixturesPath(): void {
-    const { path } = this.nockConfig ?? {};
-
-    if (this.fixturesPath === undefined) {
-      this.fixturesPath = path ?? joinPath(process.cwd(), 'nock');
-    }
-
-    debug('Prepare path to recording fixtures:', this.fixturesPath);
-  }
-
-  /**
-   * Sets up path to recording, depends on current Superface configuration.
-   */
-  private setupRecordingPath(fixtureName: string, inputHash: string) {
-    if (!this.fixturesPath) {
-      throw new FixturesPathUndefinedError();
-    }
-
-    this.recordingPath = joinPath(
-      this.fixturesPath,
-      fixtureName,
-      `${this.nockConfig?.fixture ?? 'recording'}-${inputHash}.json`
-    );
-
-    debug('Prepare path to recording:', this.recordingPath);
-  }
-
-  /**
    * Tests current configuration whether all necessary components
    * are defined and ready to use and tries to perform entered usecase.
    */
@@ -175,97 +145,6 @@ export class SuperfaceTest {
     }
 
     throw new UnexpectedError('Unexpected result object');
-  }
-
-  /**
-   * Sets up entered payload to current Superface configuration
-   */
-  private prepareSuperfaceConfig(payload: SuperfaceTestConfigPayload): void {
-    if (payload.client !== undefined) {
-      this.sfConfig.client = payload.client;
-    }
-
-    if (payload.profile !== undefined) {
-      this.sfConfig.profile = payload.profile;
-    }
-
-    if (payload.provider !== undefined) {
-      this.sfConfig.provider = payload.provider;
-    }
-
-    if (payload.useCase !== undefined) {
-      this.sfConfig.useCase = payload.useCase;
-    }
-
-    debug('Superface configuration prepared:', this.sfConfig);
-  }
-
-  /**
-   * Sets up current configuration - transforms every component
-   * that is represented by string to instance of that corresponding component.
-   */
-  private async setupSuperfaceConfig(): Promise<void> {
-    if (!this.sfConfig.client) {
-      this.sfConfig.client = new SuperfaceClient();
-
-      debug('Superface client initialized:', this.sfConfig.client);
-    }
-
-    if (typeof this.sfConfig.profile === 'string') {
-      this.sfConfig.profile = await this.sfConfig.client.getProfile(
-        this.sfConfig.profile
-      );
-
-      debug('Superface Profile transformed:', this.sfConfig.profile);
-    }
-
-    if (typeof this.sfConfig.provider === 'string') {
-      this.sfConfig.provider = await this.sfConfig.client.getProvider(
-        this.sfConfig.provider
-      );
-
-      debug('Superface Provider transformed:', this.sfConfig.provider);
-    }
-
-    if (typeof this.sfConfig.useCase === 'string') {
-      if (this.sfConfig.profile === undefined) {
-        throw new ComponentUndefinedError('Profile');
-      }
-
-      this.sfConfig.useCase = this.sfConfig.profile.getUseCase(
-        this.sfConfig.useCase
-      );
-
-      debug('Superface UseCase transformed:', this.sfConfig.useCase);
-    }
-  }
-
-  /**
-   * Checks whether current components in sfConfig
-   * are locally linked in super.json.
-   */
-  private async checkForMapInSuperJson(): Promise<boolean> {
-    let profileId: string | undefined;
-
-    if (this.sfConfig.profile !== undefined) {
-      profileId = getProfileId(this.sfConfig.profile);
-    } else {
-      return false;
-    }
-
-    if (this.sfConfig.provider !== undefined) {
-      const superJson =
-        this.sfConfig.client?.superJson ?? (await getSuperJson());
-      const superJsonNormalized = superJson.normalized;
-
-      return isProfileProviderLocal(
-        this.sfConfig.provider,
-        profileId,
-        superJsonNormalized
-      );
-    }
-
-    return true;
   }
 
   /**
@@ -384,7 +263,9 @@ export class SuperfaceTest {
       recorder.clear();
       restoreRecordings();
 
-      debug('Recording ended - Restored HTTP requests and cleared recorded traffic');
+      debug(
+        'Recording ended - Restored HTTP requests and cleared recorded traffic'
+      );
 
       if (definitions === undefined || definitions.length === 0) {
         return;
@@ -426,9 +307,130 @@ export class SuperfaceTest {
       restoreRecordings();
       enableNetConnect();
 
-      debug('Restored HTTP requests and enabled outgoing requests')
+      debug('Restored HTTP requests and enabled outgoing requests');
 
       return;
     }
+  }
+
+  /**
+   * Sets up path to all fixtures.
+   */
+  private setupFixturesPath(): void {
+    const { path } = this.nockConfig ?? {};
+
+    if (this.fixturesPath === undefined) {
+      this.fixturesPath = path ?? joinPath(process.cwd(), 'nock');
+    }
+
+    debug('Prepare path to recording fixtures:', this.fixturesPath);
+  }
+
+  /**
+   * Sets up path to recording, depends on current Superface configuration and test case input.
+   */
+  private setupRecordingPath(fixtureName: string, inputHash: string) {
+    if (!this.fixturesPath) {
+      throw new FixturesPathUndefinedError();
+    }
+
+    this.recordingPath = joinPath(
+      this.fixturesPath,
+      fixtureName,
+      `${this.nockConfig?.fixture ?? 'recording'}-${inputHash}.json`
+    );
+
+    debug('Prepare path to recording:', this.recordingPath);
+  }
+
+  /**
+   * Sets up entered payload to current Superface configuration
+   */
+  private prepareSuperfaceConfig(payload: SuperfaceTestConfigPayload): void {
+    if (payload.client !== undefined) {
+      this.sfConfig.client = payload.client;
+    }
+
+    if (payload.profile !== undefined) {
+      this.sfConfig.profile = payload.profile;
+    }
+
+    if (payload.provider !== undefined) {
+      this.sfConfig.provider = payload.provider;
+    }
+
+    if (payload.useCase !== undefined) {
+      this.sfConfig.useCase = payload.useCase;
+    }
+
+    debug('Superface configuration prepared:', this.sfConfig);
+  }
+
+  /**
+   * Sets up current configuration - transforms every component
+   * that is represented by string to instance of that corresponding component.
+   */
+  private async setupSuperfaceConfig(): Promise<void> {
+    if (!this.sfConfig.client) {
+      this.sfConfig.client = new SuperfaceClient();
+
+      debug('Superface client initialized:', this.sfConfig.client);
+    }
+
+    if (typeof this.sfConfig.profile === 'string') {
+      this.sfConfig.profile = await this.sfConfig.client.getProfile(
+        this.sfConfig.profile
+      );
+
+      debug('Superface Profile transformed:', this.sfConfig.profile);
+    }
+
+    if (typeof this.sfConfig.provider === 'string') {
+      this.sfConfig.provider = await this.sfConfig.client.getProvider(
+        this.sfConfig.provider
+      );
+
+      debug('Superface Provider transformed:', this.sfConfig.provider);
+    }
+
+    if (typeof this.sfConfig.useCase === 'string') {
+      if (this.sfConfig.profile === undefined) {
+        throw new ComponentUndefinedError('Profile');
+      }
+
+      this.sfConfig.useCase = this.sfConfig.profile.getUseCase(
+        this.sfConfig.useCase
+      );
+
+      debug('Superface UseCase transformed:', this.sfConfig.useCase);
+    }
+  }
+
+  /**
+   * Checks whether current components in sfConfig
+   * are locally linked in super.json.
+   */
+  private async checkForMapInSuperJson(): Promise<boolean> {
+    let profileId: string | undefined;
+
+    if (this.sfConfig.profile !== undefined) {
+      profileId = getProfileId(this.sfConfig.profile);
+    } else {
+      return false;
+    }
+
+    if (this.sfConfig.provider !== undefined) {
+      const superJson =
+        this.sfConfig.client?.superJson ?? (await getSuperJson());
+      const superJsonNormalized = superJson.normalized;
+
+      return isProfileProviderLocal(
+        this.sfConfig.provider,
+        profileId,
+        superJsonNormalized
+      );
+    }
+
+    return true;
   }
 }
