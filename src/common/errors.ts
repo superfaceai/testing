@@ -33,6 +33,15 @@ export class MapUndefinedError extends ErrorBase {
   }
 }
 
+export class ProfileUndefinedError extends ErrorBase {
+  constructor(profile: string) {
+    super(
+      'ProfileUndefinedError',
+      `Profile ${profile} does not exist.\nUse \`superface create --profile --profileId ${profile}\` to create it.`
+    );
+  }
+}
+
 export class ComponentUndefinedError extends ErrorBase {
   constructor(
     component:
