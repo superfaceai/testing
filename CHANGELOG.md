@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Debug logging throughout the library
 - Warning about sensitive information before they're written
 
+### Fixed
+- Check for profile provider in super.json now does not expect defined profile
+
 ## 1.0.0 - 2021-11-05
 ### Added
 - Hiding integration parameters in headers, body, baseUrl, path and query
