@@ -1,3 +1,9 @@
+import {
+  ApiKeyPlacement,
+  SecurityScheme,
+  SecurityType,
+  SecurityValues,
+} from '@superfaceai/ast';
 import { err, SDKExecutionError, SuperJson } from '@superfaceai/one-sdk';
 
 import { RecordingDefinitions } from '.';
@@ -18,6 +24,7 @@ import {
 import {
   assertsDefinitionsAreNotStrings,
   assertsPreparedConfig,
+  checkSensitiveInformation,
   getProfileId,
   getProviderName,
   getSuperJson,
@@ -233,6 +240,69 @@ describe('SuperfaceTest', () => {
       }).toThrowError(
         new UnexpectedError('definition is a string, not object')
       );
+    });
+  });
+
+  describe('checkSensitiveInformation', () => {
+    let consoleOutput: string[] = [];
+    const originalWarn = console.warn;
+    const mockedWarn = (output: string) => consoleOutput.push(output);
+
+    const schemes: SecurityScheme[] = [
+      {
+        id: 'api_key',
+        type: SecurityType.APIKEY,
+        in: ApiKeyPlacement.PATH,
+      },
+    ];
+    const values: SecurityValues[] = [
+      {
+        id: 'api_key',
+        apikey: 'SECRET',
+      },
+    ];
+    const params: Record<string, string> = {
+      my_param: 'SECRET',
+    };
+
+    beforeEach(() => {
+      consoleOutput = [];
+      console.warn = mockedWarn;
+    });
+
+    afterAll(() => {
+      console.warn = originalWarn;
+    });
+
+    it('warn when sensitive information is found', () => {
+      const definitions: RecordingDefinitions = [
+        {
+          scope: 'https//api.hubapi.SECRET.com:443',
+          method: 'POST',
+          path: '/SECRET',
+        },
+      ];
+
+      checkSensitiveInformation(definitions, schemes, values, params);
+
+      expect(consoleOutput).toEqual([
+        "Value for security scheme 'api_key' of type 'apiKey' was found in recorded HTTP traffic.",
+        "Value for integration parameter 'my_param' was found in recorded HTTP traffic.",
+      ]);
+    });
+
+    it("don't warn when no sensitive information is found", () => {
+      const definitions: RecordingDefinitions = [
+        {
+          scope: 'https//api.hubapi.com:443',
+          method: 'POST',
+          path: '/',
+        },
+      ];
+
+      checkSensitiveInformation(definitions, schemes, values, params);
+
+      expect(consoleOutput).toEqual([]);
     });
   });
 });

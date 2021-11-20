@@ -15,11 +15,13 @@ import {
   UnexpectedError,
   UseCase,
 } from '@superfaceai/one-sdk';
+import createDebug from 'debug';
 import { join as joinPath } from 'path';
 
 import {
   CompleteSuperfaceTestConfig,
   RecordingDefinition,
+  RecordingDefinitions,
   SuperfaceTestConfigPayload,
 } from '.';
 import {
@@ -34,6 +36,8 @@ import {
   replaceCredentialInDefinition,
   replaceParameterInDefinition,
 } from './nock.utils';
+
+const debug = createDebug('superface:testing:utils');
 
 /**
  * Asserts that entered sfConfig contains every component and
@@ -108,9 +112,16 @@ export function isProfileProviderLocal(
   profileId: string,
   superJsonNormalized: NormalizedSuperJsonDocument
 ): boolean {
+  debug(
+    'Checking for local profile provider in super.json for given profile:',
+    profileId
+  );
+
   const providerId = getProviderName(provider);
   const targetedProfileProvider =
     superJsonNormalized.profiles[profileId].providers[providerId];
+
+  debug('Found profile provider:', targetedProfileProvider);
 
   if ('file' in targetedProfileProvider) {
     return true;
@@ -158,6 +169,8 @@ export function getUseCaseName(useCase: UseCase | string): string {
 export async function getSuperJson(): Promise<SuperJson> {
   const superPath = await SuperJson.detectSuperJson(process.cwd(), 3);
 
+  debug('Loading super.json from path:', superPath);
+
   if (superPath === undefined) {
     throw new SuperJsonNotFoundError();
   }
@@ -165,6 +178,8 @@ export async function getSuperJson(): Promise<SuperJson> {
   const superJsonResult = await SuperJson.load(
     joinPath(superPath, 'super.json')
   );
+
+  debug('Found super.json:', superJsonResult);
 
   if (superJsonResult.isErr()) {
     throw new SuperJsonLoadingFailedError(superJsonResult.error);
@@ -183,7 +198,9 @@ export function assertsDefinitionsAreNotStrings(
   }
 }
 
-function resolveCredential(securityValue: SecurityValues): string {
+export function resolveCredential(securityValue: SecurityValues): string {
+  debug('Resolving security value:', securityValue.id);
+
   if (isApiKeySecurityValues(securityValue)) {
     if (securityValue.apikey.startsWith('$')) {
       return process.env[securityValue.apikey.substr(1)] ?? '';
@@ -236,8 +253,14 @@ export function replaceCredentials({
   beforeSave: boolean;
   baseUrl: string;
 }): void {
+  debug('Replacing credentials from recording definitions');
+
   for (const definition of definitions) {
     for (const scheme of securitySchemes) {
+      debug(
+        `Going through scheme with id: '${scheme.id}' and type: '${scheme.type}'`
+      );
+
       let credential = '';
       let placeholder: string | undefined = undefined;
 
@@ -264,15 +287,17 @@ export function replaceCredentials({
       });
     }
 
-    for (const parameterValue of Object.values(integrationParameters)) {
+    for (const [name, value] of Object.entries(integrationParameters)) {
+      debug('Going through integration parameter:', name);
+
       let credential = '';
       let placeholder: string | undefined = undefined;
 
       if (beforeSave) {
-        credential = parameterValue;
+        credential = value;
       } else {
         credential = HIDDEN_PARAMETERS_PLACEHOLDER;
-        placeholder = parameterValue;
+        placeholder = value;
       }
 
       replaceParameterInDefinition({
@@ -281,6 +306,38 @@ export function replaceCredentials({
         credential,
         placeholder,
       });
+    }
+  }
+}
+
+export function checkSensitiveInformation(
+  definitions: RecordingDefinitions,
+  schemes: SecurityScheme[],
+  securityValues: SecurityValues[],
+  params: Record<string, string>
+): void {
+  for (const definition of definitions) {
+    const stringifiedDef = JSON.stringify(definition);
+
+    for (const scheme of schemes) {
+      const securityValue = securityValues.find(val => val.id === scheme.id);
+
+      if (
+        securityValue &&
+        stringifiedDef.includes(resolveCredential(securityValue))
+      ) {
+        console.warn(
+          `Value for security scheme '${scheme.id}' of type '${scheme.type}' was found in recorded HTTP traffic.`
+        );
+      }
+    }
+
+    for (const [paramName, paramValue] of Object.entries(params)) {
+      if (stringifiedDef.includes(paramValue)) {
+        console.warn(
+          `Value for integration parameter '${paramName}' was found in recorded HTTP traffic.`
+        );
+      }
     }
   }
 }
