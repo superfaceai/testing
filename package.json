@@ -36,7 +36,6 @@
     "eslint-plugin-jest": "^24.4.0",
     "eslint-plugin-simple-import-sort": "^7.0.0",
     "jest": "^27.0.6",
-    "mockttp": "^2.2.2",
     "prettier": "^2.3.2",
     "rimraf": "^3.0.2",
     "ts-jest": "^27.0.5",

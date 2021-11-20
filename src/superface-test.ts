@@ -258,6 +258,8 @@ export class SuperfaceTest {
       );
 
       if (definitions === undefined || definitions.length === 0) {
+        await writeRecordings(this.recordingPath, []);
+
         return;
       }
 
