@@ -121,17 +121,19 @@ export class SuperfaceTest {
       result = await this.sfConfig.useCase.perform(testCase.input, {
         provider: this.sfConfig.provider,
       });
+
+      await this.endRecording(
+        record,
+        processRecordings,
+        options?.beforeRecordingSave
+      );
     } catch (error: unknown) {
       restoreRecordings();
+      recorder.clear();
+      enableNetConnect();
 
       throw error;
     }
-
-    await this.endRecording(
-      record,
-      processRecordings,
-      options?.beforeRecordingSave
-    );
 
     if (result.isErr()) {
       debug('Perform failed with error:', result.error.toString());
@@ -149,8 +151,14 @@ export class SuperfaceTest {
   }
 
   /**
-   * Checks whether nock is configured and
-   * starts recording or loads recording file if exists.
+   * Starts recording or loads recording fixture if exists.
+   * 
+   * It will also process recording definitions before creating mocked requests
+   * to match against constructed request and enable mocking them. This is needed
+   * because stored recording fixture is possibly processed and contains placeholders
+   * instead of original secrets.
+   * 
+   * Recordings do not get processed if user specifies parameter `processRecordings` as false.
    */
   private async startRecording(
     record: boolean,
@@ -236,8 +244,11 @@ export class SuperfaceTest {
 
   /**
    * Checks if recording started and if yes, it ends recording and
-   * saves recording to file specified in nockConfig.
-   * Possible to update recordings with property `update`.
+   * saves recording to file configured based on nock configuration from constructor.
+   *
+   * It will also process the recording definitions and hide sensitive information
+   * based on security schemes and integration parameters defined in provider.json,
+   * unless user pass in false for parameter `processRecordings`.
    */
   private async endRecording(
     record: boolean,
