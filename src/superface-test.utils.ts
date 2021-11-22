@@ -27,6 +27,8 @@ import {
 import {
   ComponentUndefinedError,
   InstanceMissingError,
+  MapUndefinedError,
+  ProfileUndefinedError,
   SuperJsonLoadingFailedError,
   SuperJsonNotFoundError,
 } from './common/errors';
@@ -111,23 +113,30 @@ export function isProfileProviderLocal(
   provider: Provider | string,
   profileId: string,
   superJsonNormalized: NormalizedSuperJsonDocument
-): boolean {
+): void {
   debug(
     'Checking for local profile provider in super.json for given profile:',
     profileId
   );
 
   const providerId = getProviderName(provider);
-  const targetedProfileProvider =
-    superJsonNormalized.profiles[profileId].providers[providerId];
+  const targetedProfile = superJsonNormalized.profiles[profileId];
+
+  if (targetedProfile === undefined) {
+    throw new ProfileUndefinedError(profileId);
+  }
+
+  const targetedProfileProvider = targetedProfile.providers[providerId];
+
+  if (targetedProfileProvider === undefined) {
+    throw new MapUndefinedError(profileId, providerId);
+  }
 
   debug('Found profile provider:', targetedProfileProvider);
 
-  if ('file' in targetedProfileProvider) {
-    return true;
+  if (!('file' in targetedProfileProvider)) {
+    throw new MapUndefinedError(profileId, providerId);
   }
-
-  return false;
 }
 
 /**

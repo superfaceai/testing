@@ -10,6 +10,8 @@ import { RecordingDefinitions } from '.';
 import {
   ComponentUndefinedError,
   InstanceMissingError,
+  MapUndefinedError,
+  ProfileUndefinedError,
   SuperJsonLoadingFailedError,
   SuperJsonNotFoundError,
   UnexpectedError,
@@ -126,7 +128,7 @@ describe('SuperfaceTest', () => {
   });
 
   describe('isProfileProviderLocal', () => {
-    it('returns false when provider is not local', () => {
+    it('throws profile undefined error when given profile is not defined', () => {
       const mockSuperJson = new SuperJson({
         profiles: {
           profile: {
@@ -143,12 +145,66 @@ describe('SuperfaceTest', () => {
         },
       });
 
-      expect(
-        isProfileProviderLocal('provider', 'profile', mockSuperJson.normalized)
-      ).toBeFalsy();
+      expect(() => {
+        isProfileProviderLocal(
+          'provider',
+          'non-existing-profile',
+          mockSuperJson.normalized
+        );
+      }).toThrowError(new ProfileUndefinedError('non-existing-profile'));
     });
 
-    it('returns true when profile provider is local', () => {
+    it('throws map undefined error when provider is not defined', () => {
+      const mockSuperJson = new SuperJson({
+        profiles: {
+          profile: {
+            version: '0.0.1',
+            providers: {
+              provider: {},
+            },
+          },
+        },
+        providers: {
+          provider: {
+            security: [],
+          },
+        },
+      });
+
+      expect(() => {
+        isProfileProviderLocal(
+          'not-existing-provider',
+          'profile',
+          mockSuperJson.normalized
+        );
+      }).toThrowError(
+        new MapUndefinedError('profile', 'not-existing-provider')
+      );
+    });
+
+    it('throws map undefined error when provider is not local', () => {
+      const mockSuperJson = new SuperJson({
+        profiles: {
+          profile: {
+            version: '0.0.1',
+            providers: {
+              provider: {},
+            },
+          },
+        },
+        providers: {
+          provider: {
+            security: [],
+          },
+        },
+      });
+
+      expect(() => {
+        isProfileProviderLocal('provider', 'profile', mockSuperJson.normalized);
+      }).toThrowError(new MapUndefinedError('profile', 'provider'));
+    });
+
+    it('does not throw when profile provider is local', () => {
       const mockSuperJson = new SuperJson({
         profiles: {
           profile: {
@@ -167,9 +223,9 @@ describe('SuperfaceTest', () => {
         },
       });
 
-      expect(
-        isProfileProviderLocal('provider', 'profile', mockSuperJson.normalized)
-      ).toBeTruthy();
+      expect(() => {
+        isProfileProviderLocal('provider', 'profile', mockSuperJson.normalized);
+      }).not.toThrow();
     });
   });
 

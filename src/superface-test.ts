@@ -27,7 +27,6 @@ import {
 import {
   ComponentUndefinedError,
   FixturesPathUndefinedError,
-  MapUndefinedError,
   RecordingPathUndefinedError,
   RecordingsNotFoundError,
   UnexpectedError,
@@ -51,7 +50,6 @@ import {
   assertsPreparedConfig,
   checkSensitiveInformation,
   getProfileId,
-  getProviderName,
   getSuperJson,
   isProfileProviderLocal,
   replaceCredentials,
@@ -85,12 +83,7 @@ export class SuperfaceTest {
     await this.setupSuperfaceConfig();
 
     assertsPreparedConfig(this.sfConfig);
-    if (!(await this.checkForMapInSuperJson())) {
-      throw new MapUndefinedError(
-        getProfileId(this.sfConfig.profile),
-        getProviderName(this.sfConfig.provider)
-      );
-    }
+    await this.checkForMapInSuperJson();
 
     this.boundProfileProvider =
       await this.sfConfig.client.cacheBoundProfileProvider(
@@ -427,27 +420,16 @@ export class SuperfaceTest {
    * Checks whether current components in sfConfig
    * are locally linked in super.json.
    */
-  private async checkForMapInSuperJson(): Promise<boolean> {
-    let profileId: string | undefined;
+  private async checkForMapInSuperJson(): Promise<void> {
+    assertsPreparedConfig(this.sfConfig);
 
-    if (this.sfConfig.profile !== undefined) {
-      profileId = getProfileId(this.sfConfig.profile);
-    } else {
-      return false;
-    }
+    const profileId = getProfileId(this.sfConfig.profile);
+    const superJson = this.sfConfig.client?.superJson ?? (await getSuperJson());
 
-    if (this.sfConfig.provider !== undefined) {
-      const superJson =
-        this.sfConfig.client?.superJson ?? (await getSuperJson());
-      const superJsonNormalized = superJson.normalized;
-
-      return isProfileProviderLocal(
-        this.sfConfig.provider,
-        profileId,
-        superJsonNormalized
-      );
-    }
-
-    return true;
+    isProfileProviderLocal(
+      this.sfConfig.provider,
+      profileId,
+      superJson.normalized
+    );
   }
 }
