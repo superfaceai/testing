@@ -228,6 +228,18 @@ superface.run(
 );
 ```
 
+## Debug
+
+You can use enviroment variable `DEBUG` to enable logging throughout testing process.
+
+`DEBUG="superface:testing*"` will enable all logging
+
+`DEBUG="superface:testing"` will enable logging in `SuperfaceTest` class, its methods and utility functions
+
+`DEBUG="superface:testing:recordings"` will enable logging of processing sensitive information in recordings
+
+`DEBUG="superface:testing:recordings*"` or `DEBUG="superface:testing:recordings:sensitive"` will enable logging of replacing actual credentials
+
 ## Known Limitations
 
 ### Multiple matching requests for the same use case
