@@ -46,16 +46,25 @@ jobs:
           RELEASE_LEVEL: ${{ github.event.inputs.release-level }}
 
       - name: Bump pre-release version
-        if: startsWith(github.event.inputs.release-level, 'pre')
+        if: startsWith(github.event.inputs.release-level, 'pre') && github.ref_name != 'dev'
         run: |
           echo "NEW_VERSION=$(npm --no-git-tag-version --preid=beta version $RELEASE_LEVEL)" >> $GITHUB_ENV
           echo "RELEASE_TAG=beta" >> $GITHUB_ENV
         env:
           RELEASE_LEVEL: ${{ github.event.inputs.release-level }}
 
+      - name: Bump rc pre-release version
+        if: startsWith(github.event.inputs.release-level, 'pre') && github.ref_name == 'dev'
+        run: |
+          echo "NEW_VERSION=$(npm --no-git-tag-version --preid=rc version $RELEASE_LEVEL)" >> $GITHUB_ENV
+          echo "RELEASE_TAG=next" >> $GITHUB_ENV
+        env:
+          RELEASE_LEVEL: ${{ github.event.inputs.release-level }}
+
       # Update changelog unreleased section with new version
       - name: Update changelog
         uses: superfaceai/release-changelog-action@v1
+        if: startsWith(github.event.inputs.release-level, 'pre') != true
         with:
           path-to-changelog: CHANGELOG.md
           version: ${{ env.NEW_VERSION }}
@@ -85,6 +94,7 @@ jobs:
       # Read version changelog
       - id: get-changelog
         name: Get release version changelog
+        if: startsWith(github.event.inputs.release-level, 'pre') != true
         uses: superfaceai/release-changelog-action@v1
         with:
           path-to-changelog: CHANGELOG.md
