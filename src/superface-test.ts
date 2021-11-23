@@ -221,7 +221,8 @@ export class SuperfaceTest {
 
       debug('Loaded and mocked recorded traffic based on recording fixture');
 
-      if (scopes.length === 0) {
+      // check if all recordings got loaded and mocked
+      if (definitions.length > scopes.length) {
         console.warn(
           'Make sure your recording files contains corresponding HTTP calls.'
         );
