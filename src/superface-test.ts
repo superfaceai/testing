@@ -145,12 +145,12 @@ export class SuperfaceTest {
 
   /**
    * Starts recording or loads recording fixture if exists.
-   * 
+   *
    * It will also process recording definitions before creating mocked requests
    * to match against constructed request and enable mocking them. This is needed
    * because stored recording fixture is possibly processed and contains placeholders
    * instead of original secrets.
-   * 
+   *
    * Recordings do not get processed if user specifies parameter `processRecordings` as false.
    */
   private async startRecording(
@@ -224,7 +224,7 @@ export class SuperfaceTest {
       // check if all recordings got loaded and mocked
       if (definitions.length > scopes.length) {
         console.warn(
-          'Make sure your recording files contains corresponding HTTP calls.'
+          'Make sure your recording files contains corresponding HTTP calls'
         );
       }
 
