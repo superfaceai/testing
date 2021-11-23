@@ -325,6 +325,36 @@ describe('SuperfaceTest', () => {
         expect(recorderSpy).not.toHaveBeenCalled();
         expect(writeRecordingsSpy).not.toHaveBeenCalled();
       });
+
+      it('warns when number of scopes does not match number of loaded recordings', async () => {
+        const consoleOutput: string[] = [];
+        const originalWarn = console.warn;
+        const mockedWarn = (output: string) => consoleOutput.push(output);
+
+        console.warn = mockedWarn;
+
+        superfaceTest = new SuperfaceTest(await getMockedSfConfig());
+
+        mocked(matchWildCard).mockReturnValueOnce(false);
+        mocked(exists).mockResolvedValueOnce(true);
+        mocked(readFileQuiet).mockResolvedValueOnce(`[
+  { 
+    "scope": "https://api.example.com:443",
+    "method": "POST",
+    "path": "/v1"
+  }
+]`);
+
+        jest.spyOn(nock, 'define').mockReturnValueOnce([]);
+
+        await superfaceTest.run({ input: {} });
+
+        expect(consoleOutput).toEqual([
+          'Make sure your recording files contains corresponding HTTP calls',
+        ]);
+
+        console.warn = originalWarn;
+      });
     });
 
     describe('when performing', () => {
