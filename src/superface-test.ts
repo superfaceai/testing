@@ -217,16 +217,9 @@ export class SuperfaceTest {
         await beforeRecordingLoad(definitions);
       }
 
-      const scopes = define(definitions);
+      define(definitions);
 
       debug('Loaded and mocked recorded traffic based on recording fixture');
-
-      // check if all recordings got loaded and mocked
-      if (definitions.length > scopes.length) {
-        console.warn(
-          'Make sure your recording files contains corresponding HTTP calls'
-        );
-      }
 
       disableNetConnect();
 
