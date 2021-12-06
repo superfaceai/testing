@@ -30,9 +30,9 @@ CONSIDER DISABLING SENSITIVE INFORMATION LOGGING BY APPENDING THE DEBUG ENVIRONM
 );
 
 export const HIDDEN_CREDENTIALS_PLACEHOLDER =
-  'credentials-removed-to-keep-them-secure';
+  'credentials_removed_to_keep_them_secure';
 export const HIDDEN_PARAMETERS_PLACEHOLDER =
-  'parameters-removed-to-keep-them-secure';
+  'parameters_removed_to_keep_them_secure';
 const AUTH_HEADER_NAME = 'Authorization';
 
 const defaultPlaceholder = (isParameter: boolean) =>
