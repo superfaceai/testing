@@ -33,8 +33,6 @@ import {
   SuperJsonNotFoundError,
 } from './common/errors';
 import {
-  HIDDEN_CREDENTIALS_PLACEHOLDER,
-  HIDDEN_PARAMETERS_PLACEHOLDER,
   replaceCredentialInDefinition,
   replaceParameterInDefinition,
 } from './nock.utils';
@@ -247,6 +245,38 @@ export function resolveCredential(securityValue: SecurityValues): string {
   throw new UnexpectedError('Unexpected security value');
 }
 
+export const HIDDEN_CREDENTIALS_PLACEHOLDER = 'SECURITY_';
+export const HIDDEN_PARAMETERS_PLACEHOLDER = 'PARAMS_';
+
+/**
+ * Resolves placeholder and credential properties later passed to nock utils.
+ * It composes placeholder based on given name of security scheme or parameter
+ */
+export function resolvePlaceholder({
+  name,
+  value,
+  beforeSave,
+  isParameter,
+}: {
+  name: string;
+  value: string;
+  beforeSave: boolean;
+  isParameter: boolean;
+}): {
+  credential: string;
+  placeholder: string;
+} {
+  const placeholderFormat = isParameter
+    ? HIDDEN_PARAMETERS_PLACEHOLDER
+    : HIDDEN_CREDENTIALS_PLACEHOLDER;
+  const placeholder = placeholderFormat + name;
+
+  return {
+    credential: beforeSave ? value : placeholder,
+    placeholder: beforeSave ? placeholder : value,
+  };
+}
+
 export function replaceCredentials({
   definitions,
   securitySchemes,
@@ -270,50 +300,30 @@ export function replaceCredentials({
         `Going through scheme with id: '${scheme.id}' and type: '${scheme.type}'`
       );
 
-      let credential = '';
-      let placeholder: string | undefined = undefined;
-
       const securityValue = securityValues.find(val => val.id === scheme.id);
 
-      if (beforeSave) {
-        if (securityValue) {
-          credential = resolveCredential(securityValue);
-        }
-      } else {
-        credential = HIDDEN_CREDENTIALS_PLACEHOLDER;
-
-        if (securityValue) {
-          placeholder = resolveCredential(securityValue);
-        }
+      if (securityValue) {
+        replaceCredentialInDefinition({
+          definition,
+          scheme,
+          baseUrl,
+          ...resolvePlaceholder({
+            name: scheme.id,
+            value: resolveCredential(securityValue),
+            beforeSave,
+            isParameter: false,
+          }),
+        });
       }
-
-      replaceCredentialInDefinition({
-        definition,
-        scheme,
-        baseUrl,
-        credential,
-        placeholder,
-      });
     }
 
     for (const [name, value] of Object.entries(integrationParameters)) {
       debug('Going through integration parameter:', name);
 
-      let credential = '';
-      let placeholder: string | undefined = undefined;
-
-      if (beforeSave) {
-        credential = value;
-      } else {
-        credential = HIDDEN_PARAMETERS_PLACEHOLDER;
-        placeholder = value;
-      }
-
       replaceParameterInDefinition({
         definition,
         baseUrl,
-        credential,
-        placeholder,
+        ...resolvePlaceholder({ name, value, beforeSave, isParameter: true }),
       });
     }
   }
