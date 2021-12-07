@@ -15,6 +15,13 @@ import {
   UnexpectedError,
   UseCase,
 } from '@superfaceai/one-sdk';
+import {
+  getValue,
+  isPrimitive,
+  NonPrimitive,
+  Primitive,
+  Variables,
+} from '@superfaceai/one-sdk/dist/internal/interpreter/variables';
 import createDebug from 'debug';
 import { join as joinPath } from 'path';
 
@@ -34,8 +41,10 @@ import {
 } from './common/errors';
 import {
   HIDDEN_CREDENTIALS_PLACEHOLDER,
+  HIDDEN_INPUT_PLACEHOLDER,
   HIDDEN_PARAMETERS_PLACEHOLDER,
   replaceCredentialInDefinition,
+  replaceInputInDefinition,
   replaceParameterInDefinition,
 } from './nock.utils';
 
@@ -252,6 +261,7 @@ export function replaceCredentials({
   securitySchemes,
   securityValues,
   integrationParameters,
+  inputVariables,
   beforeSave,
   baseUrl,
 }: {
@@ -259,6 +269,7 @@ export function replaceCredentials({
   securitySchemes: SecurityScheme[];
   securityValues: SecurityValues[];
   integrationParameters: Record<string, string>;
+  inputVariables?: Record<string, Primitive>;
   beforeSave: boolean;
   baseUrl: string;
 }): void {
@@ -316,6 +327,29 @@ export function replaceCredentials({
         placeholder,
       });
     }
+
+    if (inputVariables) {
+      for (const [name, value] of Object.entries(inputVariables)) {
+        debug('Going through input property:', name);
+
+        let credential = '';
+        let placeholder = HIDDEN_INPUT_PLACEHOLDER;
+
+        if (beforeSave) {
+          credential = value.toString();
+        } else {
+          credential = HIDDEN_INPUT_PLACEHOLDER;
+          placeholder = value.toString();
+        }
+
+        replaceInputInDefinition({
+          definition,
+          baseUrl,
+          credential,
+          placeholder,
+        });
+      }
+    }
   }
 }
 
@@ -348,5 +382,49 @@ export function checkSensitiveInformation(
         );
       }
     }
+  }
+}
+
+export function searchValues(
+  input: NonPrimitive,
+  accessors?: string[]
+): Record<string, Primitive> | undefined {
+  if (accessors === undefined) {
+    return undefined;
+  }
+
+  const result: Record<string, Primitive> = {};
+
+  for (const property of accessors) {
+    const keys = property.split('.');
+
+    if (keys.length > 1) {
+      const value = getValue(input, keys);
+
+      assertPrimitive(value, property);
+
+      result[property] = value;
+    } else {
+      const value = input[property];
+
+      assertPrimitive(value, property);
+
+      result[property] = value;
+    }
+  }
+
+  return result;
+}
+
+function assertPrimitive(
+  value: Variables | undefined,
+  property: string
+): asserts value is Primitive {
+  if (value == undefined) {
+    throw new Error(`Input property: ${property} is not defined`);
+  }
+
+  if (!isPrimitive(value)) {
+    throw new Error(`Input property: ${property} is not primitive value`);
   }
 }
