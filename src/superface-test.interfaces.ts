@@ -50,6 +50,7 @@ export interface RecordingProcessOptions {
   processRecordings?: boolean;
   beforeRecordingSave?: ProcessingFunction;
   beforeRecordingLoad?: ProcessingFunction;
+  hideInput?: string[]
 }
 
 export {
