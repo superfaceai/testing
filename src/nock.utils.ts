@@ -485,7 +485,9 @@ export function replaceInputInDefinition({
   };
 
   replaceCredentialInHeaders(options);
+  replaceCredentialInRawHeaders(options);
   replaceCredentialInBody(options);
+  replaceCredentialInResponse(options);
   replaceCredentialInPath({ ...options, baseUrl });
   replaceCredentialInQuery({ ...options, baseUrl });
 }
