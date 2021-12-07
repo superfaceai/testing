@@ -33,6 +33,7 @@ export const HIDDEN_CREDENTIALS_PLACEHOLDER =
   'credentials-removed-to-keep-them-secure';
 export const HIDDEN_PARAMETERS_PLACEHOLDER =
   'parameters-removed-to-keep-them-secure';
+export const HIDDEN_INPUT_PLACEHOLDER = 'input-removed-to-keep-it-secure';
 const AUTH_HEADER_NAME = 'Authorization';
 
 const defaultPlaceholder = (isParameter: boolean) =>
@@ -443,4 +444,30 @@ export function replaceParameterInDefinition({
     isParameter,
     placeholder,
   });
+}
+
+export function replaceInputInDefinition({
+  definition,
+  baseUrl,
+  credential,
+  placeholder,
+}: {
+  definition: RecordingDefinition;
+  baseUrl: string;
+  credential: string;
+  placeholder?: string;
+}): void {
+  debug('Replacing input');
+  const isParameter = false;
+  const options = {
+    definition,
+    credential,
+    isParameter,
+    placeholder,
+  };
+
+  replaceCredentialInHeaders(options);
+  replaceCredentialInBody(options);
+  replaceCredentialInPath({ ...options, baseUrl });
+  replaceCredentialInQuery({ ...options, baseUrl });
 }
