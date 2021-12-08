@@ -336,7 +336,7 @@ describe('SuperfaceTest', () => {
       it('writes and restores modified recordings when hiding input is used', async () => {
         const token = 'secret';
         const refresh = 'refresh-token';
-        
+
         superfaceTest = new SuperfaceTest(
           await getMockedSfConfig({
             baseUrl: 'https://localhost',
