@@ -20,7 +20,11 @@ import {
 import { matchWildCard } from './common/format';
 import { exists, readFileQuiet } from './common/io';
 import { writeRecordings } from './common/output-stream';
-import { HIDDEN_CREDENTIALS_PLACEHOLDER } from './nock.utils';
+import {
+  HIDDEN_CREDENTIALS_PLACEHOLDER,
+  HIDDEN_INPUT_PLACEHOLDER,
+  HIDDEN_PARAMETERS_PLACEHOLDER,
+} from './nock.utils';
 import {
   getMockedSfConfig,
   getProfileMock,
@@ -232,6 +236,7 @@ describe('SuperfaceTest', () => {
       });
 
       it('writes and restores modified recordings when security is used', async () => {
+        const secret = 'secret';
         superfaceTest = new SuperfaceTest(
           await getMockedSfConfig({
             baseUrl: 'https://localhost',
@@ -243,7 +248,7 @@ describe('SuperfaceTest', () => {
                 name: 'api_key',
               },
             ],
-            securityValues: [{ id: 'api-key', apikey: 'secret' }],
+            securityValues: [{ id: 'api-key', apikey: secret }],
           })
         );
 
@@ -251,9 +256,9 @@ describe('SuperfaceTest', () => {
         const playSpy = jest.spyOn(recorder, 'play').mockReturnValueOnce([
           {
             scope: 'https://localhost',
-            path: '/?api_key=secret',
+            path: `/?api_key=${secret}`,
             status: 200,
-            response: { some: 'data' },
+            response: { auth: secret },
           },
         ]);
         const endRecSpy = jest.spyOn(nock, 'restore');
@@ -275,7 +280,108 @@ describe('SuperfaceTest', () => {
               path: `/?api_key=${HIDDEN_CREDENTIALS_PLACEHOLDER}`,
               status: 200,
               response: {
-                some: 'data',
+                auth: HIDDEN_CREDENTIALS_PLACEHOLDER,
+              },
+            },
+          ]
+        );
+      });
+
+      it('writes and restores modified recordings when integration parameters are used', async () => {
+        const param = 'integration-parameter';
+        superfaceTest = new SuperfaceTest(
+          await getMockedSfConfig({
+            baseUrl: 'https://localhost',
+            parameters: {
+              param,
+            },
+          })
+        );
+
+        const writeRecordingsSpy = mocked(writeRecordings);
+        const playSpy = jest.spyOn(recorder, 'play').mockReturnValueOnce([
+          {
+            scope: 'https://localhost',
+            path: `/?api_key=${param}`,
+            status: 200,
+            response: { auth: param },
+          },
+        ]);
+        const endRecSpy = jest.spyOn(nock, 'restore');
+
+        mocked(exists).mockResolvedValue(true);
+        mocked(matchWildCard).mockReturnValueOnce(true);
+
+        await superfaceTest.run({ input: {} });
+
+        expect(playSpy).toHaveBeenCalledTimes(1);
+        expect(endRecSpy).toHaveBeenCalledTimes(1);
+
+        expect(writeRecordingsSpy).toHaveBeenCalledTimes(1);
+        expect(writeRecordingsSpy).toHaveBeenCalledWith(
+          expect.stringContaining(DEFAULT_RECORDING_PATH),
+          [
+            {
+              scope: 'https://localhost',
+              path: `/?api_key=${HIDDEN_PARAMETERS_PLACEHOLDER}`,
+              status: 200,
+              response: {
+                auth: HIDDEN_PARAMETERS_PLACEHOLDER,
+              },
+            },
+          ]
+        );
+      });
+
+      it('writes and restores modified recordings when hiding input is used', async () => {
+        const token = 'secret',
+          refresh = 'another-secret';
+        superfaceTest = new SuperfaceTest(
+          await getMockedSfConfig({
+            baseUrl: 'https://localhost',
+          })
+        );
+
+        const writeRecordingsSpy = mocked(writeRecordings);
+        const playSpy = jest.spyOn(recorder, 'play').mockReturnValueOnce([
+          {
+            scope: 'https://localhost',
+            path: `/?token=${token}`,
+            status: 200,
+            response: {
+              auth: {
+                value: token,
+                refresh,
+              },
+            },
+          },
+        ]);
+        const endRecSpy = jest.spyOn(nock, 'restore');
+
+        mocked(exists).mockResolvedValue(true);
+        mocked(matchWildCard).mockReturnValueOnce(true);
+
+        await superfaceTest.run(
+          { input: { auth: { token, refresh } } },
+          { hideInput: ['auth.token', 'auth.refresh'] }
+        );
+
+        expect(playSpy).toHaveBeenCalledTimes(1);
+        expect(endRecSpy).toHaveBeenCalledTimes(1);
+
+        expect(writeRecordingsSpy).toHaveBeenCalledTimes(1);
+        expect(writeRecordingsSpy).toHaveBeenCalledWith(
+          expect.stringContaining(DEFAULT_RECORDING_PATH),
+          [
+            {
+              scope: 'https://localhost',
+              path: `/?token=${HIDDEN_INPUT_PLACEHOLDER}`,
+              status: 200,
+              response: {
+                auth: {
+                  value: HIDDEN_INPUT_PLACEHOLDER,
+                  refresh: HIDDEN_INPUT_PLACEHOLDER,
+                },
               },
             },
           ]
