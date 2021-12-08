@@ -699,7 +699,7 @@ describe('nock utils', () => {
       });
     });
   });
-  
+
   describe('replaceInput', () => {
     describe('when replacing input values', () => {
       const baseUrl = 'https://localhost';
