@@ -15,6 +15,8 @@ import {
   UnexpectedError,
   UseCase,
 } from '@superfaceai/one-sdk';
+import { NonPrimitive } from '@superfaceai/one-sdk/dist/internal/interpreter/variables';
+import { createHash } from 'crypto';
 import createDebug from 'debug';
 import { join as joinPath } from 'path';
 
@@ -349,4 +351,32 @@ export function checkSensitiveInformation(
       }
     }
   }
+}
+
+/**
+ * Tries to get jest current test name from `expect` object,
+ * otherwise it generates hash according to specified testName or input
+ */
+export function generateHash(input: NonPrimitive | string): string {
+  const hash = createHash('md5');
+
+  if (typeof input === 'string') {
+    debug('Trying to generate hash based on specified test name:', input);
+
+    hash.update(input);
+  } else {
+    try {
+      const testName = expect.getState().currentTestName;
+
+      debug('Trying to generate hash based on jest test name:', testName);
+
+      hash.update(testName);
+    } catch (error) {
+      debug('Trying to generate hash based on specified input object');
+
+      hash.update(JSON.stringify(input));
+    }
+  }
+
+  return hash.digest('hex');
 }

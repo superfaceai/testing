@@ -6,7 +6,6 @@ import {
   Result,
   SuperfaceClient,
 } from '@superfaceai/one-sdk';
-import { createHash } from 'crypto';
 import createDebug from 'debug';
 import {
   activate as activateNock,
@@ -49,6 +48,7 @@ import {
   assertsDefinitionsAreNotStrings,
   assertsPreparedConfig,
   checkSensitiveInformation,
+  generateHash,
   getProfileId,
   getSuperJson,
   isProfileProviderLocal,
@@ -91,11 +91,9 @@ export class SuperfaceTest {
         this.sfConfig.provider.configuration
       );
 
-    const hash = createHash('md5')
-      .update(JSON.stringify(testCase.input))
-      .digest('hex');
+    const hash = generateHash(testCase.currentTestName ?? testCase.input);
 
-    debug('Created hash based on input value:', hash);
+    debug('Created hash:', hash);
 
     this.setupRecordingPath(getFixtureName(this.sfConfig), hash);
 

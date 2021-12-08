@@ -19,6 +19,7 @@ export interface SuperfaceTestConfigPayload {
 }
 
 export type SuperfaceTestRun = SuperfaceTestConfigPayload & {
+  currentTestName?: string;
   input: NonPrimitive;
 };
 
