@@ -15,8 +15,7 @@ import { UnexpectedError } from './common/errors';
 interface ReplaceOptions {
   definition: RecordingDefinition;
   credential: string;
-  isParameter: boolean;
-  placeholder?: string;
+  placeholder: string;
 }
 
 const debug = createDebug('superface:testing:recordings');
@@ -36,31 +35,21 @@ export const HIDDEN_PARAMETERS_PLACEHOLDER =
 export const HIDDEN_INPUT_PLACEHOLDER = 'input-removed-to-keep-it-secure';
 const AUTH_HEADER_NAME = 'Authorization';
 
-const defaultPlaceholder = (isParameter: boolean) =>
-  isParameter ? HIDDEN_PARAMETERS_PLACEHOLDER : HIDDEN_CREDENTIALS_PLACEHOLDER;
-
 function replaceCredential({
   payload,
   credential,
-  isParameter,
   placeholder,
 }: {
   payload: string;
   credential: string;
-  isParameter: boolean;
-  placeholder?: string;
+  placeholder: string;
 }) {
   if (credential !== '') {
     debugSensitive(
-      `Replacing credential: '${credential}' for placeholder: '${
-        placeholder ?? defaultPlaceholder(isParameter)
-      }'`
+      `Replacing credential: '${credential}' for placeholder: '${placeholder}'`
     );
 
-    return payload.replace(
-      new RegExp(credential, 'g'),
-      placeholder ?? defaultPlaceholder(isParameter)
-    );
+    return payload.replace(new RegExp(credential, 'g'), placeholder);
   }
 
   return payload;
@@ -69,7 +58,6 @@ function replaceCredential({
 function replaceCredentialInHeaders({
   definition,
   credential,
-  isParameter,
   placeholder,
 }: ReplaceOptions): void {
   if (definition.reqheaders) {
@@ -85,7 +73,6 @@ function replaceCredentialInHeaders({
       definition.reqheaders[headerName] = replaceCredential({
         payload: headerValue.toString(),
         credential,
-        isParameter,
         placeholder,
       });
     }
@@ -95,7 +82,6 @@ function replaceCredentialInHeaders({
 function replaceCredentialInRawHeaders({
   definition,
   credential,
-  isParameter,
   placeholder,
 }: ReplaceOptions): void {
   if (definition.rawHeaders) {
@@ -107,7 +93,6 @@ function replaceCredentialInRawHeaders({
       return replaceCredential({
         payload: header,
         credential,
-        isParameter,
         placeholder,
       });
     });
@@ -117,7 +102,6 @@ function replaceCredentialInRawHeaders({
 function replaceCredentialInBody({
   definition,
   credential,
-  isParameter,
   placeholder,
 }: ReplaceOptions): void {
   if (definition.body !== undefined) {
@@ -129,7 +113,6 @@ function replaceCredentialInBody({
     body = replaceCredential({
       payload: body,
       credential,
-      isParameter,
       placeholder,
     });
 
@@ -140,7 +123,6 @@ function replaceCredentialInBody({
 function replaceCredentialInResponse({
   definition,
   credential,
-  isParameter,
   placeholder,
 }: ReplaceOptions): void {
   if (definition.response) {
@@ -152,7 +134,6 @@ function replaceCredentialInResponse({
     response = replaceCredential({
       payload: response,
       credential,
-      isParameter,
       placeholder,
     });
 
@@ -163,7 +144,6 @@ function replaceCredentialInResponse({
 function replaceCredentialInScope({
   definition,
   credential,
-  isParameter,
   placeholder,
 }: ReplaceOptions): void {
   debug('Replacing credentials in scope');
@@ -172,7 +152,6 @@ function replaceCredentialInScope({
   definition.scope = replaceCredential({
     payload: definition.scope,
     credential,
-    isParameter,
     placeholder,
   });
 }
@@ -181,7 +160,6 @@ function replaceCredentialInQuery({
   definition,
   baseUrl,
   credential,
-  isParameter,
   placeholder,
 }: ReplaceOptions & { baseUrl: string }): void {
   const baseUrlOrigin = new URL(baseUrl).origin;
@@ -198,7 +176,6 @@ function replaceCredentialInQuery({
         replaceCredential({
           payload: queryValue,
           credential,
-          isParameter,
           placeholder,
         })
       );
@@ -213,7 +190,6 @@ function replaceCredentialInPath({
   definition,
   baseUrl,
   credential,
-  isParameter,
   placeholder,
 }: ReplaceOptions & { baseUrl: string }): void {
   const baseUrlOrigin = new URL(baseUrl).origin;
@@ -226,7 +202,6 @@ function replaceCredentialInPath({
     definitionURL.pathname = replaceCredential({
       payload: definitionURL.pathname,
       credential,
-      isParameter,
       placeholder,
     });
   }
@@ -239,7 +214,6 @@ function replaceApiKeyInHeader({
   definition,
   scheme,
   credential,
-  isParameter,
   placeholder,
 }: ReplaceOptions & { scheme: ApiKeySecurityScheme }): void {
   if (scheme.name !== undefined) {
@@ -254,7 +228,6 @@ function replaceApiKeyInHeader({
       definition.reqheaders[scheme.name] = replaceCredential({
         payload: definition.reqheaders[scheme.name].toString(),
         credential,
-        isParameter,
         placeholder,
       });
     }
@@ -263,7 +236,6 @@ function replaceApiKeyInHeader({
   replaceCredentialInHeaders({
     definition,
     credential,
-    isParameter,
     placeholder,
   });
 }
@@ -271,13 +243,11 @@ function replaceApiKeyInHeader({
 function replaceApiKeyInBody({
   definition,
   credential,
-  isParameter,
   placeholder,
 }: ReplaceOptions): void {
   replaceCredentialInBody({
     definition,
     credential,
-    isParameter,
     placeholder,
   });
 }
@@ -286,14 +256,12 @@ function replaceApiKeyInPath({
   definition,
   baseUrl,
   credential,
-  isParameter,
   placeholder,
 }: ReplaceOptions & { baseUrl: string }): void {
   replaceCredentialInPath({
     definition,
     baseUrl,
     credential,
-    isParameter,
     placeholder,
   });
 }
@@ -303,7 +271,6 @@ function replaceApiKeyInQuery({
   scheme,
   baseUrl,
   credential,
-  isParameter,
   placeholder,
 }: ReplaceOptions & { baseUrl: string; scheme: ApiKeySecurityScheme }): void {
   const baseUrlOrigin = new URL(baseUrl).origin;
@@ -317,17 +284,13 @@ function replaceApiKeyInQuery({
     debugSensitive('Query name:', scheme.name);
     debugSensitive('Query value:', definitionURL.searchParams.get(scheme.name));
 
-    definitionURL.searchParams.set(
-      scheme.name,
-      placeholder ? placeholder : defaultPlaceholder(isParameter)
-    );
+    definitionURL.searchParams.set(scheme.name, placeholder);
   }
 
   replaceCredentialInQuery({
     definition,
     baseUrl,
     credential,
-    isParameter,
     placeholder,
   });
 
@@ -340,14 +303,12 @@ function replaceApiKey({
   scheme,
   baseUrl,
   credential,
-  isParameter,
   placeholder,
 }: ReplaceOptions & { baseUrl: string; scheme: ApiKeySecurityScheme }): void {
   debug('Replacing api-key');
   const options = {
     definition,
     credential,
-    isParameter,
     placeholder,
   };
 
@@ -365,30 +326,39 @@ function replaceApiKey({
 
 function replaceBasicAuth(
   definition: RecordingDefinition,
-  placeholder?: string
+  placeholder: string
 ): void {
   if (definition.reqheaders?.[AUTH_HEADER_NAME] !== undefined) {
     debug('Replacing Basic token');
 
-    definition.reqheaders[AUTH_HEADER_NAME] = `Basic ${
-      placeholder ?? HIDDEN_CREDENTIALS_PLACEHOLDER
-    }`;
+    definition.reqheaders[AUTH_HEADER_NAME] = `Basic ${placeholder}`;
   }
 }
 
 function replaceBearerAuth(
   definition: RecordingDefinition,
-  placeholder?: string
+  placeholder: string
 ): void {
   if (definition.reqheaders?.[AUTH_HEADER_NAME] !== undefined) {
     debug('Replacing Bearer token');
 
-    definition.reqheaders[AUTH_HEADER_NAME] = `Bearer ${
-      placeholder ?? HIDDEN_CREDENTIALS_PLACEHOLDER
-    }`;
+    definition.reqheaders[AUTH_HEADER_NAME] = `Bearer ${placeholder}`;
   }
 }
 
+/**
+ * Replaces occurences of credentials from security schemes in recorded HTTP calls
+ *
+ * These credentials are configured to be located at specific location
+ * based on security scheme.
+ *
+ * It can look in following places of HTTP recording definition:
+ * - headers and rawHeaders (bearer & basic)
+ * - body (apiKey)
+ * - path (apiKey)
+ * - query (apiKey)
+ * - response (all security schemes)
+ */
 export function replaceCredentialInDefinition({
   definition,
   scheme,
@@ -400,14 +370,12 @@ export function replaceCredentialInDefinition({
   scheme: SecurityScheme;
   baseUrl: string;
   credential: string;
-  placeholder?: string;
+  placeholder: string;
 }): void {
   debug('Replacing credentials based on security schemes');
-  const isParameter = false;
   const options = {
     definition,
     credential,
-    isParameter,
     placeholder,
   };
 
@@ -435,6 +403,18 @@ export function replaceCredentialInDefinition({
   replaceCredentialInResponse(options);
 }
 
+/**
+ * Replaces occurences of integration parameters in recorded HTTP calls
+ *
+ * Since integration parameters can be used in multiple places of HTTP call in map,
+ * it look for occurences in following places of HTTP recording definitions:
+ * - headers and rawHeaders
+ * - body
+ * - response
+ * - scope (baseUrl from provider.json)
+ * - path
+ * - query
+ */
 export function replaceParameterInDefinition({
   definition,
   baseUrl,
@@ -444,14 +424,12 @@ export function replaceParameterInDefinition({
   definition: RecordingDefinition;
   baseUrl: string;
   credential: string;
-  placeholder?: string;
+  placeholder: string;
 }): void {
   debug('Replacing integration parameters');
-  const isParameter = true;
   const options = {
     definition,
     credential,
-    isParameter,
     placeholder,
   };
 
@@ -464,6 +442,17 @@ export function replaceParameterInDefinition({
   replaceCredentialInQuery({ ...options, baseUrl });
 }
 
+/**
+ * Replaces occurences of input values in recorded HTTP calls
+ *
+ * Since input can be used in multiple places of HTTP call in map,
+ * it look for occurences in following places of HTTP recording definitions:
+ * - headers and rawHeaders
+ * - body
+ * - response
+ * - path
+ * - query
+ */
 export function replaceInputInDefinition({
   definition,
   baseUrl,
@@ -473,14 +462,12 @@ export function replaceInputInDefinition({
   definition: RecordingDefinition;
   baseUrl: string;
   credential: string;
-  placeholder?: string;
+  placeholder: string;
 }): void {
-  debug('Replacing input');
-  const isParameter = false;
+  debug('Replacing input values');
   const options = {
     definition,
     credential,
-    isParameter,
     placeholder,
   };
 
