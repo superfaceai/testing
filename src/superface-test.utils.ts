@@ -15,8 +15,6 @@ import {
   UnexpectedError,
   UseCase,
 } from '@superfaceai/one-sdk';
-import { NonPrimitive } from '@superfaceai/one-sdk/dist/internal/interpreter/variables';
-import { createHash } from 'crypto';
 import createDebug from 'debug';
 import { join as joinPath } from 'path';
 
@@ -35,6 +33,12 @@ import {
   SuperJsonNotFoundError,
 } from './common/errors';
 import {
+  IGenerator,
+  InputGenerateHash,
+  JestGenerateHash,
+  MochaGenerateHash,
+} from './generate-hash';
+import {
   HIDDEN_CREDENTIALS_PLACEHOLDER,
   HIDDEN_PARAMETERS_PLACEHOLDER,
   replaceCredentialInDefinition,
@@ -42,6 +46,7 @@ import {
 } from './nock.utils';
 
 const debug = createDebug('superface:testing');
+// const debugHashing = createDebug('superface:testing:hash');
 
 /**
  * Asserts that entered sfConfig contains every component and
@@ -353,30 +358,80 @@ export function checkSensitiveInformation(
   }
 }
 
+function hasProperty<K extends PropertyKey>(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  obj: any,
+  propKey: K
+): obj is Record<K, unknown> {
+  return propKey in obj;
+}
+
+function isfunction<R extends unknown>(
+  value: unknown,
+  returnType?: R
+): value is () => R {
+  if (returnType) {
+    return typeof value === 'function' && typeof value() === typeof returnType;
+  }
+
+  return typeof value === 'function';
+}
+
 /**
- * Tries to get jest current test name from `expect` object,
+ * Checks for structural typing of specified testInstance and returns generation function.
+ *
+ * It checks for jest's `expect` instance and mocha's `this` instance,
  * otherwise it generates hash according to specified testName or input
  */
-export function generateHash(input: NonPrimitive | string): string {
-  const hash = createHash('md5');
+export function getGenerator(testInstance: unknown): IGenerator {
+  // jest instance of `expect` contains function `getState()` which should contain `currentTestName`
+  if (testInstance && isfunction(testInstance)) {
+    if (
+      hasProperty(testInstance, 'getState') &&
+      isfunction(testInstance.getState)
+    ) {
+      const state = testInstance.getState();
 
-  if (typeof input === 'string') {
-    debug('Trying to generate hash based on specified test name:', input);
+      if (hasProperty(state, 'currentTestName')) {
+        const testName = state.currentTestName;
 
-    hash.update(input);
-  } else {
-    try {
-      const testName = expect.getState().currentTestName;
-
-      debug('Trying to generate hash based on jest test name:', testName);
-
-      hash.update(testName);
-    } catch (error) {
-      debug('Trying to generate hash based on specified input object');
-
-      hash.update(JSON.stringify(input));
+        if (typeof testName === 'string') {
+          return new JestGenerateHash(testName);
+        }
+      }
     }
   }
 
-  return hash.digest('hex');
+  // mocha instance `this` contains information about tests in multiple contexts
+  if (testInstance && typeof testInstance === 'object') {
+    // inside hook - using `this.currentTest.fullTitle()`
+    if (hasProperty(testInstance, 'currentTest')) {
+      if (
+        hasProperty(testInstance.currentTest, 'fullTitle') &&
+        isfunction(testInstance.currentTest.fullTitle)
+      ) {
+        const value = testInstance.currentTest.fullTitle();
+
+        if (typeof value === 'string') {
+          return new MochaGenerateHash(value);
+        }
+      }
+    }
+
+    // inside test - we can access this.test.fullTitle()
+    if (hasProperty(testInstance, 'test')) {
+      if (
+        hasProperty(testInstance.test, 'fullTitle') &&
+        isfunction(testInstance.test.fullTitle)
+      ) {
+        const value = testInstance.test.fullTitle();
+
+        if (typeof value === 'string') {
+          return new MochaGenerateHash(value);
+        }
+      }
+    }
+  }
+
+  return new InputGenerateHash();
 }

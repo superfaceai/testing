@@ -37,6 +37,7 @@ import {
 } from './common/format';
 import { exists, readFileQuiet } from './common/io';
 import { writeRecordings } from './common/output-stream';
+import { IGenerator } from './generate-hash';
 import {
   NockConfig,
   SuperfaceTestConfigPayload,
@@ -48,7 +49,7 @@ import {
   assertsDefinitionsAreNotStrings,
   assertsPreparedConfig,
   checkSensitiveInformation,
-  generateHash,
+  getGenerator,
   getProfileId,
   getSuperJson,
   isProfileProviderLocal,
@@ -56,6 +57,8 @@ import {
 } from './superface-test.utils';
 
 const debug = createDebug('superface:testing');
+const debugSetup = createDebug('superface:testing:setup');
+const debugHashing = createDebug('superface:testing:hash');
 
 export class SuperfaceTest {
   private sfConfig: SuperfaceTestConfigPayload;
@@ -63,10 +66,12 @@ export class SuperfaceTest {
   private nockConfig?: NockConfig;
   private fixturesPath?: string;
   private recordingPath?: string;
+  private generator: IGenerator;
 
   constructor(sfConfig?: SuperfaceTestConfigPayload, nockConfig?: NockConfig) {
     this.sfConfig = sfConfig ?? {};
     this.nockConfig = nockConfig;
+    this.generator = getGenerator(sfConfig?.testInstance);
 
     this.setupFixturesPath();
   }
@@ -91,9 +96,12 @@ export class SuperfaceTest {
         this.sfConfig.provider.configuration
       );
 
-    const hash = generateHash(testCase.currentTestName ?? testCase.input);
+    const hash = this.generator.hash({
+      input: testCase.input,
+      testName: testCase.currentTestName,
+    });
 
-    debug('Created hash:', hash);
+    debugHashing('Created hash:', hash);
 
     this.setupRecordingPath(getFixtureName(this.sfConfig), hash);
 
@@ -325,7 +333,7 @@ export class SuperfaceTest {
       this.fixturesPath = path ?? joinPath(process.cwd(), 'nock');
     }
 
-    debug('Prepare path to recording fixtures:', this.fixturesPath);
+    debugSetup('Prepare path to recording fixtures:', this.fixturesPath);
   }
 
   /**
@@ -342,7 +350,7 @@ export class SuperfaceTest {
       `${this.nockConfig?.fixture ?? 'recording'}-${inputHash}.json`
     );
 
-    debug('Prepare path to recording:', this.recordingPath);
+    debugSetup('Prepare path to recording:', this.recordingPath);
   }
 
   /**
@@ -365,7 +373,7 @@ export class SuperfaceTest {
       this.sfConfig.useCase = payload.useCase;
     }
 
-    debug('Superface configuration prepared:', this.sfConfig);
+    debugSetup('Superface configuration prepared:', this.sfConfig);
   }
 
   /**
@@ -376,7 +384,7 @@ export class SuperfaceTest {
     if (!this.sfConfig.client) {
       this.sfConfig.client = new SuperfaceClient();
 
-      debug('Superface client initialized:', this.sfConfig.client);
+      debugSetup('Superface client initialized:', this.sfConfig.client);
     }
 
     if (typeof this.sfConfig.profile === 'string') {
@@ -384,7 +392,7 @@ export class SuperfaceTest {
         this.sfConfig.profile
       );
 
-      debug('Superface Profile transformed:', this.sfConfig.profile);
+      debugSetup('Superface Profile transformed:', this.sfConfig.profile);
     }
 
     if (typeof this.sfConfig.provider === 'string') {
@@ -392,7 +400,7 @@ export class SuperfaceTest {
         this.sfConfig.provider
       );
 
-      debug('Superface Provider transformed:', this.sfConfig.provider);
+      debugSetup('Superface Provider transformed:', this.sfConfig.provider);
     }
 
     if (typeof this.sfConfig.useCase === 'string') {
@@ -404,7 +412,7 @@ export class SuperfaceTest {
         this.sfConfig.useCase
       );
 
-      debug('Superface UseCase transformed:', this.sfConfig.useCase);
+      debugSetup('Superface UseCase transformed:', this.sfConfig.useCase);
     }
   }
 
