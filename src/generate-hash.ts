@@ -4,10 +4,6 @@ import createDebug from 'debug';
 
 const debugHashing = createDebug('superface:testing:hash');
 
-export type GenerateFunction =
-  | (() => string)
-  | ((param: { input: NonPrimitive; testName?: string }) => string);
-
 export interface IGenerator {
   hash: (param: { input: NonPrimitive; testName?: string }) => string;
 }
