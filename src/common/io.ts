@@ -8,6 +8,7 @@ import { assertIsIOError } from './errors';
 export const access = promisify(fs.access);
 export const mkdir = promisify(fs.mkdir);
 export const readFile = promisify(fs.readFile);
+export const renameFile = promisify(fs.rename);
 export const rimraf = promisify(rimrafCallback);
 
 export interface WritingOptions {

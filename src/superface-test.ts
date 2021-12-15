@@ -38,7 +38,8 @@ import {
 } from './common/format';
 import { exists, readFileQuiet } from './common/io';
 import { writeRecordings } from './common/output-stream';
-import { IGenerator } from './generate-hash';
+import { IGenerator, InputGenerateHash } from './generate-hash';
+import { Migration } from './migration';
 import {
   NockConfig,
   SuperfaceTestConfigPayload,
@@ -98,14 +99,28 @@ export class SuperfaceTest {
         this.sfConfig.provider.configuration
       );
 
-    const hash = this.generator.hash({
+    // old path - based on input
+    const inputGenerator = new InputGenerateHash();
+    const oldHash = inputGenerator.hash({ input: testCase.input });
+    this.setupRecordingPath(getFixtureName(this.sfConfig), oldHash);
+    const oldPath = this.recordingPath as string;
+
+    debugHashing('Old Hash:', oldHash);
+    debugHashing('Old Path:', oldPath);
+
+    // new path
+    const newHash = this.generator.hash({
       input: testCase.input,
       testName: testCase.currentTestName,
     });
+    this.setupRecordingPath(getFixtureName(this.sfConfig), newHash);
+    const newPath = this.recordingPath as string;
 
-    debugHashing('Created hash:', hash);
+    debugHashing('New Hash:', newHash);
+    debugHashing('New Path:', newPath);
 
-    this.setupRecordingPath(getFixtureName(this.sfConfig), hash);
+    // migrate recordings from old path to new path
+    await Migration.migrateRecording(oldPath, newPath);
 
     // parse env variable and check if test should be recorded
     const record = matchWildCard(this.sfConfig, process.env.SUPERFACE_LIVE_API);
@@ -229,6 +244,9 @@ export class SuperfaceTest {
 
         await beforeRecordingLoad(definitions);
       }
+
+      await writeRecordings(this.recordingPath, definitions);
+      debug('Loaded definitions overwritten with new placeholders');
 
       define(definitions);
 

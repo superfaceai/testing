@@ -45,6 +45,7 @@ import {
   JestGenerateHash,
   MochaGenerateHash,
 } from './generate-hash';
+import { Migration } from './migration';
 import {
   replaceCredentialInDefinition,
   replaceInputInDefinition,
@@ -270,8 +271,8 @@ export const HIDDEN_INPUT_PLACEHOLDER = 'INPUT_';
  */
 export function resolvePlaceholder({
   name,
-  value,
-  beforeSave,
+  // value,
+  // beforeSave,
   kind,
 }: {
   name: string;
@@ -299,10 +300,12 @@ export function resolvePlaceholder({
 
   const placeholder = placeholderFormat + name;
 
-  return {
-    credential: beforeSave ? value : placeholder,
-    placeholder: beforeSave ? placeholder : value,
-  };
+  return Migration.migratePlaceholder(kind, placeholder);
+
+  // return {
+  //   credential: beforeSave ? value : placeholder,
+  //   placeholder: beforeSave ? placeholder : value,
+  // };
 }
 
 export function replaceCredentials({
