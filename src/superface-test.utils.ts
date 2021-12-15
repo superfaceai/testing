@@ -40,12 +40,19 @@ import {
   SuperJsonNotFoundError,
 } from './common/errors';
 import {
+  IGenerator,
+  InputGenerateHash,
+  JestGenerateHash,
+  MochaGenerateHash,
+} from './generate-hash';
+import {
   replaceCredentialInDefinition,
   replaceInputInDefinition,
   replaceParameterInDefinition,
 } from './nock.utils';
 
 const debug = createDebug('superface:testing');
+// const debugHashing = createDebug('superface:testing:hash');
 
 /**
  * Asserts that entered sfConfig contains every component and
@@ -443,4 +450,90 @@ function assertPrimitive(
   if (!isPrimitive(value)) {
     throw new Error(`Input property: ${property} is not primitive value`);
   }
+}
+
+function hasProperty<K extends PropertyKey>(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  obj: any,
+  propKey: K
+): obj is Record<K, unknown> {
+  return !!obj && propKey in obj;
+}
+
+function isfunction<R extends unknown>(
+  value: unknown,
+  returnType?: R
+): value is () => R {
+  if (returnType) {
+    return typeof value === 'function' && typeof value() === typeof returnType;
+  }
+
+  return typeof value === 'function';
+}
+
+/**
+ * Checks for structural typing of specified `testInstance` and returns
+ * corresponding instance of hash generator
+ *
+ * It checks for jest's `expect` instance and mocha's `this` instance,
+ * otherwise it generates hash according to specified `testName` or `input` in test run
+ */
+export function getGenerator(testInstance: unknown): IGenerator {
+  // jest instance of `expect` contains function `getState()` which should contain `currentTestName`
+  if (testInstance && isfunction(testInstance)) {
+    if (
+      hasProperty(testInstance, 'getState') &&
+      isfunction(testInstance.getState)
+    ) {
+      const state = testInstance.getState();
+
+      if (hasProperty(state, 'currentTestName')) {
+        const testName = state.currentTestName;
+
+        if (typeof testName === 'string') {
+          return new JestGenerateHash(testName);
+        }
+      }
+    }
+  }
+
+  // mocha instance `this` contains information about tests in multiple contexts
+  if (testInstance && typeof testInstance === 'object') {
+    if (
+      hasProperty(testInstance, 'test') &&
+      hasProperty(testInstance.test, 'type')
+    ) {
+      // inside hook - using `this.currentTest.fullTitle()`
+      if (testInstance.test.type === 'hook') {
+        if (hasProperty(testInstance, 'currentTest')) {
+          if (
+            hasProperty(testInstance.currentTest, 'fullTitle') &&
+            isfunction(testInstance.currentTest.fullTitle)
+          ) {
+            const value = testInstance.currentTest.fullTitle();
+
+            if (typeof value === 'string') {
+              return new MochaGenerateHash(value);
+            }
+          }
+        }
+      }
+
+      // inside test - using `this.test.fullTitle()`
+      if (testInstance.test.type === 'test') {
+        if (
+          hasProperty(testInstance.test, 'fullTitle') &&
+          isfunction(testInstance.test.fullTitle)
+        ) {
+          const value = testInstance.test.fullTitle();
+
+          if (typeof value === 'string') {
+            return new MochaGenerateHash(value);
+          }
+        }
+      }
+    }
+  }
+
+  return new InputGenerateHash();
 }

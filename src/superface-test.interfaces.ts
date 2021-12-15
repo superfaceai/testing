@@ -13,9 +13,14 @@ export interface SuperfaceTestConfigPayload {
   profile?: Profile | string;
   provider?: Provider | string;
   useCase?: UseCase | string;
+  testInstance?: unknown;
 }
 
-export type SuperfaceTestRun = SuperfaceTestConfigPayload & {
+export type SuperfaceTestRun = Omit<
+  SuperfaceTestConfigPayload,
+  'testInstance'
+> & {
+  currentTestName?: string;
   input: NonPrimitive;
 };
 
