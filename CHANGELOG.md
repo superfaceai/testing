@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Debug logging throughout the library
 - Warning about sensitive information before they're written
+- New parameter `currentTestName` in method `run()` for hashing recording files
+- New parameter `testInstance` in constructor for pluging in instance of used test framework
+
+### Changed
+- Hash of recording is based on parameters in following priority: `currentTestName` -> `testInstance` -> `input`
 
 ### Fixed
 - Check for profile provider in super.json now does not expect defined profile
