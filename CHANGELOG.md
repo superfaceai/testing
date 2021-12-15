@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Debug logging throughout the library
 - Warning about sensitive information before they're written
 - Hiding of credentials and parameters located in rawHeaders or in response.
+- New parameter for method `run()` for hiding primitive `input` values in recordings
 
 ### Changed
 - Format of placeholders for sensitive information in recordings

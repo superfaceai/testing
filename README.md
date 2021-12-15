@@ -192,7 +192,31 @@ superface.run(
 );
 ```
 
-You can enter your own processing functions along side `processRecordings` parameter. Both have same function signature and are called either before load or before save of recordings.
+To hide sensitive information that are passed in method `run()` as `input`, you can use parameter `hideInput` to point to primitive values which will get replaced in recording fixture. 
+
+```typescript
+const pass = 'secret'
+
+superface.run(
+  {
+    profile: 'profile',
+    provider: 'provider',
+    useCase: 'useCase',
+    input: {
+      auth: {
+        username: 'user',
+        password: pass
+      },
+    },
+  },
+  {
+    // value found have to be one of following: string, number or boolean
+    hideInput: ['auth.value', 'auth.password']
+  }
+);
+```
+
+You can also enter your own processing functions along side `processRecordings` parameter. Both have same function signature and are called either before load or before save of recordings.
 
 ```typescript
 import { RecordingDefinitions, SuperfaceTest } from '@superfaceai/testing';
