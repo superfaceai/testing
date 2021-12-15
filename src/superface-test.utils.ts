@@ -363,7 +363,7 @@ function hasProperty<K extends PropertyKey>(
   obj: any,
   propKey: K
 ): obj is Record<K, unknown> {
-  return propKey in obj;
+  return !!obj && propKey in obj;
 }
 
 function isfunction<R extends unknown>(
@@ -378,10 +378,11 @@ function isfunction<R extends unknown>(
 }
 
 /**
- * Checks for structural typing of specified testInstance and returns generation function.
+ * Checks for structural typing of specified `testInstance` and returns
+ * corresponding instance of hash generator
  *
  * It checks for jest's `expect` instance and mocha's `this` instance,
- * otherwise it generates hash according to specified testName or input
+ * otherwise it generates hash according to specified `testName` or `input` in test run
  */
 export function getGenerator(testInstance: unknown): IGenerator {
   // jest instance of `expect` contains function `getState()` which should contain `currentTestName`
@@ -404,30 +405,37 @@ export function getGenerator(testInstance: unknown): IGenerator {
 
   // mocha instance `this` contains information about tests in multiple contexts
   if (testInstance && typeof testInstance === 'object') {
-    // inside hook - using `this.currentTest.fullTitle()`
-    if (hasProperty(testInstance, 'currentTest')) {
-      if (
-        hasProperty(testInstance.currentTest, 'fullTitle') &&
-        isfunction(testInstance.currentTest.fullTitle)
-      ) {
-        const value = testInstance.currentTest.fullTitle();
+    if (
+      hasProperty(testInstance, 'test') &&
+      hasProperty(testInstance.test, 'type')
+    ) {
+      // inside hook - using `this.currentTest.fullTitle()`
+      if (testInstance.test.type === 'hook') {
+        if (hasProperty(testInstance, 'currentTest')) {
+          if (
+            hasProperty(testInstance.currentTest, 'fullTitle') &&
+            isfunction(testInstance.currentTest.fullTitle)
+          ) {
+            const value = testInstance.currentTest.fullTitle();
 
-        if (typeof value === 'string') {
-          return new MochaGenerateHash(value);
+            if (typeof value === 'string') {
+              return new MochaGenerateHash(value);
+            }
+          }
         }
       }
-    }
 
-    // inside test - we can access this.test.fullTitle()
-    if (hasProperty(testInstance, 'test')) {
-      if (
-        hasProperty(testInstance.test, 'fullTitle') &&
-        isfunction(testInstance.test.fullTitle)
-      ) {
-        const value = testInstance.test.fullTitle();
+      // inside test - using `this.test.fullTitle()`
+      if (testInstance.test.type === 'test') {
+        if (
+          hasProperty(testInstance.test, 'fullTitle') &&
+          isfunction(testInstance.test.fullTitle)
+        ) {
+          const value = testInstance.test.fullTitle();
 
-        if (typeof value === 'string') {
-          return new MochaGenerateHash(value);
+          if (typeof value === 'string') {
+            return new MochaGenerateHash(value);
+          }
         }
       }
     }
