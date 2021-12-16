@@ -209,8 +209,7 @@ describe('SuperfaceTest', () => {
 
         const writeRecordingsSpy = mocked(writeRecordings);
         const recorderSpy = jest.spyOn(recorder, 'rec');
-        const playSpy = jest.spyOn(recorder, 'play').mockReturnValueOnce([]);
-        const endRecSpy = jest.spyOn(nock, 'restore');
+        jest.spyOn(recorder, 'play').mockReturnValueOnce([]);
 
         mocked(exists).mockResolvedValue(true);
         mocked(matchWildCard).mockReturnValueOnce(true);
@@ -225,10 +224,6 @@ describe('SuperfaceTest', () => {
           enable_reqheaders_recording: false,
         });
 
-        expect(playSpy).toHaveBeenCalledTimes(1);
-        expect(endRecSpy).toHaveBeenCalledTimes(1);
-
-        expect(writeRecordingsSpy).toHaveBeenCalledTimes(1);
         expect(writeRecordingsSpy).toHaveBeenCalledWith(
           expect.stringContaining(DEFAULT_RECORDING_PATH),
           []
@@ -253,7 +248,7 @@ describe('SuperfaceTest', () => {
         );
 
         const writeRecordingsSpy = mocked(writeRecordings);
-        const playSpy = jest.spyOn(recorder, 'play').mockReturnValueOnce([
+        jest.spyOn(recorder, 'play').mockReturnValueOnce([
           {
             scope: 'https://localhost',
             path: `/?api_key=${secret}`,
@@ -261,17 +256,12 @@ describe('SuperfaceTest', () => {
             response: { auth: secret },
           },
         ]);
-        const endRecSpy = jest.spyOn(nock, 'restore');
 
         mocked(exists).mockResolvedValue(true);
         mocked(matchWildCard).mockReturnValueOnce(true);
 
         await superfaceTest.run({ input: {} });
 
-        expect(playSpy).toHaveBeenCalledTimes(1);
-        expect(endRecSpy).toHaveBeenCalledTimes(1);
-
-        expect(writeRecordingsSpy).toHaveBeenCalledTimes(1);
         expect(writeRecordingsSpy).toHaveBeenCalledWith(
           expect.stringContaining(DEFAULT_RECORDING_PATH),
           [
@@ -299,7 +289,7 @@ describe('SuperfaceTest', () => {
         );
 
         const writeRecordingsSpy = mocked(writeRecordings);
-        const playSpy = jest.spyOn(recorder, 'play').mockReturnValueOnce([
+        jest.spyOn(recorder, 'play').mockReturnValueOnce([
           {
             scope: 'https://localhost',
             path: `/?api_key=${param}`,
@@ -307,17 +297,12 @@ describe('SuperfaceTest', () => {
             response: { auth: param },
           },
         ]);
-        const endRecSpy = jest.spyOn(nock, 'restore');
 
         mocked(exists).mockResolvedValue(true);
         mocked(matchWildCard).mockReturnValueOnce(true);
 
         await superfaceTest.run({ input: {} });
 
-        expect(playSpy).toHaveBeenCalledTimes(1);
-        expect(endRecSpy).toHaveBeenCalledTimes(1);
-
-        expect(writeRecordingsSpy).toHaveBeenCalledTimes(1);
         expect(writeRecordingsSpy).toHaveBeenCalledWith(
           expect.stringContaining(DEFAULT_RECORDING_PATH),
           [
@@ -338,13 +323,11 @@ describe('SuperfaceTest', () => {
         const refresh = 'refresh-token';
 
         superfaceTest = new SuperfaceTest(
-          await getMockedSfConfig({
-            baseUrl: 'https://localhost',
-          })
+          await getMockedSfConfig({ baseUrl: 'https://localhost' })
         );
 
         const writeRecordingsSpy = mocked(writeRecordings);
-        const playSpy = jest.spyOn(recorder, 'play').mockReturnValueOnce([
+        jest.spyOn(recorder, 'play').mockReturnValueOnce([
           {
             scope: 'https://localhost',
             path: `/?token=${token}`,
@@ -357,7 +340,6 @@ describe('SuperfaceTest', () => {
             },
           },
         ]);
-        const endRecSpy = jest.spyOn(nock, 'restore');
 
         mocked(exists).mockResolvedValue(true);
         mocked(matchWildCard).mockReturnValueOnce(true);
@@ -367,10 +349,6 @@ describe('SuperfaceTest', () => {
           { hideInput: ['auth.token', 'auth.refresh'] }
         );
 
-        expect(playSpy).toHaveBeenCalledTimes(1);
-        expect(endRecSpy).toHaveBeenCalledTimes(1);
-
-        expect(writeRecordingsSpy).toHaveBeenCalledTimes(1);
         expect(writeRecordingsSpy).toHaveBeenCalledWith(
           expect.stringContaining(DEFAULT_RECORDING_PATH),
           [
