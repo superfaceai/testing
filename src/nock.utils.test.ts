@@ -113,7 +113,7 @@ describe('nock utils', () => {
         });
       });
 
-      it('replaces apikey from path', () => {
+      it('replaces apikey in path', () => {
         const definition: RecordingDefinition = {
           scope: 'https://localhost',
           path: '/get/secret?text=123',
@@ -142,7 +142,7 @@ describe('nock utils', () => {
         });
       });
 
-      it('replaces apikey from path with non-trivial base url', () => {
+      it('replaces apikey in path with non-trivial base url', () => {
         const definition: RecordingDefinition = {
           scope: 'https://localhost',
           path: '/api/v4/get/secret?text=123',
@@ -171,7 +171,7 @@ describe('nock utils', () => {
         });
       });
 
-      it('replaces apikey from query', () => {
+      it('replaces apikey in query', () => {
         const definition: RecordingDefinition = {
           scope: 'https://localhost',
           path: '/get?api_key=secret&text=123',
@@ -200,7 +200,7 @@ describe('nock utils', () => {
         });
       });
 
-      it('replaces apikey from response', () => {
+      it('replaces apikey in response', () => {
         const definition: RecordingDefinition = {
           scope: 'https://localhost',
           path: '/get?text=123',
@@ -245,7 +245,7 @@ describe('nock utils', () => {
     });
 
     describe('when replacing basic auth credentials', () => {
-      it('replaces basic token from Authorization header', () => {
+      it('replaces basic token in Authorization header', () => {
         const definition: RecordingDefinition = {
           scope: 'https://localhost',
           path: '/get?text=123',
@@ -279,7 +279,7 @@ describe('nock utils', () => {
         });
       });
 
-      it('replaces basic token from raw headers', () => {
+      it('replaces basic token in raw headers', () => {
         const definition: RecordingDefinition = {
           scope: 'https://localhost',
           path: '/get?text=123',
@@ -315,7 +315,7 @@ describe('nock utils', () => {
         });
       });
 
-      it('replaces basic token from response', () => {
+      it('replaces basic token in response', () => {
         const definition: RecordingDefinition = {
           scope: 'https://localhost',
           path: '/get?text=123',
@@ -359,7 +359,7 @@ describe('nock utils', () => {
     });
 
     describe('when replacing bearer token', () => {
-      it('replaces bearer token from Authorization header', () => {
+      it('replaces bearer token in Authorization header', () => {
         const definition: RecordingDefinition = {
           scope: 'https://localhost',
           path: '/get?text=123',
@@ -393,7 +393,7 @@ describe('nock utils', () => {
         });
       });
 
-      it('replaces bearer token from raw headers', () => {
+      it('replaces bearer token in raw headers', () => {
         const definition: RecordingDefinition = {
           scope: 'https://localhost',
           path: '/get?text=123',
@@ -429,7 +429,7 @@ describe('nock utils', () => {
         });
       });
 
-      it('replaces bearer token from response', () => {
+      it('replaces bearer token in response', () => {
         const definition: RecordingDefinition = {
           scope: 'https://localhost',
           path: '/get?text=123',
@@ -507,7 +507,7 @@ describe('nock utils', () => {
         });
       });
 
-      it('replaces parameter from header', () => {
+      it('replaces parameter in header', () => {
         const parameterValue = 'integration-parameter';
         const definition: RecordingDefinition = {
           scope: baseUrl,
@@ -537,7 +537,7 @@ describe('nock utils', () => {
         });
       });
 
-      it('replaces parameter from body', () => {
+      it('replaces parameter in body', () => {
         const parameterValue = 'integration-parameter';
         const definition: RecordingDefinition = {
           scope: baseUrl,
@@ -567,7 +567,7 @@ describe('nock utils', () => {
         });
       });
 
-      it('replaces parameter from path', () => {
+      it('replaces parameter in path', () => {
         const parameterValue = 'integration-parameter';
         const definition: RecordingDefinition = {
           scope: baseUrl,
@@ -591,7 +591,7 @@ describe('nock utils', () => {
         });
       });
 
-      it('replaces parameter from query', () => {
+      it('replaces parameter in query', () => {
         const parameterValue = 'integration-parameter';
         const definition: RecordingDefinition = {
           scope: baseUrl,
@@ -615,7 +615,7 @@ describe('nock utils', () => {
         });
       });
 
-      it('replaces parameter from scope', () => {
+      it('replaces parameter in scope', () => {
         const baseUrl = 'https://api.integration-parameter.com';
         const parameterValue = 'integration-parameter';
         const definition: RecordingDefinition = {
@@ -640,7 +640,7 @@ describe('nock utils', () => {
         });
       });
 
-      it('replaces parameter from raw headers', () => {
+      it('replaces parameter in raw headers', () => {
         const parameterValue = 'integration-parameter';
         const definition: RecordingDefinition = {
           scope: baseUrl,
@@ -666,7 +666,7 @@ describe('nock utils', () => {
         });
       });
 
-      it('replaces parameter from response', () => {
+      it('replaces parameter in response', () => {
         const parameterValue = 'integration-parameter';
         const definition: RecordingDefinition = {
           scope: baseUrl,
@@ -734,7 +734,7 @@ describe('nock utils', () => {
         });
       });
 
-      it('replaces input value from header', () => {
+      it('replaces input value in header', () => {
         const inputValue = 'input-primitive-value';
         const definition: RecordingDefinition = {
           scope: baseUrl,
@@ -764,7 +764,7 @@ describe('nock utils', () => {
         });
       });
 
-      it('replaces input value from body', () => {
+      it('replaces input value in body', () => {
         const inputValue = 'input-primitive-value';
         const definition: RecordingDefinition = {
           scope: baseUrl,
@@ -794,7 +794,7 @@ describe('nock utils', () => {
         });
       });
 
-      it('replaces input value from path', () => {
+      it('replaces input value in path', () => {
         const inputValue = 'input-primitive-value';
         const definition: RecordingDefinition = {
           scope: baseUrl,
@@ -818,7 +818,7 @@ describe('nock utils', () => {
         });
       });
 
-      it('replaces input value from query', () => {
+      it('replaces input value in query', () => {
         const inputValue = 'input-primitive-value';
         const definition: RecordingDefinition = {
           scope: baseUrl,
@@ -842,7 +842,7 @@ describe('nock utils', () => {
         });
       });
 
-      it('replaces input value from raw headers', () => {
+      it('replaces input value in raw headers', () => {
         const inputValue = 'input-primitive-value';
         const definition: RecordingDefinition = {
           scope: baseUrl,
@@ -868,7 +868,7 @@ describe('nock utils', () => {
         });
       });
 
-      it('replaces input value from response', () => {
+      it('replaces input value in response', () => {
         const inputValue = 'input-primitive-value';
         const definition: RecordingDefinition = {
           scope: baseUrl,
