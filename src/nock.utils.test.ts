@@ -12,7 +12,7 @@ const TMP_PLACEHOLDER = 'placeholder';
 describe('nock utils', () => {
   describe('replaceCredentials', () => {
     describe('when replacing apikey', () => {
-      it('replaces apikey from header', () => {
+      it('replaces apikey in header', () => {
         const definition: RecordingDefinition = {
           scope: 'https://localhost',
           path: '/get?text=123',
@@ -47,7 +47,7 @@ describe('nock utils', () => {
         });
       });
 
-      it('replaces apikey from raw headers', () => {
+      it('replaces apikey in raw headers', () => {
         const definition: RecordingDefinition = {
           scope: 'https://localhost',
           path: '/get?text=123',
@@ -78,7 +78,7 @@ describe('nock utils', () => {
         });
       });
 
-      it('replaces apikey from body', () => {
+      it('replaces apikey in body', () => {
         const definition: RecordingDefinition = {
           scope: 'https://localhost',
           path: '/get?text=123',
