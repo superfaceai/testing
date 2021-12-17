@@ -20,6 +20,7 @@ import {
 import { matchWildCard } from './common/format';
 import { exists, readFileQuiet } from './common/io';
 import { writeRecordings } from './common/output-stream';
+import { generate } from './generate-hash';
 import { HIDDEN_CREDENTIALS_PLACEHOLDER } from './nock.utils';
 import {
   getMockedSfConfig,
@@ -279,6 +280,95 @@ describe('SuperfaceTest', () => {
               },
             },
           ]
+        );
+      });
+    });
+
+    describe('when hashing recordings', () => {
+      it('writes recordings to file hashed based on test instance', async () => {
+        superfaceTest = new SuperfaceTest({
+          ...(await getMockedSfConfig()),
+          testInstance: expect,
+        });
+
+        const expectedTestName = expect.getState().currentTestName;
+        const expectedHash = generate(expectedTestName);
+
+        const writeRecordingsSpy = mocked(writeRecordings);
+        jest.spyOn(recorder, 'play').mockReturnValueOnce([]);
+
+        mocked(exists).mockResolvedValue(true);
+        mocked(matchWildCard).mockReturnValueOnce(true);
+
+        await superfaceTest.run({ input: {} });
+
+        expect(writeRecordingsSpy).toHaveBeenCalledWith(
+          joinPath(
+            DEFAULT_RECORDING_PATH,
+            'profile',
+            'provider',
+            'usecase',
+            `recording-${expectedHash}.json`
+          ),
+          []
+        );
+      });
+
+      it('writes recordings to file hashed based on parameter currentTestName', async () => {
+        superfaceTest = new SuperfaceTest({
+          ...(await getMockedSfConfig()),
+          testInstance: expect,
+        });
+
+        const testName = 'my-test-name';
+        const expectedHash = generate(testName);
+
+        const writeRecordingsSpy = mocked(writeRecordings);
+        jest.spyOn(recorder, 'play').mockReturnValueOnce([]);
+
+        mocked(exists).mockResolvedValue(true);
+        mocked(matchWildCard).mockReturnValueOnce(true);
+
+        await superfaceTest.run({ input: {}, currentTestName: testName });
+
+        expect(writeRecordingsSpy).toHaveBeenCalledWith(
+          joinPath(
+            DEFAULT_RECORDING_PATH,
+            'profile',
+            'provider',
+            'usecase',
+            `recording-${expectedHash}.json`
+          ),
+          []
+        );
+      });
+
+      it('writes recordings to file hashed based on input', async () => {
+        superfaceTest = new SuperfaceTest({
+          ...(await getMockedSfConfig()),
+          testInstance: undefined,
+        });
+
+        const input = { some: 'value' };
+        const expectedHash = generate(JSON.stringify(input));
+
+        const writeRecordingsSpy = mocked(writeRecordings);
+        jest.spyOn(recorder, 'play').mockReturnValueOnce([]);
+
+        mocked(exists).mockResolvedValue(true);
+        mocked(matchWildCard).mockReturnValueOnce(true);
+
+        await superfaceTest.run({ input });
+
+        expect(writeRecordingsSpy).toHaveBeenCalledWith(
+          joinPath(
+            DEFAULT_RECORDING_PATH,
+            'profile',
+            'provider',
+            'usecase',
+            `recording-${expectedHash}.json`
+          ),
+          []
         );
       });
     });

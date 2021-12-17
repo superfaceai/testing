@@ -8,7 +8,7 @@ export interface IGenerator {
   hash: (param: { input: NonPrimitive; testName?: string }) => string;
 }
 
-const generate = (value: string): string => {
+export const generate = (value: string): string => {
   debugHashing('Trying to generate hash based on specified value:', value);
 
   return createHash('md5').update(value).digest('hex');

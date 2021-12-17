@@ -46,7 +46,6 @@ import {
 } from './nock.utils';
 
 const debug = createDebug('superface:testing');
-// const debugHashing = createDebug('superface:testing:hash');
 
 /**
  * Asserts that entered sfConfig contains every component and
@@ -366,7 +365,7 @@ function hasProperty<K extends PropertyKey>(
   return !!obj && propKey in obj;
 }
 
-function isfunction<R extends unknown>(
+function isFunction<R extends unknown>(
   value: unknown,
   returnType?: R
 ): value is () => R {
@@ -386,10 +385,10 @@ function isfunction<R extends unknown>(
  */
 export function getGenerator(testInstance: unknown): IGenerator {
   // jest instance of `expect` contains function `getState()` which should contain `currentTestName`
-  if (testInstance && isfunction(testInstance)) {
+  if (testInstance && isFunction(testInstance)) {
     if (
       hasProperty(testInstance, 'getState') &&
-      isfunction(testInstance.getState)
+      isFunction(testInstance.getState)
     ) {
       const state = testInstance.getState();
 
@@ -414,7 +413,7 @@ export function getGenerator(testInstance: unknown): IGenerator {
         if (hasProperty(testInstance, 'currentTest')) {
           if (
             hasProperty(testInstance.currentTest, 'fullTitle') &&
-            isfunction(testInstance.currentTest.fullTitle)
+            isFunction(testInstance.currentTest.fullTitle)
           ) {
             const value = testInstance.currentTest.fullTitle();
 
@@ -429,7 +428,7 @@ export function getGenerator(testInstance: unknown): IGenerator {
       if (testInstance.test.type === 'test') {
         if (
           hasProperty(testInstance.test, 'fullTitle') &&
-          isfunction(testInstance.test.fullTitle)
+          isFunction(testInstance.test.fullTitle)
         ) {
           const value = testInstance.test.fullTitle();
 
