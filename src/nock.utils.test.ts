@@ -65,6 +65,7 @@ describe('nock utils', () => {
           },
           baseUrl: 'https://localhost',
           credential: 'secret',
+          placeholder: TMP_PLACEHOLDER,
         });
 
         expect(definition).toEqual({
@@ -72,7 +73,7 @@ describe('nock utils', () => {
           path: '/get?text=123',
           method: 'GET',
           status: 200,
-          rawHeaders: ['api_key', HIDDEN_CREDENTIALS_PLACEHOLDER],
+          rawHeaders: ['api_key', TMP_PLACEHOLDER],
         });
       });
 
@@ -223,6 +224,7 @@ describe('nock utils', () => {
           },
           baseUrl: 'https://localhost',
           credential: 'secret',
+          placeholder: TMP_PLACEHOLDER,
         });
 
         expect(definition).toEqual({
@@ -231,11 +233,11 @@ describe('nock utils', () => {
           method: 'GET',
           status: 200,
           body: {
-            my_api_key: HIDDEN_CREDENTIALS_PLACEHOLDER,
+            my_api_key: TMP_PLACEHOLDER,
           },
           response: {
             some: 'data',
-            auth: { my_api_key: HIDDEN_CREDENTIALS_PLACEHOLDER },
+            auth: { my_api_key: TMP_PLACEHOLDER },
           },
         });
       });
@@ -297,6 +299,7 @@ describe('nock utils', () => {
           },
           baseUrl: 'https://localhost',
           credential: 'secret',
+          placeholder: TMP_PLACEHOLDER,
         });
 
         expect(definition).toEqual({
@@ -305,9 +308,9 @@ describe('nock utils', () => {
           method: 'GET',
           status: 200,
           reqheaders: {
-            ['Authorization']: `Basic ${HIDDEN_CREDENTIALS_PLACEHOLDER}`,
+            ['Authorization']: `Basic ${TMP_PLACEHOLDER}`,
           },
-          rawHeaders: ['Authorization', HIDDEN_CREDENTIALS_PLACEHOLDER],
+          rawHeaders: ['Authorization', TMP_PLACEHOLDER],
         });
       });
 
@@ -335,6 +338,7 @@ describe('nock utils', () => {
           },
           baseUrl: 'https://localhost',
           credential: 'secret',
+          placeholder: TMP_PLACEHOLDER,
         });
 
         expect(definition).toEqual({
@@ -343,11 +347,11 @@ describe('nock utils', () => {
           method: 'GET',
           status: 200,
           reqheaders: {
-            ['Authorization']: `Basic ${HIDDEN_CREDENTIALS_PLACEHOLDER}`,
+            ['Authorization']: `Basic ${TMP_PLACEHOLDER}`,
           },
           response: {
             some: 'data',
-            auth: { my_api_key: HIDDEN_CREDENTIALS_PLACEHOLDER },
+            auth: { my_api_key: TMP_PLACEHOLDER },
           },
         });
       });
@@ -409,6 +413,7 @@ describe('nock utils', () => {
           },
           baseUrl: 'https://localhost',
           credential: 'secret',
+          placeholder: TMP_PLACEHOLDER,
         });
 
         expect(definition).toEqual({
@@ -417,9 +422,9 @@ describe('nock utils', () => {
           method: 'GET',
           status: 200,
           reqheaders: {
-            ['Authorization']: `Bearer ${HIDDEN_CREDENTIALS_PLACEHOLDER}`,
+            ['Authorization']: `Bearer ${TMP_PLACEHOLDER}`,
           },
-          rawHeaders: ['Authorization', HIDDEN_CREDENTIALS_PLACEHOLDER],
+          rawHeaders: ['Authorization', TMP_PLACEHOLDER],
         });
       });
 
@@ -447,6 +452,7 @@ describe('nock utils', () => {
           },
           baseUrl: 'https://localhost',
           credential: 'secret',
+          placeholder: TMP_PLACEHOLDER,
         });
 
         expect(definition).toEqual({
@@ -455,11 +461,11 @@ describe('nock utils', () => {
           method: 'GET',
           status: 200,
           reqheaders: {
-            ['Authorization']: `Bearer ${HIDDEN_CREDENTIALS_PLACEHOLDER}`,
+            ['Authorization']: `Bearer ${TMP_PLACEHOLDER}`,
           },
           response: {
             some: 'data',
-            auth: { my_api_key: HIDDEN_CREDENTIALS_PLACEHOLDER },
+            auth: { my_api_key: TMP_PLACEHOLDER },
           },
         });
       });
@@ -647,6 +653,7 @@ describe('nock utils', () => {
           definition,
           baseUrl,
           credential: parameterValue,
+          placeholder: TMP_PLACEHOLDER,
         });
 
         expect(definition).toEqual({
@@ -654,7 +661,7 @@ describe('nock utils', () => {
           path: `/get?text=123`,
           method: 'GET',
           status: 200,
-          rawHeaders: ['Authorization', HIDDEN_PARAMETERS_PLACEHOLDER],
+          rawHeaders: ['Authorization', TMP_PLACEHOLDER],
         });
       });
 
@@ -675,6 +682,7 @@ describe('nock utils', () => {
           definition,
           baseUrl,
           credential: parameterValue,
+          placeholder: TMP_PLACEHOLDER,
         });
 
         expect(definition).toEqual({
@@ -684,7 +692,7 @@ describe('nock utils', () => {
           status: 200,
           response: {
             some: 'data',
-            auth: { my_api_key: HIDDEN_PARAMETERS_PLACEHOLDER },
+            auth: { my_api_key: TMP_PLACEHOLDER },
           },
         });
       });
