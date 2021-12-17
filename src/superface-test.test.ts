@@ -21,11 +21,6 @@ import { matchWildCard } from './common/format';
 import { exists, readFileQuiet } from './common/io';
 import { writeRecordings } from './common/output-stream';
 import {
-  HIDDEN_CREDENTIALS_PLACEHOLDER,
-  HIDDEN_INPUT_PLACEHOLDER,
-  HIDDEN_PARAMETERS_PLACEHOLDER,
-} from './nock.utils';
-import {
   getMockedSfConfig,
   getProfileMock,
   getProviderMock,
@@ -33,6 +28,11 @@ import {
   SuperfaceClientMock,
 } from './superface.mock';
 import { SuperfaceTest } from './superface-test';
+import {
+  HIDDEN_CREDENTIALS_PLACEHOLDER,
+  HIDDEN_INPUT_PLACEHOLDER,
+  HIDDEN_PARAMETERS_PLACEHOLDER,
+} from './superface-test.utils';
 
 /* eslint-disable @typescript-eslint/unbound-method */
 
@@ -267,10 +267,10 @@ describe('SuperfaceTest', () => {
           [
             {
               scope: 'https://localhost',
-              path: `/?api_key=${HIDDEN_CREDENTIALS_PLACEHOLDER}`,
+              path: `/?api_key=${HIDDEN_CREDENTIALS_PLACEHOLDER}api-key`,
               status: 200,
               response: {
-                auth: HIDDEN_CREDENTIALS_PLACEHOLDER,
+                auth: `${HIDDEN_CREDENTIALS_PLACEHOLDER}api-key`,
               },
             },
           ]
@@ -308,10 +308,10 @@ describe('SuperfaceTest', () => {
           [
             {
               scope: 'https://localhost',
-              path: `/?api_key=${HIDDEN_PARAMETERS_PLACEHOLDER}`,
+              path: `/?api_key=${HIDDEN_PARAMETERS_PLACEHOLDER}param`,
               status: 200,
               response: {
-                auth: HIDDEN_PARAMETERS_PLACEHOLDER,
+                auth: `${HIDDEN_PARAMETERS_PLACEHOLDER}param`,
               },
             },
           ]
@@ -354,12 +354,12 @@ describe('SuperfaceTest', () => {
           [
             {
               scope: 'https://localhost',
-              path: `/?token=${HIDDEN_INPUT_PLACEHOLDER}`,
+              path: `/?token=${HIDDEN_INPUT_PLACEHOLDER}auth.token`,
               status: 200,
               response: {
                 auth: {
-                  value: HIDDEN_INPUT_PLACEHOLDER,
-                  refresh: HIDDEN_INPUT_PLACEHOLDER,
+                  value: `${HIDDEN_INPUT_PLACEHOLDER}auth.token`,
+                  refresh: `${HIDDEN_INPUT_PLACEHOLDER}auth.refresh`,
                 },
               },
             },

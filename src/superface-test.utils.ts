@@ -40,9 +40,6 @@ import {
   SuperJsonNotFoundError,
 } from './common/errors';
 import {
-  HIDDEN_CREDENTIALS_PLACEHOLDER,
-  HIDDEN_INPUT_PLACEHOLDER,
-  HIDDEN_PARAMETERS_PLACEHOLDER,
   replaceCredentialInDefinition,
   replaceInputInDefinition,
   replaceParameterInDefinition,
@@ -256,14 +253,21 @@ export function resolveCredential(securityValue: SecurityValues): string {
   throw new UnexpectedError('Unexpected security value');
 }
 
+export const HIDDEN_CREDENTIALS_PLACEHOLDER = 'SECURITY_';
+export const HIDDEN_PARAMETERS_PLACEHOLDER = 'PARAMS_';
+export const HIDDEN_INPUT_PLACEHOLDER = 'INPUT_';
+
 /**
  * Resolves placeholder and credential properties later passed to nock utils.
+ * It composes placeholder based on given name of security scheme or parameter
  */
 export function resolvePlaceholder({
+  name,
   value,
   beforeSave,
   kind,
 }: {
+  name: string;
   value: string;
   beforeSave: boolean;
   kind: 'credential' | 'parameter' | 'input';
@@ -271,20 +275,22 @@ export function resolvePlaceholder({
   credential: string;
   placeholder: string;
 } {
-  let placeholder: string;
+  let placeholderFormat: string;
   switch (kind) {
     case 'credential':
-      placeholder = HIDDEN_CREDENTIALS_PLACEHOLDER;
+      placeholderFormat = HIDDEN_CREDENTIALS_PLACEHOLDER;
       break;
     case 'parameter':
-      placeholder = HIDDEN_PARAMETERS_PLACEHOLDER;
+      placeholderFormat = HIDDEN_PARAMETERS_PLACEHOLDER;
       break;
     case 'input':
-      placeholder = HIDDEN_INPUT_PLACEHOLDER;
+      placeholderFormat = HIDDEN_INPUT_PLACEHOLDER;
       break;
     default:
       throw new Error('Invalid placeholder kind');
   }
+
+  const placeholder = placeholderFormat + name;
 
   return {
     credential: beforeSave ? value : placeholder,
@@ -326,6 +332,7 @@ export function replaceCredentials({
           baseUrl,
           ...resolvePlaceholder({
             kind: 'credential',
+            name: scheme.id,
             value: resolveCredential(securityValue),
             beforeSave,
           }),
@@ -339,11 +346,7 @@ export function replaceCredentials({
       replaceParameterInDefinition({
         definition,
         baseUrl,
-        ...resolvePlaceholder({
-          kind: 'parameter',
-          value,
-          beforeSave,
-        }),
+        ...resolvePlaceholder({ kind: 'parameter', name, value, beforeSave }),
       });
     }
 
@@ -356,6 +359,7 @@ export function replaceCredentials({
           baseUrl,
           ...resolvePlaceholder({
             kind: 'input',
+            name,
             value: value.toString(),
             beforeSave,
           }),

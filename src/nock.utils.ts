@@ -28,11 +28,6 @@ CONSIDER DISABLING SENSITIVE INFORMATION LOGGING BY APPENDING THE DEBUG ENVIRONM
 `
 );
 
-export const HIDDEN_CREDENTIALS_PLACEHOLDER =
-  'credentials-removed-to-keep-them-secure';
-export const HIDDEN_PARAMETERS_PLACEHOLDER =
-  'parameters-removed-to-keep-them-secure';
-export const HIDDEN_INPUT_PLACEHOLDER = 'input-removed-to-keep-it-secure';
 const AUTH_HEADER_NAME = 'Authorization';
 
 function replaceCredential({
@@ -104,19 +99,21 @@ function replaceCredentialInBody({
   credential,
   placeholder,
 }: ReplaceOptions): void {
-  if (definition.body !== undefined) {
+  if (definition.body !== undefined && definition.body !== '') {
     let body = JSON.stringify(definition.body);
 
-    debug('Replacing credentials in request body');
-    debugSensitive('Request body:', body);
+    if (body.includes(credential)) {
+      debug('Replacing credentials in request body');
+      debugSensitive('Request body:', body);
 
-    body = replaceCredential({
-      payload: body,
-      credential,
-      placeholder,
-    });
+      body = replaceCredential({
+        payload: body,
+        credential,
+        placeholder,
+      });
 
-    definition.body = JSON.parse(body) as RequestBodyMatcher;
+      definition.body = JSON.parse(body) as RequestBodyMatcher;
+    }
   }
 }
 
@@ -146,14 +143,16 @@ function replaceCredentialInScope({
   credential,
   placeholder,
 }: ReplaceOptions): void {
-  debug('Replacing credentials in scope');
-  debugSensitive('Scope:', definition.scope);
+  if (definition.scope.includes(credential)) {
+    debug('Replacing credentials in scope');
+    debugSensitive('Scope:', definition.scope);
 
-  definition.scope = replaceCredential({
-    payload: definition.scope,
-    credential,
-    placeholder,
-  });
+    definition.scope = replaceCredential({
+      payload: definition.scope,
+      credential,
+      placeholder,
+    });
+  }
 }
 
 function replaceCredentialInQuery({
@@ -278,13 +277,17 @@ function replaceApiKeyInQuery({
 
   if (
     scheme.name !== undefined &&
-    definitionURL.searchParams.has(scheme.name)
+    definitionURL.searchParams.has(scheme.name) &&
+    definitionURL.searchParams.get(scheme.name)?.includes(credential)
   ) {
     debug('Replacing api-key in query');
     debugSensitive('Query name:', scheme.name);
     debugSensitive('Query value:', definitionURL.searchParams.get(scheme.name));
 
     definitionURL.searchParams.set(scheme.name, placeholder);
+
+    definition.path =
+      definitionURL.pathname + definitionURL.search + definitionURL.hash;
   }
 
   replaceCredentialInQuery({
@@ -293,9 +296,6 @@ function replaceApiKeyInQuery({
     credential,
     placeholder,
   });
-
-  definition.path =
-    definitionURL.pathname + definitionURL.search + definitionURL.hash;
 }
 
 function replaceApiKey({

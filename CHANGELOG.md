@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Hiding of credentials and parameters located in rawHeaders or in response.
 - New parameter for method `run()` for hiding primitive `input` values in recordings
 
+### Changed
+- Format of placeholders for sensitive information in recordings
+
 ### Fixed
 - Check for profile provider in super.json now does not expect defined profile
 
