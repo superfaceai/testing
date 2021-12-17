@@ -6,10 +6,7 @@ import {
   UseCase,
 } from '@superfaceai/one-sdk';
 import { NonPrimitive } from '@superfaceai/one-sdk/dist/internal/interpreter/variables';
-import {
-  Definition as RecordingDefinition,
-  Scope as RecordingScope,
-} from 'nock/types';
+import { Definition } from 'nock/types';
 
 export interface SuperfaceTestConfigPayload {
   client?: SuperfaceClient;
@@ -39,8 +36,10 @@ export interface NockConfig {
   enableReqheadersRecording?: boolean;
 }
 
+export type RecordingDefinition = Definition & {
+  rawHeaders?: string[];
+};
 export type RecordingDefinitions = RecordingDefinition[];
-export type RecordingScopes = RecordingScope[];
 
 export type ProcessingFunction = (
   recordings: RecordingDefinitions
@@ -51,8 +50,3 @@ export interface RecordingProcessOptions {
   beforeRecordingSave?: ProcessingFunction;
   beforeRecordingLoad?: ProcessingFunction;
 }
-
-export {
-  Definition as RecordingDefinition,
-  Scope as RecordingScope,
-} from 'nock/types';

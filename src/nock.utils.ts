@@ -6,7 +6,7 @@ import {
   SecurityType,
 } from '@superfaceai/ast';
 import createDebug from 'debug';
-import { RequestBodyMatcher } from 'nock/types';
+import { ReplyBody, RequestBodyMatcher } from 'nock/types';
 import { URL } from 'url';
 
 import { RecordingDefinition } from '.';
@@ -74,6 +74,26 @@ function replaceCredentialInHeaders({
   }
 }
 
+function replaceCredentialInRawHeaders({
+  definition,
+  credential,
+  placeholder,
+}: ReplaceOptions): void {
+  if (definition.rawHeaders) {
+    debug('Replacing credentials in raw headers');
+
+    definition.rawHeaders = definition.rawHeaders.map(header => {
+      debugSensitive('Header name/value:', header);
+
+      return replaceCredential({
+        payload: header,
+        credential,
+        placeholder,
+      });
+    });
+  }
+}
+
 function replaceCredentialInBody({
   definition,
   credential,
@@ -94,6 +114,27 @@ function replaceCredentialInBody({
 
       definition.body = JSON.parse(body) as RequestBodyMatcher;
     }
+  }
+}
+
+function replaceCredentialInResponse({
+  definition,
+  credential,
+  placeholder,
+}: ReplaceOptions): void {
+  if (definition.response) {
+    let response = JSON.stringify(definition.response);
+
+    debug('Replacing credentials in response');
+    debugSensitive('Response:', response);
+
+    response = replaceCredential({
+      payload: response,
+      credential,
+      placeholder,
+    });
+
+    definition.response = JSON.parse(response) as ReplyBody;
   }
 }
 
@@ -265,31 +306,21 @@ function replaceApiKey({
   placeholder,
 }: ReplaceOptions & { baseUrl: string; scheme: ApiKeySecurityScheme }): void {
   debug('Replacing api-key');
+  const options = {
+    definition,
+    credential,
+    placeholder,
+  };
 
   if (scheme.in === ApiKeyPlacement.HEADER) {
-    replaceApiKeyInHeader({
-      definition,
-      scheme,
-      credential,
-      placeholder,
-    });
+    replaceApiKeyInHeader({ ...options, scheme });
+    replaceCredentialInRawHeaders(options);
   } else if (scheme.in === ApiKeyPlacement.BODY) {
-    replaceApiKeyInBody({ definition, credential, placeholder });
+    replaceApiKeyInBody(options);
   } else if (scheme.in === ApiKeyPlacement.PATH) {
-    replaceApiKeyInPath({
-      definition,
-      baseUrl,
-      credential,
-      placeholder,
-    });
+    replaceApiKeyInPath({ ...options, baseUrl });
   } else if (scheme.in === ApiKeyPlacement.QUERY) {
-    replaceApiKeyInQuery({
-      definition,
-      scheme,
-      baseUrl,
-      credential,
-      placeholder,
-    });
+    replaceApiKeyInQuery({ ...options, scheme, baseUrl });
   }
 }
 
@@ -329,31 +360,34 @@ export function replaceCredentialInDefinition({
   placeholder: string;
 }): void {
   debug('Replacing credentials based on security schemes');
+  const options = {
+    definition,
+    credential,
+    placeholder,
+  };
 
   if (scheme.type === SecurityType.APIKEY) {
-    replaceApiKey({
-      definition,
-      scheme,
-      baseUrl,
-      credential,
-      placeholder,
-    });
+    replaceApiKey({ ...options, scheme, baseUrl });
   } else if (
     scheme.type === SecurityType.HTTP &&
     scheme.scheme === HttpScheme.BASIC
   ) {
     replaceBasicAuth(definition, placeholder);
+    replaceCredentialInRawHeaders(options);
   } else if (
     scheme.type === SecurityType.HTTP &&
     scheme.scheme === HttpScheme.BEARER
   ) {
     replaceBearerAuth(definition, placeholder);
+    replaceCredentialInRawHeaders(options);
   } else if (
     scheme.type === SecurityType.HTTP &&
     scheme.scheme === HttpScheme.DIGEST
   ) {
     throw new UnexpectedError('Digest auth not implemented');
   }
+
+  replaceCredentialInResponse(options);
 }
 
 export function replaceParameterInDefinition({
@@ -368,32 +402,17 @@ export function replaceParameterInDefinition({
   placeholder: string;
 }): void {
   debug('Replacing integration parameters');
+  const options = {
+    definition,
+    credential,
+    placeholder,
+  };
 
-  replaceCredentialInHeaders({
-    definition,
-    credential,
-    placeholder,
-  });
-  replaceCredentialInBody({
-    definition,
-    credential,
-    placeholder,
-  });
-  replaceCredentialInScope({
-    definition,
-    credential,
-    placeholder,
-  });
-  replaceCredentialInPath({
-    definition,
-    baseUrl,
-    credential,
-    placeholder,
-  });
-  replaceCredentialInQuery({
-    definition,
-    baseUrl,
-    credential,
-    placeholder,
-  });
+  replaceCredentialInHeaders(options);
+  replaceCredentialInRawHeaders(options);
+  replaceCredentialInBody(options);
+  replaceCredentialInResponse(options);
+  replaceCredentialInScope(options);
+  replaceCredentialInPath({ ...options, baseUrl });
+  replaceCredentialInQuery({ ...options, baseUrl });
 }
