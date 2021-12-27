@@ -1,11 +1,12 @@
-import { NonPrimitive } from '@superfaceai/one-sdk/dist/internal/interpreter/variables';
 import { createHash } from 'crypto';
 import createDebug from 'debug';
+
+import { HashOptions } from './superface-test.interfaces';
 
 const debugHashing = createDebug('superface:testing:hash');
 
 export interface IGenerator {
-  hash: (param: { input: NonPrimitive; testName?: string }) => string;
+  hash: (options: HashOptions) => string;
 }
 
 export const generate = (value: string): string => {
@@ -19,9 +20,9 @@ export class JestGenerateHash implements IGenerator {
     debugHashing('Returning instance of hash generator for jest test instance');
   }
 
-  hash(param: { input: NonPrimitive; testName?: string }): string {
-    if (param.testName) {
-      return generate(param.testName);
+  hash(options: HashOptions): string {
+    if (options.testName) {
+      return generate(options.testName);
     }
 
     return generate(this.testName);
@@ -35,9 +36,9 @@ export class MochaGenerateHash implements IGenerator {
     );
   }
 
-  hash(param: { input: NonPrimitive; testName?: string }): string {
-    if (param.testName) {
-      return generate(param.testName);
+  hash(options: HashOptions): string {
+    if (options.testName) {
+      return generate(options.testName);
     }
 
     return generate(this.testName);
@@ -51,11 +52,11 @@ export class InputGenerateHash implements IGenerator {
     );
   }
 
-  hash(param: { input: NonPrimitive; testName?: string }): string {
-    if (param.testName) {
-      return generate(param.testName);
+  hash({ testName, input }: HashOptions): string {
+    if (testName) {
+      return generate(testName);
     }
 
-    return generate(JSON.stringify(param.input));
+    return generate(JSON.stringify(input));
   }
 }

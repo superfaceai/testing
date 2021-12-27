@@ -19,13 +19,16 @@ export interface SuperfaceTestConfigPayload {
   testInstance?: unknown;
 }
 
+export interface HashOptions {
+  input: NonPrimitive;
+  testName?: string;
+}
+
 export type SuperfaceTestRun = Omit<
   SuperfaceTestConfigPayload,
   'testInstance'
-> & {
-  currentTestName?: string;
-  input: NonPrimitive;
-};
+> &
+  HashOptions;
 
 export interface SuperfaceTestConfig {
   client?: SuperfaceClient;

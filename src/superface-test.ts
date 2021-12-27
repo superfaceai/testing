@@ -96,16 +96,15 @@ export class SuperfaceTest {
         this.sfConfig.provider.configuration
       );
 
-    const hash = this.generator.hash({
-      input: testCase.input,
-      testName: testCase.currentTestName,
-    });
+    // Create a hash for access to recording files
+    const { input, testName } = testCase;
+    const hash = this.generator.hash({ input, testName });
 
     debugHashing('Created hash:', hash);
 
     this.setupRecordingPath(getFixtureName(this.sfConfig), hash);
 
-    // parse env variable and check if test should be recorded
+    // Parse env variable and check if test should be recorded
     const record = matchWildCard(this.sfConfig, process.env.SUPERFACE_LIVE_API);
     const processRecordings = options?.processRecordings ?? true;
 
@@ -117,7 +116,8 @@ export class SuperfaceTest {
 
     let result: Result<unknown, PerformError>;
     try {
-      result = await this.sfConfig.useCase.perform(testCase.input, {
+      // Run perform method on specified configuration
+      result = await this.sfConfig.useCase.perform(input, {
         provider: this.sfConfig.provider,
       });
 

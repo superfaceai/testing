@@ -329,7 +329,7 @@ describe('SuperfaceTest', () => {
         mocked(exists).mockResolvedValue(true);
         mocked(matchWildCard).mockReturnValueOnce(true);
 
-        await superfaceTest.run({ input: {}, currentTestName: testName });
+        await superfaceTest.run({ input: {}, testName });
 
         expect(writeRecordingsSpy).toHaveBeenCalledWith(
           joinPath(
@@ -358,7 +358,7 @@ describe('SuperfaceTest', () => {
         mocked(exists).mockResolvedValue(true);
         mocked(matchWildCard).mockReturnValueOnce(true);
 
-        await superfaceTest.run({ input });
+        await superfaceTest.run({ input, testName: undefined });
 
         expect(writeRecordingsSpy).toHaveBeenCalledWith(
           joinPath(
