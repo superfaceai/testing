@@ -6,6 +6,7 @@ import {
   Result,
   SuperfaceClient,
 } from '@superfaceai/one-sdk';
+import { Primitive } from '@superfaceai/one-sdk/dist/internal/interpreter/variables';
 import { createHash } from 'crypto';
 import createDebug from 'debug';
 import {
@@ -53,6 +54,7 @@ import {
   getSuperJson,
   isProfileProviderLocal,
   replaceCredentials,
+  searchValues,
 } from './superface-test.utils';
 
 const debug = createDebug('superface:testing');
@@ -102,10 +104,12 @@ export class SuperfaceTest {
     // parse env variable and check if test should be recorded
     const record = matchWildCard(this.sfConfig, process.env.SUPERFACE_LIVE_API);
     const processRecordings = options?.processRecordings ?? true;
+    const inputVariables = searchValues(testCase.input, options?.hideInput);
 
     await this.startRecording(
       record,
       processRecordings,
+      inputVariables,
       options?.beforeRecordingLoad
     );
 
@@ -118,6 +122,7 @@ export class SuperfaceTest {
       await this.endRecording(
         record,
         processRecordings,
+        inputVariables,
         options?.beforeRecordingSave
       );
     } catch (error: unknown) {
@@ -156,6 +161,7 @@ export class SuperfaceTest {
   private async startRecording(
     record: boolean,
     processRecordings: boolean,
+    inputVariables?: Record<string, Primitive>,
     beforeRecordingLoad?: ProcessingFunction
   ): Promise<void> {
     if (!this.recordingPath) {
@@ -204,6 +210,7 @@ export class SuperfaceTest {
           securitySchemes,
           securityValues,
           integrationParameters,
+          inputVariables,
           baseUrl,
           beforeSave: false,
         });
@@ -240,6 +247,7 @@ export class SuperfaceTest {
   private async endRecording(
     record: boolean,
     processRecordings: boolean,
+    inputVariables?: Record<string, Primitive>,
     beforeRecordingSave?: ProcessingFunction
   ): Promise<void> {
     if (!this.recordingPath) {
@@ -278,6 +286,7 @@ export class SuperfaceTest {
           securitySchemes,
           securityValues,
           integrationParameters,
+          inputVariables,
           baseUrl,
           beforeSave: true,
         });

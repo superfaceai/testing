@@ -3,15 +3,16 @@ import { ApiKeyPlacement, HttpScheme, SecurityType } from '@superfaceai/ast';
 import { RecordingDefinition } from '.';
 import {
   replaceCredentialInDefinition,
+  replaceInputInDefinition,
   replaceParameterInDefinition,
 } from './nock.utils';
 
 const TMP_PLACEHOLDER = 'placeholder';
 
 describe('nock utils', () => {
-  describe('removeCredentials', () => {
-    describe('when removing apikey', () => {
-      it('removes apikey from header', () => {
+  describe('replaceCredentials', () => {
+    describe('when replacing apikey', () => {
+      it('replaces apikey in header', () => {
         const definition: RecordingDefinition = {
           scope: 'https://localhost',
           path: '/get?text=123',
@@ -46,7 +47,7 @@ describe('nock utils', () => {
         });
       });
 
-      it('removes apikey from raw headers', () => {
+      it('replaces apikey in raw headers', () => {
         const definition: RecordingDefinition = {
           scope: 'https://localhost',
           path: '/get?text=123',
@@ -77,7 +78,7 @@ describe('nock utils', () => {
         });
       });
 
-      it('removes apikey from body', () => {
+      it('replaces apikey in body', () => {
         const definition: RecordingDefinition = {
           scope: 'https://localhost',
           path: '/get?text=123',
@@ -112,7 +113,7 @@ describe('nock utils', () => {
         });
       });
 
-      it('removes apikey from path', () => {
+      it('replaces apikey in path', () => {
         const definition: RecordingDefinition = {
           scope: 'https://localhost',
           path: '/get/secret?text=123',
@@ -141,7 +142,7 @@ describe('nock utils', () => {
         });
       });
 
-      it('removes apikey from path with non-trivial base url', () => {
+      it('replaces apikey in path with non-trivial base url', () => {
         const definition: RecordingDefinition = {
           scope: 'https://localhost',
           path: '/api/v4/get/secret?text=123',
@@ -170,7 +171,7 @@ describe('nock utils', () => {
         });
       });
 
-      it('removes apikey from query', () => {
+      it('replaces apikey in query', () => {
         const definition: RecordingDefinition = {
           scope: 'https://localhost',
           path: '/get?api_key=secret&text=123',
@@ -199,7 +200,7 @@ describe('nock utils', () => {
         });
       });
 
-      it('removes apikey from response', () => {
+      it('replaces apikey in response', () => {
         const definition: RecordingDefinition = {
           scope: 'https://localhost',
           path: '/get?text=123',
@@ -243,8 +244,8 @@ describe('nock utils', () => {
       });
     });
 
-    describe('when removing basic auth credentials', () => {
-      it('removes basic token from Authorization header', () => {
+    describe('when replacing basic auth credentials', () => {
+      it('replaces basic token in Authorization header', () => {
         const definition: RecordingDefinition = {
           scope: 'https://localhost',
           path: '/get?text=123',
@@ -278,7 +279,7 @@ describe('nock utils', () => {
         });
       });
 
-      it('removes basic token from raw headers', () => {
+      it('replaces basic token in raw headers', () => {
         const definition: RecordingDefinition = {
           scope: 'https://localhost',
           path: '/get?text=123',
@@ -314,7 +315,7 @@ describe('nock utils', () => {
         });
       });
 
-      it('removes basic token from response', () => {
+      it('replaces basic token in response', () => {
         const definition: RecordingDefinition = {
           scope: 'https://localhost',
           path: '/get?text=123',
@@ -357,8 +358,8 @@ describe('nock utils', () => {
       });
     });
 
-    describe('when removing bearer token', () => {
-      it('removes bearer token from Authorization header', () => {
+    describe('when replacing bearer token', () => {
+      it('replaces bearer token in Authorization header', () => {
         const definition: RecordingDefinition = {
           scope: 'https://localhost',
           path: '/get?text=123',
@@ -392,7 +393,7 @@ describe('nock utils', () => {
         });
       });
 
-      it('removes bearer token from raw headers', () => {
+      it('replaces bearer token in raw headers', () => {
         const definition: RecordingDefinition = {
           scope: 'https://localhost',
           path: '/get?text=123',
@@ -428,7 +429,7 @@ describe('nock utils', () => {
         });
       });
 
-      it('removes bearer token from response', () => {
+      it('replaces bearer token in response', () => {
         const definition: RecordingDefinition = {
           scope: 'https://localhost',
           path: '/get?text=123',
@@ -472,8 +473,8 @@ describe('nock utils', () => {
     });
   });
 
-  describe('removeParameters', () => {
-    describe('when removing integration parameters', () => {
+  describe('replaceParameters', () => {
+    describe('when replacing integration parameters', () => {
       const baseUrl = 'https://localhost';
 
       it('does not mutate recording when parameter is empty', () => {
@@ -506,7 +507,7 @@ describe('nock utils', () => {
         });
       });
 
-      it('removes parameter from header', () => {
+      it('replaces parameter in header', () => {
         const parameterValue = 'integration-parameter';
         const definition: RecordingDefinition = {
           scope: baseUrl,
@@ -536,7 +537,7 @@ describe('nock utils', () => {
         });
       });
 
-      it('removes parameter from body', () => {
+      it('replaces parameter in body', () => {
         const parameterValue = 'integration-parameter';
         const definition: RecordingDefinition = {
           scope: baseUrl,
@@ -566,7 +567,7 @@ describe('nock utils', () => {
         });
       });
 
-      it('removes parameter from path', () => {
+      it('replaces parameter in path', () => {
         const parameterValue = 'integration-parameter';
         const definition: RecordingDefinition = {
           scope: baseUrl,
@@ -590,7 +591,7 @@ describe('nock utils', () => {
         });
       });
 
-      it('removes parameter from query', () => {
+      it('replaces parameter in query', () => {
         const parameterValue = 'integration-parameter';
         const definition: RecordingDefinition = {
           scope: baseUrl,
@@ -614,7 +615,7 @@ describe('nock utils', () => {
         });
       });
 
-      it('removes parameter from scope', () => {
+      it('replaces parameter in scope', () => {
         const baseUrl = 'https://api.integration-parameter.com';
         const parameterValue = 'integration-parameter';
         const definition: RecordingDefinition = {
@@ -639,7 +640,7 @@ describe('nock utils', () => {
         });
       });
 
-      it('removes parameter from raw headers', () => {
+      it('replaces parameter in raw headers', () => {
         const parameterValue = 'integration-parameter';
         const definition: RecordingDefinition = {
           scope: baseUrl,
@@ -665,7 +666,7 @@ describe('nock utils', () => {
         });
       });
 
-      it('removes parameter from response', () => {
+      it('replaces parameter in response', () => {
         const parameterValue = 'integration-parameter';
         const definition: RecordingDefinition = {
           scope: baseUrl,
@@ -682,6 +683,208 @@ describe('nock utils', () => {
           definition,
           baseUrl,
           credential: parameterValue,
+          placeholder: TMP_PLACEHOLDER,
+        });
+
+        expect(definition).toEqual({
+          scope: baseUrl,
+          path: `/get?text=123`,
+          method: 'GET',
+          status: 200,
+          response: {
+            some: 'data',
+            auth: { my_api_key: TMP_PLACEHOLDER },
+          },
+        });
+      });
+    });
+  });
+
+  describe('replaceInput', () => {
+    describe('when replacing input values', () => {
+      const baseUrl = 'https://localhost';
+
+      it('does not mutate recording when input value is empty', () => {
+        const inputValue = '';
+        const definition: RecordingDefinition = {
+          scope: baseUrl,
+          path: '/get?text=123',
+          method: 'GET',
+          status: 200,
+          reqheaders: {
+            ['api_key']: inputValue,
+          },
+        };
+
+        replaceInputInDefinition({
+          definition,
+          baseUrl,
+          credential: inputValue,
+          placeholder: TMP_PLACEHOLDER,
+        });
+
+        expect(definition).toEqual({
+          scope: baseUrl,
+          path: '/get?text=123',
+          method: 'GET',
+          status: 200,
+          reqheaders: {
+            ['api_key']: '',
+          },
+        });
+      });
+
+      it('replaces input value in header', () => {
+        const inputValue = 'input-primitive-value';
+        const definition: RecordingDefinition = {
+          scope: baseUrl,
+          path: '/get?text=123',
+          method: 'GET',
+          status: 200,
+          reqheaders: {
+            ['api_key']: inputValue,
+          },
+        };
+
+        replaceInputInDefinition({
+          definition,
+          baseUrl,
+          credential: inputValue,
+          placeholder: TMP_PLACEHOLDER,
+        });
+
+        expect(definition).toEqual({
+          scope: baseUrl,
+          path: '/get?text=123',
+          method: 'GET',
+          status: 200,
+          reqheaders: {
+            ['api_key']: TMP_PLACEHOLDER,
+          },
+        });
+      });
+
+      it('replaces input value in body', () => {
+        const inputValue = 'input-primitive-value';
+        const definition: RecordingDefinition = {
+          scope: baseUrl,
+          path: '/get?text=123',
+          method: 'GET',
+          status: 200,
+          body: {
+            my_api_key: inputValue,
+          },
+        };
+
+        replaceInputInDefinition({
+          definition,
+          baseUrl,
+          credential: inputValue,
+          placeholder: TMP_PLACEHOLDER,
+        });
+
+        expect(definition).toEqual({
+          scope: baseUrl,
+          path: '/get?text=123',
+          method: 'GET',
+          status: 200,
+          body: {
+            my_api_key: TMP_PLACEHOLDER,
+          },
+        });
+      });
+
+      it('replaces input value in path', () => {
+        const inputValue = 'input-primitive-value';
+        const definition: RecordingDefinition = {
+          scope: baseUrl,
+          path: `/get/${inputValue}?text=123`,
+          method: 'GET',
+          status: 200,
+        };
+
+        replaceInputInDefinition({
+          definition,
+          baseUrl,
+          credential: inputValue,
+          placeholder: TMP_PLACEHOLDER,
+        });
+
+        expect(definition).toEqual({
+          scope: baseUrl,
+          path: `/get/${TMP_PLACEHOLDER}?text=123`,
+          method: 'GET',
+          status: 200,
+        });
+      });
+
+      it('replaces input value in query', () => {
+        const inputValue = 'input-primitive-value';
+        const definition: RecordingDefinition = {
+          scope: baseUrl,
+          path: `/get?api_key=${inputValue}&text=123`,
+          method: 'GET',
+          status: 200,
+        };
+
+        replaceInputInDefinition({
+          definition,
+          baseUrl,
+          credential: inputValue,
+          placeholder: TMP_PLACEHOLDER,
+        });
+
+        expect(definition).toEqual({
+          scope: baseUrl,
+          path: `/get?api_key=${TMP_PLACEHOLDER}&text=123`,
+          method: 'GET',
+          status: 200,
+        });
+      });
+
+      it('replaces input value in raw headers', () => {
+        const inputValue = 'input-primitive-value';
+        const definition: RecordingDefinition = {
+          scope: baseUrl,
+          path: `/get?text=123`,
+          method: 'GET',
+          status: 200,
+          rawHeaders: ['Authorization', inputValue],
+        };
+
+        replaceInputInDefinition({
+          definition,
+          baseUrl,
+          credential: inputValue,
+          placeholder: TMP_PLACEHOLDER,
+        });
+
+        expect(definition).toEqual({
+          scope: baseUrl,
+          path: `/get?text=123`,
+          method: 'GET',
+          status: 200,
+          rawHeaders: ['Authorization', TMP_PLACEHOLDER],
+        });
+      });
+
+      it('replaces input value in response', () => {
+        const inputValue = 'input-primitive-value';
+        const definition: RecordingDefinition = {
+          scope: baseUrl,
+          path: `/get?text=123`,
+          method: 'GET',
+          status: 200,
+          response: {
+            some: 'data',
+            auth: { my_api_key: inputValue },
+          },
+        };
+
+        replaceInputInDefinition({
+          definition,
+          baseUrl,
+          credential: inputValue,
           placeholder: TMP_PLACEHOLDER,
         });
 

@@ -346,6 +346,19 @@ function replaceBearerAuth(
   }
 }
 
+/**
+ * Replaces occurences of credentials from security schemes in recorded HTTP calls
+ *
+ * These credentials are configured to be located at specific location
+ * based on security scheme.
+ *
+ * It can look in following places of HTTP recording definition:
+ * - headers and rawHeaders (bearer & basic)
+ * - body (apiKey)
+ * - path (apiKey)
+ * - query (apiKey)
+ * - response (all security schemes)
+ */
 export function replaceCredentialInDefinition({
   definition,
   scheme,
@@ -390,6 +403,18 @@ export function replaceCredentialInDefinition({
   replaceCredentialInResponse(options);
 }
 
+/**
+ * Replaces occurences of integration parameters in recorded HTTP calls
+ *
+ * Since integration parameters can be used in multiple places of HTTP call in map,
+ * it look for occurences in following places of HTTP recording definitions:
+ * - headers and rawHeaders
+ * - body
+ * - response
+ * - scope (baseUrl from provider.json)
+ * - path
+ * - query
+ */
 export function replaceParameterInDefinition({
   definition,
   baseUrl,
@@ -413,6 +438,43 @@ export function replaceParameterInDefinition({
   replaceCredentialInBody(options);
   replaceCredentialInResponse(options);
   replaceCredentialInScope(options);
+  replaceCredentialInPath({ ...options, baseUrl });
+  replaceCredentialInQuery({ ...options, baseUrl });
+}
+
+/**
+ * Replaces occurences of input values in recorded HTTP calls
+ *
+ * Since input can be used in multiple places of HTTP call in map,
+ * it look for occurences in following places of HTTP recording definitions:
+ * - headers and rawHeaders
+ * - body
+ * - response
+ * - path
+ * - query
+ */
+export function replaceInputInDefinition({
+  definition,
+  baseUrl,
+  credential,
+  placeholder,
+}: {
+  definition: RecordingDefinition;
+  baseUrl: string;
+  credential: string;
+  placeholder: string;
+}): void {
+  debug('Replacing input values');
+  const options = {
+    definition,
+    credential,
+    placeholder,
+  };
+
+  replaceCredentialInHeaders(options);
+  replaceCredentialInRawHeaders(options);
+  replaceCredentialInBody(options);
+  replaceCredentialInResponse(options);
   replaceCredentialInPath({ ...options, baseUrl });
   replaceCredentialInQuery({ ...options, baseUrl });
 }

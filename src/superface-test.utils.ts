@@ -15,6 +15,13 @@ import {
   UnexpectedError,
   UseCase,
 } from '@superfaceai/one-sdk';
+import {
+  getValue,
+  isPrimitive,
+  NonPrimitive,
+  Primitive,
+  Variables,
+} from '@superfaceai/one-sdk/dist/internal/interpreter/variables';
 import createDebug from 'debug';
 import { join as joinPath } from 'path';
 
@@ -34,6 +41,7 @@ import {
 } from './common/errors';
 import {
   replaceCredentialInDefinition,
+  replaceInputInDefinition,
   replaceParameterInDefinition,
 } from './nock.utils';
 
@@ -247,6 +255,7 @@ export function resolveCredential(securityValue: SecurityValues): string {
 
 export const HIDDEN_CREDENTIALS_PLACEHOLDER = 'SECURITY_';
 export const HIDDEN_PARAMETERS_PLACEHOLDER = 'PARAMS_';
+export const HIDDEN_INPUT_PLACEHOLDER = 'INPUT_';
 
 /**
  * Resolves placeholder and credential properties later passed to nock utils.
@@ -256,19 +265,31 @@ export function resolvePlaceholder({
   name,
   value,
   beforeSave,
-  isParameter,
+  kind,
 }: {
   name: string;
   value: string;
   beforeSave: boolean;
-  isParameter: boolean;
+  kind: 'credential' | 'parameter' | 'input';
 }): {
   credential: string;
   placeholder: string;
 } {
-  const placeholderFormat = isParameter
-    ? HIDDEN_PARAMETERS_PLACEHOLDER
-    : HIDDEN_CREDENTIALS_PLACEHOLDER;
+  let placeholderFormat: string;
+  switch (kind) {
+    case 'credential':
+      placeholderFormat = HIDDEN_CREDENTIALS_PLACEHOLDER;
+      break;
+    case 'parameter':
+      placeholderFormat = HIDDEN_PARAMETERS_PLACEHOLDER;
+      break;
+    case 'input':
+      placeholderFormat = HIDDEN_INPUT_PLACEHOLDER;
+      break;
+    default:
+      throw new Error('Invalid placeholder kind');
+  }
+
   const placeholder = placeholderFormat + name;
 
   return {
@@ -282,6 +303,7 @@ export function replaceCredentials({
   securitySchemes,
   securityValues,
   integrationParameters,
+  inputVariables,
   beforeSave,
   baseUrl,
 }: {
@@ -289,6 +311,7 @@ export function replaceCredentials({
   securitySchemes: SecurityScheme[];
   securityValues: SecurityValues[];
   integrationParameters: Record<string, string>;
+  inputVariables?: Record<string, Primitive>;
   beforeSave: boolean;
   baseUrl: string;
 }): void {
@@ -308,10 +331,10 @@ export function replaceCredentials({
           scheme,
           baseUrl,
           ...resolvePlaceholder({
+            kind: 'credential',
             name: scheme.id,
             value: resolveCredential(securityValue),
             beforeSave,
-            isParameter: false,
           }),
         });
       }
@@ -323,8 +346,25 @@ export function replaceCredentials({
       replaceParameterInDefinition({
         definition,
         baseUrl,
-        ...resolvePlaceholder({ name, value, beforeSave, isParameter: true }),
+        ...resolvePlaceholder({ kind: 'parameter', name, value, beforeSave }),
       });
+    }
+
+    if (inputVariables) {
+      for (const [name, value] of Object.entries(inputVariables)) {
+        debug('Going through input property:', name);
+
+        replaceInputInDefinition({
+          definition,
+          baseUrl,
+          ...resolvePlaceholder({
+            kind: 'input',
+            name,
+            value: value.toString(),
+            beforeSave,
+          }),
+        });
+      }
     }
   }
 }
@@ -358,5 +398,49 @@ export function checkSensitiveInformation(
         );
       }
     }
+  }
+}
+
+export function searchValues(
+  input: NonPrimitive,
+  accessors?: string[]
+): Record<string, Primitive> | undefined {
+  if (accessors === undefined) {
+    return undefined;
+  }
+
+  const result: Record<string, Primitive> = {};
+
+  for (const property of accessors) {
+    const keys = property.split('.');
+
+    if (keys.length > 1) {
+      const value = getValue(input, keys);
+
+      assertPrimitive(value, property);
+
+      result[property] = value;
+    } else {
+      const value = input[property];
+
+      assertPrimitive(value, property);
+
+      result[property] = value;
+    }
+  }
+
+  return result;
+}
+
+function assertPrimitive(
+  value: Variables | undefined,
+  property: string
+): asserts value is Primitive {
+  if (value == undefined) {
+    throw new Error(`Input property: ${property} is not defined`);
+  }
+
+  if (!isPrimitive(value)) {
+    throw new Error(`Input property: ${property} is not primitive value`);
   }
 }
