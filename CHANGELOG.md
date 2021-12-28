@@ -10,10 +10,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Debug logging throughout the library
 - Warning about sensitive information before they're written
 - Hiding of credentials and parameters located in rawHeaders or in response.
-- New parameter for method `run()` for hiding primitive `input` values in recordings
+- New parameter `hideInput` in method `run()` for hiding primitive `input` values in recordings
+- New parameter `testName` in method `run()` for hashing recording files
+- New parameter `testInstance` in constructor for pluging in instance of used test framework
 
 ### Changed
 - Format of placeholders for sensitive information in recordings
+- Hash of recording is based on parameters in following priority: `testName` -> `testInstance` -> `input`
 
 ### Fixed
 - Check for profile provider in super.json now does not expect defined profile

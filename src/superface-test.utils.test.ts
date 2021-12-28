@@ -17,6 +17,11 @@ import {
   UnexpectedError,
 } from './common/errors';
 import {
+  InputGenerateHash,
+  JestGenerateHash,
+  MochaGenerateHash,
+} from './generate-hash';
+import {
   getMockedSfConfig,
   getProfileMock,
   getProviderMock,
@@ -27,6 +32,7 @@ import {
   assertsDefinitionsAreNotStrings,
   assertsPreparedConfig,
   checkSensitiveInformation,
+  getGenerator,
   getProfileId,
   getProviderName,
   getSuperJson,
@@ -359,6 +365,62 @@ describe('SuperfaceTest', () => {
       checkSensitiveInformation(definitions, schemes, values, params);
 
       expect(consoleOutput).toEqual([]);
+    });
+  });
+
+  describe('getGenerator', () => {
+    describe('when specified testInstance is jest expect instance', () => {
+      it('returns JestGenerateHash instance', () => {
+        const mockExpect = ((): void => {
+          console.log('simulating expect');
+        }) as any;
+
+        mockExpect.getState = () => ({
+          currentTestName: 'test name',
+        });
+
+        expect(getGenerator(mockExpect)).toBeInstanceOf(JestGenerateHash);
+      });
+    });
+
+    describe('when specified testInstance is mocha instance', () => {
+      describe("from mocha's hooks", () => {
+        it('returns MochaGenerateHash instance', () => {
+          const mockMocha = {
+            test: {
+              type: 'hook',
+            },
+            currentTest: {
+              fullTitle: () => 'test name',
+            },
+          };
+
+          expect(getGenerator(mockMocha)).toBeInstanceOf(MochaGenerateHash);
+        });
+      });
+
+      describe("from mocha's test", () => {
+        it('returns MochaGenerateHash instance when specified testInstance is mocha test instance', () => {
+          const mockMocha = {
+            test: {
+              type: 'test',
+              fullTitle: () => 'test name',
+            },
+          };
+
+          expect(getGenerator(mockMocha)).toBeInstanceOf(MochaGenerateHash);
+        });
+      });
+    });
+
+    describe('when specified testInstance is unknown', () => {
+      it('returns InputGenerateHash instance', () => {
+        const mockTestInstance = undefined;
+
+        expect(getGenerator(mockTestInstance)).toBeInstanceOf(
+          InputGenerateHash
+        );
+      });
     });
   });
 });

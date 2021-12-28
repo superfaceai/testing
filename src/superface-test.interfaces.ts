@@ -5,7 +5,10 @@ import {
   SuperfaceClient,
   UseCase,
 } from '@superfaceai/one-sdk';
-import { NonPrimitive } from '@superfaceai/one-sdk/dist/internal/interpreter/variables';
+import {
+  NonPrimitive,
+  Primitive,
+} from '@superfaceai/one-sdk/dist/internal/interpreter/variables';
 import { Definition } from 'nock/types';
 
 export interface SuperfaceTestConfigPayload {
@@ -13,11 +16,21 @@ export interface SuperfaceTestConfigPayload {
   profile?: Profile | string;
   provider?: Provider | string;
   useCase?: UseCase | string;
+  testInstance?: unknown;
 }
 
-export type SuperfaceTestRun = SuperfaceTestConfigPayload & {
+export type InputVariables = Record<string, Primitive>;
+
+export interface HashOptions {
   input: NonPrimitive;
-};
+  testName?: string;
+}
+
+export type SuperfaceTestRun = Omit<
+  SuperfaceTestConfigPayload,
+  'testInstance'
+> &
+  HashOptions;
 
 export interface SuperfaceTestConfig {
   client?: SuperfaceClient;
