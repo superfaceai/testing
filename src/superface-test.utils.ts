@@ -15,11 +15,19 @@ import {
   UnexpectedError,
   UseCase,
 } from '@superfaceai/one-sdk';
+import {
+  getValue,
+  isPrimitive,
+  NonPrimitive,
+  Primitive,
+  Variables,
+} from '@superfaceai/one-sdk/dist/internal/interpreter/variables';
 import createDebug from 'debug';
 import { join as joinPath } from 'path';
 
 import {
   CompleteSuperfaceTestConfig,
+  InputVariables,
   RecordingDefinition,
   RecordingDefinitions,
   SuperfaceTestConfigPayload,
@@ -39,9 +47,8 @@ import {
   MochaGenerateHash,
 } from './generate-hash';
 import {
-  HIDDEN_CREDENTIALS_PLACEHOLDER,
-  HIDDEN_PARAMETERS_PLACEHOLDER,
   replaceCredentialInDefinition,
+  replaceInputInDefinition,
   replaceParameterInDefinition,
 } from './nock.utils';
 
@@ -253,11 +260,57 @@ export function resolveCredential(securityValue: SecurityValues): string {
   throw new UnexpectedError('Unexpected security value');
 }
 
+export const HIDDEN_CREDENTIALS_PLACEHOLDER = 'SECURITY_';
+export const HIDDEN_PARAMETERS_PLACEHOLDER = 'PARAMS_';
+export const HIDDEN_INPUT_PLACEHOLDER = 'INPUT_';
+
+/**
+ * Resolves placeholder and credential properties later passed to nock utils.
+ * It composes placeholder based on given name of security scheme or parameter
+ */
+export function resolvePlaceholder({
+  name,
+  value,
+  beforeSave,
+  kind,
+}: {
+  name: string;
+  value: string;
+  beforeSave: boolean;
+  kind: 'credential' | 'parameter' | 'input';
+}): {
+  credential: string;
+  placeholder: string;
+} {
+  let placeholderFormat: string;
+  switch (kind) {
+    case 'credential':
+      placeholderFormat = HIDDEN_CREDENTIALS_PLACEHOLDER;
+      break;
+    case 'parameter':
+      placeholderFormat = HIDDEN_PARAMETERS_PLACEHOLDER;
+      break;
+    case 'input':
+      placeholderFormat = HIDDEN_INPUT_PLACEHOLDER;
+      break;
+    default:
+      throw new Error('Invalid placeholder kind');
+  }
+
+  const placeholder = placeholderFormat + name;
+
+  return {
+    credential: beforeSave ? value : placeholder,
+    placeholder: beforeSave ? placeholder : value,
+  };
+}
+
 export function replaceCredentials({
   definitions,
   securitySchemes,
   securityValues,
   integrationParameters,
+  inputVariables,
   beforeSave,
   baseUrl,
 }: {
@@ -265,6 +318,7 @@ export function replaceCredentials({
   securitySchemes: SecurityScheme[];
   securityValues: SecurityValues[];
   integrationParameters: Record<string, string>;
+  inputVariables?: Record<string, Primitive>;
   beforeSave: boolean;
   baseUrl: string;
 }): void {
@@ -276,51 +330,48 @@ export function replaceCredentials({
         `Going through scheme with id: '${scheme.id}' and type: '${scheme.type}'`
       );
 
-      let credential = '';
-      let placeholder: string | undefined = undefined;
-
       const securityValue = securityValues.find(val => val.id === scheme.id);
 
-      if (beforeSave) {
-        if (securityValue) {
-          credential = resolveCredential(securityValue);
-        }
-      } else {
-        credential = HIDDEN_CREDENTIALS_PLACEHOLDER;
-
-        if (securityValue) {
-          placeholder = resolveCredential(securityValue);
-        }
+      if (securityValue) {
+        replaceCredentialInDefinition({
+          definition,
+          scheme,
+          baseUrl,
+          ...resolvePlaceholder({
+            kind: 'credential',
+            name: scheme.id,
+            value: resolveCredential(securityValue),
+            beforeSave,
+          }),
+        });
       }
-
-      replaceCredentialInDefinition({
-        definition,
-        scheme,
-        baseUrl,
-        credential,
-        placeholder,
-      });
     }
 
     for (const [name, value] of Object.entries(integrationParameters)) {
       debug('Going through integration parameter:', name);
 
-      let credential = '';
-      let placeholder: string | undefined = undefined;
-
-      if (beforeSave) {
-        credential = value;
-      } else {
-        credential = HIDDEN_PARAMETERS_PLACEHOLDER;
-        placeholder = value;
-      }
-
       replaceParameterInDefinition({
         definition,
         baseUrl,
-        credential,
-        placeholder,
+        ...resolvePlaceholder({ kind: 'parameter', name, value, beforeSave }),
       });
+    }
+
+    if (inputVariables) {
+      for (const [name, value] of Object.entries(inputVariables)) {
+        debug('Going through input property:', name);
+
+        replaceInputInDefinition({
+          definition,
+          baseUrl,
+          ...resolvePlaceholder({
+            kind: 'input',
+            name,
+            value: value.toString(),
+            beforeSave,
+          }),
+        });
+      }
     }
   }
 }
@@ -354,6 +405,50 @@ export function checkSensitiveInformation(
         );
       }
     }
+  }
+}
+
+export function searchValues(
+  input: NonPrimitive,
+  accessors?: string[]
+): InputVariables | undefined {
+  if (accessors === undefined) {
+    return undefined;
+  }
+
+  const result: InputVariables = {};
+
+  for (const property of accessors) {
+    const keys = property.split('.');
+
+    if (keys.length > 1) {
+      const value = getValue(input, keys);
+
+      assertPrimitive(value, property);
+
+      result[property] = value;
+    } else {
+      const value = input[property];
+
+      assertPrimitive(value, property);
+
+      result[property] = value;
+    }
+  }
+
+  return result;
+}
+
+function assertPrimitive(
+  value: Variables | undefined,
+  property: string
+): asserts value is Primitive {
+  if (value == undefined) {
+    throw new Error(`Input property: ${property} is not defined`);
+  }
+
+  if (!isPrimitive(value)) {
+    throw new Error(`Input property: ${property} is not primitive value`);
   }
 }
 

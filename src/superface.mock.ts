@@ -91,6 +91,7 @@ export interface SuperfaceClientOptions {
   configuration?: {
     baseUrl: string;
     securitySchemes?: SecurityScheme[];
+    parameters?: Record<string, string>;
   };
 }
 
@@ -128,6 +129,7 @@ export const SuperfaceClientMock = jest.fn<
     configuration: {
       baseUrl: options?.configuration?.baseUrl ?? 'https://base.url',
       security: options?.configuration?.securitySchemes ?? [],
+      parameters: options?.configuration?.parameters,
     },
   }),
 }));
@@ -140,12 +142,14 @@ export const getMockedSfConfig = async (options?: {
   baseUrl?: string;
   securitySchemes?: SecurityScheme[];
   securityValues?: SecurityValues[];
+  parameters?: Record<string, string>;
 }): Promise<CompleteSuperfaceTestConfig> => ({
   client: new SuperfaceClientMock({
     superJson: options?.superJson ?? DEFAULT_SUPERJSON,
     configuration: {
       baseUrl: options?.baseUrl ?? 'root',
       securitySchemes: options?.securitySchemes,
+      parameters: options?.parameters,
     },
   }),
   profile: await getProfileMock('profile'),
