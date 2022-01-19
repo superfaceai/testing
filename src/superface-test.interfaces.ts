@@ -20,6 +20,7 @@ export interface SuperfaceTestConfigPayload {
 
 export type SuperfaceTestRun = SuperfaceTestConfigPayload & {
   input: NonPrimitive;
+  parameters?: Record<string, string>;
 };
 
 export interface SuperfaceTestConfig {

@@ -120,9 +120,22 @@ export class SuperfaceTest {
         this.sfConfig.provider.configuration
       );
 
-    const hash = createHash('md5')
-      .update(JSON.stringify(testCase.input))
-      .digest('hex');
+    let hash;
+
+    if (testCase.parameters) {
+      hash = createHash('md5')
+        .update(
+          JSON.stringify({
+            input: testCase.input,
+            parameters: testCase.parameters,
+          })
+        )
+        .digest('hex');
+    } else {
+      hash = createHash('md5')
+        .update(JSON.stringify(testCase.input))
+        .digest('hex');
+    }
 
     this.setupRecordingPath(getFixtureName(this.sfConfig), hash);
 
@@ -133,6 +146,7 @@ export class SuperfaceTest {
     await this.startRecording(
       record,
       processRecordings,
+      testCase.parameters,
       options?.beforeRecordingLoad
     );
 
@@ -140,6 +154,7 @@ export class SuperfaceTest {
     try {
       result = await this.sfConfig.useCase.perform(testCase.input, {
         provider: this.sfConfig.provider,
+        parameters: testCase.parameters,
       });
     } catch (error: unknown) {
       restoreRecordings();
@@ -150,6 +165,7 @@ export class SuperfaceTest {
     await this.endRecording(
       record,
       processRecordings,
+      testCase.parameters,
       options?.beforeRecordingSave
     );
 
@@ -251,6 +267,7 @@ export class SuperfaceTest {
   private async startRecording(
     record: boolean,
     processRecordings: boolean,
+    parameters?: Record<string, string>,
     beforeRecordingLoad?: ProcessingFunction
   ): Promise<void> {
     if (!this.recordingPath) {
@@ -261,7 +278,10 @@ export class SuperfaceTest {
     assertBoundProfileProvider(this.boundProfileProvider);
 
     const { configuration } = this.boundProfileProvider;
-    const integrationParameters = configuration.parameters ?? {};
+    const integrationParameters = {
+      ...configuration.parameters,
+      ...parameters,
+    };
     const securitySchemes = configuration.security;
     const securityValues = this.sfConfig.provider.configuration.security;
     const services = configuration.services;
@@ -341,6 +361,7 @@ export class SuperfaceTest {
   private async endRecording(
     record: boolean,
     processRecordings: boolean,
+    parameters?: Record<string, string>,
     beforeRecordingSave?: ProcessingFunction
   ): Promise<void> {
     if (!this.recordingPath) {
@@ -365,7 +386,10 @@ export class SuperfaceTest {
         const { configuration } = this.boundProfileProvider;
         const securityValues = this.sfConfig.provider.configuration.security;
         const securitySchemes = configuration.security;
-        const integrationParameters = configuration.parameters ?? {};
+        const integrationParameters = {
+          ...configuration.parameters,
+          ...parameters,
+        };
         const services = configuration.services;
 
         replaceCredentials({
