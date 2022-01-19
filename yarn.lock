@@ -599,32 +599,32 @@
   dependencies:
     "@sinonjs/commons" "^1.7.0"
 
-"@superfaceai/ast@1.0.0", "@superfaceai/ast@^1.0.0":
-  version "1.0.0"
-  resolved "https://registry.yarnpkg.com/@superfaceai/ast/-/ast-1.0.0.tgz#7f58f244e60efc7cb6ae5d421fec66c9a94aa6bd"
-  integrity sha512-YbJTkisep18UCcTRpeFDRYUqIajbQWv396c7fkfIjAuR9HAOkt3hZqrdrnA3qINjLaFUzviZW0NOQTL1jeiRXw==
+"@superfaceai/ast@^1.1.0":
+  version "1.1.0"
+  resolved "https://registry.yarnpkg.com/@superfaceai/ast/-/ast-1.1.0.tgz#cb87f9c980e600bd74536e14bafe7231d15c291c"
+  integrity sha512-/Bpm21XWwUElogBB8AdKkjbe4h1vExBx2xTrfE5t74FiFZUxhnLYfVcUCKNqUqsuggF/uUUAZ+5uBtmffJYm6g==
   dependencies:
     typescript-is "^0.18.3"
 
-"@superfaceai/one-sdk@^1.0.0":
-  version "1.0.0"
-  resolved "https://registry.yarnpkg.com/@superfaceai/one-sdk/-/one-sdk-1.0.0.tgz#4f8bc66df69277960af0406cd63da7765b6e507e"
-  integrity sha512-iwqE5Ig4WCn2vXEOIVThPFlbRrw4OMyBKezdyV1fgEhUvS/rFgYYOhOg+/UI5yIMPbeSx16ryivWcFGgSwfL4w==
+"@superfaceai/one-sdk@^1.2.0":
+  version "1.2.0"
+  resolved "https://registry.yarnpkg.com/@superfaceai/one-sdk/-/one-sdk-1.2.0.tgz#f631726d51b8c9ca3095d66ef9d4518641309843"
+  integrity sha512-Bw1oMSuuhaDJmDIZ+zw8qTEwDulYCtrRNy/P8DQX/hgJLU8ttLBPzOpOMjnVmgzbXrOCvAROAt/SywvzGWKwmg==
   dependencies:
-    "@superfaceai/ast" "1.0.0"
-    "@superfaceai/parser" "1.0.0"
+    "@superfaceai/ast" "^1.1.0"
+    "@superfaceai/parser" "^1.1.0"
     abort-controller "^3.0.0"
     cross-fetch "^3.0.5"
     debug "^4.3.2"
     isomorphic-form-data "^2.0.0"
     vm2 "^3.9.2"
 
-"@superfaceai/parser@1.0.0":
-  version "1.0.0"
-  resolved "https://registry.yarnpkg.com/@superfaceai/parser/-/parser-1.0.0.tgz#48e55b40670a9af6e603107709cc89ae538f71d8"
-  integrity sha512-verBpn8bN13fAo1pDCNMGxKLwXC26dlR7iDIM2ekioN/K+kOtXjq6A/bWILvJ+jAP2gWRHGZU017SKGPRrPOHg==
+"@superfaceai/parser@^1.1.0":
+  version "1.1.0"
+  resolved "https://registry.yarnpkg.com/@superfaceai/parser/-/parser-1.1.0.tgz#5e268b3cbf7c1b20aced9cddbabe8dd837c3f4b6"
+  integrity sha512-onu8Omp1nv/U+nXuf5fFW3Jg31JCTNOTOecpPoGw6NzcVDociNezdpzvlrrznPI7nna1G95vdwx0FTt3YHWaqg==
   dependencies:
-    "@superfaceai/ast" "1.0.0"
+    "@superfaceai/ast" "^1.1.0"
     "@types/debug" "^4.1.5"
     debug "^4.3.1"
     typescript "^4"
@@ -4528,6 +4528,7 @@ typescript-is@^0.18.3:
   integrity sha512-kBgZIJt3AKrtye1H2GYf9bWu1YS0Z9AZZl4OZG4z2Ps2jPMZuycilP9RkxPLP+tPxCUjXfmaJti9TNGoz5schA==
   dependencies:
     nested-error-stacks "^2"
+    reflect-metadata ">=0.1.12"
     tsutils "^3.17.1"
   optionalDependencies:
     reflect-metadata ">=0.1.12"
