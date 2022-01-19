@@ -13,6 +13,7 @@ import {
   SuperJson,
   UseCase,
 } from '@superfaceai/one-sdk';
+import { IServiceSelector } from '@superfaceai/one-sdk/dist/lib/services';
 
 import { CompleteSuperfaceTestConfig } from '.';
 
@@ -89,7 +90,7 @@ export interface SuperfaceClientOptions {
   mapAst?: MapDocumentNode;
   providerName?: string;
   configuration?: {
-    baseUrl: string;
+    services: IServiceSelector;
     securitySchemes?: SecurityScheme[];
   };
 }
@@ -126,7 +127,9 @@ export const SuperfaceClientMock = jest.fn<
     mapAst: options?.mapAst ?? {},
     providerName: options?.providerName ?? 'provider',
     configuration: {
-      baseUrl: options?.configuration?.baseUrl ?? 'https://base.url',
+      services: options?.configuration?.services ?? {
+        getUrl: jest.fn(() => 'https://base.url'),
+      },
       security: options?.configuration?.securitySchemes ?? [],
     },
   }),
@@ -144,7 +147,9 @@ export const getMockedSfConfig = async (options?: {
   client: new SuperfaceClientMock({
     superJson: options?.superJson ?? DEFAULT_SUPERJSON,
     configuration: {
-      baseUrl: options?.baseUrl ?? 'root',
+      services: {
+        getUrl: jest.fn(() => options?.baseUrl ?? 'root'),
+      },
       securitySchemes: options?.securitySchemes,
     },
   }),

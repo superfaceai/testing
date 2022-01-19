@@ -5,6 +5,7 @@ import {
   SecurityScheme,
   SecurityType,
 } from '@superfaceai/ast';
+import { IServiceSelector } from '@superfaceai/one-sdk/dist/lib/services';
 import { RequestBodyMatcher } from 'nock/types';
 import { URL } from 'url';
 
@@ -245,11 +246,16 @@ function replaceApiKeyInQuery({
 function replaceApiKey({
   definition,
   scheme,
-  baseUrl,
+  services,
   credential,
   isParameter,
   placeholder,
-}: ReplaceOptions & { baseUrl: string; scheme: ApiKeySecurityScheme }): void {
+}: ReplaceOptions & {
+  services: IServiceSelector;
+  scheme: ApiKeySecurityScheme;
+}): void {
+  const baseUrl = services.getUrl() || ''; //get default service URL
+
   if (scheme.in === ApiKeyPlacement.HEADER) {
     replaceApiKeyInHeader({
       definition,
@@ -305,13 +311,13 @@ function replaceBearerAuth(
 export function replaceCredentialInDefinition({
   definition,
   scheme,
-  baseUrl,
+  services,
   credential,
   placeholder,
 }: {
   definition: RecordingDefinition;
   scheme: SecurityScheme;
-  baseUrl: string;
+  services: IServiceSelector;
   credential: string;
   placeholder?: string;
 }): void {
@@ -319,7 +325,7 @@ export function replaceCredentialInDefinition({
     replaceApiKey({
       definition,
       scheme,
-      baseUrl,
+      services,
       credential,
       isParameter: false,
       placeholder,

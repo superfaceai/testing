@@ -15,6 +15,7 @@ import {
   UnexpectedError,
   UseCase,
 } from '@superfaceai/one-sdk';
+import { IServiceSelector } from '@superfaceai/one-sdk/dist/lib/services';
 import { join as joinPath } from 'path';
 
 import {
@@ -227,14 +228,14 @@ export function replaceCredentials({
   securityValues,
   integrationParameters,
   beforeSave,
-  baseUrl,
+  services,
 }: {
   definitions: RecordingDefinition[];
   securitySchemes: SecurityScheme[];
   securityValues: SecurityValues[];
   integrationParameters: Record<string, string>;
   beforeSave: boolean;
-  baseUrl: string;
+  services: IServiceSelector;
 }): void {
   for (const definition of definitions) {
     for (const scheme of securitySchemes) {
@@ -258,7 +259,7 @@ export function replaceCredentials({
       replaceCredentialInDefinition({
         definition,
         scheme,
-        baseUrl,
+        services,
         credential,
         placeholder,
       });
@@ -274,6 +275,8 @@ export function replaceCredentials({
         credential = HIDDEN_PARAMETERS_PLACEHOLDER;
         placeholder = parameterValue;
       }
+
+      const baseUrl = services.getUrl() || ''; //get default service url
 
       replaceParameterInDefinition({
         definition,

@@ -264,7 +264,7 @@ export class SuperfaceTest {
     const integrationParameters = configuration.parameters ?? {};
     const securitySchemes = configuration.security;
     const securityValues = this.sfConfig.provider.configuration.security;
-    const baseUrl = configuration.baseUrl;
+    const services = configuration.services;
 
     if (record) {
       const enable_reqheaders_recording =
@@ -308,7 +308,7 @@ export class SuperfaceTest {
           securitySchemes,
           securityValues,
           integrationParameters,
-          baseUrl,
+          services,
           beforeSave: false,
         });
       }
@@ -366,14 +366,14 @@ export class SuperfaceTest {
         const securityValues = this.sfConfig.provider.configuration.security;
         const securitySchemes = configuration.security;
         const integrationParameters = configuration.parameters ?? {};
-        const baseUrl = configuration.baseUrl;
+        const services = configuration.services;
 
         replaceCredentials({
           definitions,
           securitySchemes,
           securityValues,
           integrationParameters,
-          baseUrl,
+          services,
           beforeSave: true,
         });
       }

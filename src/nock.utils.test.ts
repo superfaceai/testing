@@ -30,7 +30,9 @@ describe('nock utils', () => {
             in: ApiKeyPlacement.HEADER,
             name: 'api_key',
           },
-          baseUrl: 'https://localhost',
+          services: {
+            getUrl: jest.fn(() => 'https://localhost'),
+          },
           credential: 'secret',
         });
 
@@ -64,7 +66,9 @@ describe('nock utils', () => {
             in: ApiKeyPlacement.BODY,
             name: 'api_key',
           },
-          baseUrl: 'https://localhost',
+          services: {
+            getUrl: jest.fn(() => 'https://localhost'),
+          },
           credential: 'secret',
         });
 
@@ -95,7 +99,9 @@ describe('nock utils', () => {
             in: ApiKeyPlacement.PATH,
             name: 'api_key',
           },
-          baseUrl: 'https://localhost',
+          services: {
+            getUrl: jest.fn(() => 'https://localhost'),
+          },
           credential: 'secret',
         });
 
@@ -123,7 +129,9 @@ describe('nock utils', () => {
             in: ApiKeyPlacement.PATH,
             name: 'api_key',
           },
-          baseUrl: 'https://gitlab.com/api', //Path ends with /api
+          services: {
+            getUrl: jest.fn(() => 'https://localhost'),
+          },
           credential: 'secret',
         });
 
@@ -151,7 +159,9 @@ describe('nock utils', () => {
             in: ApiKeyPlacement.QUERY,
             name: 'api_key',
           },
-          baseUrl: 'https://localhost',
+          services: {
+            getUrl: jest.fn(() => 'https://localhost'),
+          },
           credential: 'secret',
         });
 
@@ -183,7 +193,9 @@ describe('nock utils', () => {
             type: SecurityType.HTTP,
             scheme: HttpScheme.BASIC,
           },
-          baseUrl: 'https://localhost',
+          services: {
+            getUrl: jest.fn(() => 'https://localhost'),
+          },
           credential: 'secret',
         });
 
@@ -218,7 +230,9 @@ describe('nock utils', () => {
             type: SecurityType.HTTP,
             scheme: HttpScheme.BEARER,
           },
-          baseUrl: 'https://localhost',
+          services: {
+            getUrl: jest.fn(() => 'https://localhost'),
+          },
           credential: 'secret',
         });
 
