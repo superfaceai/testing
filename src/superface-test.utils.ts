@@ -493,6 +493,8 @@ export function getGenerator(testInstance: unknown): IGenerator {
         if (typeof testName === 'string') {
           return new JestGenerateHash(testName);
         }
+      } else {
+        return new JestGenerateHash(state as { currentTestName?: unknown });
       }
     }
   }
