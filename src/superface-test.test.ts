@@ -65,10 +65,6 @@ describe('SuperfaceTest', () => {
     mocked(writeRecordings).mockReset();
   });
 
-  beforeEach(() => {
-    superfaceTest = new SuperfaceTest();
-  });
-
   describe('run', () => {
     describe('when preparing configuration', () => {
       let client: SuperfaceClient,
@@ -370,12 +366,14 @@ describe('SuperfaceTest', () => {
     });
 
     describe('when hashing recordings', () => {
-      it('writes recordings to file hashed based on test instance', async () => {
+      beforeAll(async () => {
         superfaceTest = new SuperfaceTest({
           ...(await getMockedSfConfig()),
           testInstance: expect,
         });
+      });
 
+      it('writes recordings to file hashed based on test instance', async () => {
         const expectedTestName = expect.getState().currentTestName;
         const expectedHash = generate(expectedTestName);
 
@@ -399,12 +397,7 @@ describe('SuperfaceTest', () => {
         );
       });
 
-      it('writes recordings to file hashed based on parameter currentTestName', async () => {
-        superfaceTest = new SuperfaceTest({
-          ...(await getMockedSfConfig()),
-          testInstance: expect,
-        });
-
+      it('writes recordings to file hashed based on parameter testName', async () => {
         const testName = 'my-test-name';
         const expectedHash = generate(testName);
 
