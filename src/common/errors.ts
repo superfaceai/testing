@@ -102,7 +102,7 @@ export class BaseURLNotFoundError extends ErrorBase {
     super(
       'BaseURLNotFoundError',
       `No base URL was found for provider ${provider}, configure a service in provider.json.`
-    )
+    );
   }
 }
 
