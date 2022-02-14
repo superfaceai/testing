@@ -16,19 +16,13 @@ export const generate = (value: string): string => {
 };
 
 export class JestGenerateHash implements IGenerator {
-  constructor(
-    private readonly payload: { currentTestName?: unknown } | string
-  ) {
+  constructor(private readonly payload: { currentTestName?: unknown }) {
     debugHashing('Returning instance of hash generator for jest test instance');
   }
 
   hash(options: HashOptions): string {
     if (options.testName) {
       return generate(options.testName);
-    }
-
-    if (typeof this.payload === 'string') {
-      return generate(this.payload);
     }
 
     if (
