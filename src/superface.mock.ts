@@ -13,7 +13,7 @@ import {
   SuperJson,
   UseCase,
 } from '@superfaceai/one-sdk';
-import { ServiceSelector } from '@superfaceai/one-sdk/dist/lib/services';
+import { ServiceSelector } from '@superfaceai/one-sdk/dist/private';
 
 import { CompleteSuperfaceTestConfig } from '.';
 
