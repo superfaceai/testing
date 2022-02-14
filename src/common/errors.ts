@@ -97,6 +97,15 @@ export class RecordingsNotFoundError extends ErrorBase {
   }
 }
 
+export class BaseURLNotFoundError extends ErrorBase {
+  constructor(provider: string) {
+    super(
+      'BaseURLNotFoundError',
+      `No base URL was found for provider ${provider}, configure a service in provider.json.`
+    )
+  }
+}
+
 export function assertIsIOError(
   error: unknown
 ): asserts error is { code: string } {
