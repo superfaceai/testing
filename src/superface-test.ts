@@ -25,6 +25,7 @@ import {
   RecordingProcessOptions,
 } from '.';
 import {
+  BaseURLNotFoundError,
   ComponentUndefinedError,
   FixturesPathUndefinedError,
   RecordingPathUndefinedError,
@@ -181,7 +182,11 @@ export class SuperfaceTest {
     const integrationParameters = configuration.parameters ?? {};
     const securitySchemes = configuration.security;
     const securityValues = this.sfConfig.provider.configuration.security;
-    const baseUrl = configuration.baseUrl;
+    const baseUrl = configuration.services.getUrl();
+
+    if (baseUrl === undefined) {
+      throw new BaseURLNotFoundError(this.sfConfig.provider.configuration.name);
+    }
 
     if (record) {
       const enable_reqheaders_recording =
@@ -285,7 +290,13 @@ export class SuperfaceTest {
       const integrationParameters = configuration.parameters ?? {};
 
       if (processRecordings) {
-        const baseUrl = configuration.baseUrl;
+        const baseUrl = configuration.services.getUrl();
+
+        if (baseUrl === undefined) {
+          throw new BaseURLNotFoundError(
+            this.sfConfig.provider.configuration.name
+          );
+        }
 
         replaceCredentials({
           definitions,
