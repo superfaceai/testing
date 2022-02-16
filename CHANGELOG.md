@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ## [2.0.3] - 2022-02-15
+### Changed
+- Updated One-SDK to [v1.3.0](https://github.com/superfaceai/one-sdk-js/releases/tag/v1.3.0) and AST to [v1.1.0](https://github.com/superfaceai/ast-js/releases/tag/v1.1.0)
 
 ## [2.0.1] - 2022-02-14
 ### Fixed
