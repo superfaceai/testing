@@ -30,6 +30,20 @@ CONSIDER DISABLING SENSITIVE INFORMATION LOGGING BY APPENDING THE DEBUG ENVIRONM
 
 const AUTH_HEADER_NAME = 'Authorization';
 
+const replace = (
+  payload: string,
+  credential: string,
+  placeholder: string
+): string =>
+  payload.replace(
+    new RegExp(`${credential}|${encodeURIComponent(credential)}`, 'g'),
+    placeholder
+  );
+
+const includes = (payload: string, credential: string): boolean =>
+  payload.includes(credential) ||
+  payload.includes(encodeURIComponent(credential));
+
 function replaceCredential({
   payload,
   credential,
@@ -38,13 +52,13 @@ function replaceCredential({
   payload: string;
   credential: string;
   placeholder: string;
-}) {
+}): string {
   if (credential !== '') {
     debugSensitive(
       `Replacing credential: '${credential}' for placeholder: '${placeholder}'`
     );
 
-    return payload.replace(new RegExp(credential, 'g'), placeholder);
+    return replace(payload, credential, placeholder);
   }
 
   return payload;
@@ -57,7 +71,7 @@ function replaceCredentialInHeaders({
 }: ReplaceOptions): void {
   if (definition.reqheaders) {
     const headers = Object.entries(definition.reqheaders).filter(([, value]) =>
-      value.toString().includes(credential)
+      includes(value.toString(), credential)
     );
 
     for (const [headerName, headerValue] of headers) {
@@ -82,7 +96,11 @@ function replaceCredentialInRawHeaders({
   if (definition.rawHeaders) {
     debug('Replacing credentials in raw headers');
 
-    definition.rawHeaders = definition.rawHeaders.map(header => {
+    const headers = definition.rawHeaders.filter(header =>
+      includes(header, credential)
+    );
+
+    definition.rawHeaders = headers.map(header => {
       debugSensitive('Header name/value:', header);
 
       return replaceCredential({
@@ -102,7 +120,7 @@ function replaceCredentialInBody({
   if (definition.body !== undefined && definition.body !== '') {
     let body = JSON.stringify(definition.body);
 
-    if (body.includes(credential)) {
+    if (includes(body, credential)) {
       debug('Replacing credentials in request body');
       debugSensitive('Request body:', body);
 
@@ -125,16 +143,18 @@ function replaceCredentialInResponse({
   if (definition.response) {
     let response = JSON.stringify(definition.response);
 
-    debug('Replacing credentials in response');
-    debugSensitive('Response:', response);
+    if (includes(response, credential)) {
+      debug('Replacing credentials in response');
+      debugSensitive('Response:', response);
 
-    response = replaceCredential({
-      payload: response,
-      credential,
-      placeholder,
-    });
+      response = replaceCredential({
+        payload: response,
+        credential,
+        placeholder,
+      });
 
-    definition.response = JSON.parse(response) as ReplyBody;
+      definition.response = JSON.parse(response) as ReplyBody;
+    }
   }
 }
 
@@ -143,7 +163,7 @@ function replaceCredentialInScope({
   credential,
   placeholder,
 }: ReplaceOptions): void {
-  if (definition.scope.includes(credential)) {
+  if (includes(definition.scope, credential)) {
     debug('Replacing credentials in scope');
     debugSensitive('Scope:', definition.scope);
 
@@ -165,7 +185,7 @@ function replaceCredentialInQuery({
   const definitionURL = new URL(baseUrlOrigin + definition.path);
 
   for (const [key, queryValue] of definitionURL.searchParams.entries()) {
-    if (queryValue.includes(credential)) {
+    if (includes(queryValue, credential)) {
       debug('Replacing credentials in query');
       debugSensitive('Query name:', key);
       debugSensitive('Query value:', queryValue);
@@ -194,7 +214,7 @@ function replaceCredentialInPath({
   const baseUrlOrigin = new URL(baseUrl).origin;
   const definitionURL = new URL(baseUrlOrigin + definition.path);
 
-  if (definitionURL.pathname.includes(credential)) {
+  if (includes(definitionURL.pathname, credential)) {
     debug('Replacing credentials in path');
     debugSensitive('Request path:', definitionURL.pathname);
 
@@ -277,17 +297,20 @@ function replaceApiKeyInQuery({
 
   if (
     scheme.name !== undefined &&
-    definitionURL.searchParams.has(scheme.name) &&
-    definitionURL.searchParams.get(scheme.name)?.includes(credential)
+    definitionURL.searchParams.has(scheme.name)
   ) {
-    debug('Replacing api-key in query');
-    debugSensitive('Query name:', scheme.name);
-    debugSensitive('Query value:', definitionURL.searchParams.get(scheme.name));
+    const param = definitionURL.searchParams.get(scheme.name)
 
-    definitionURL.searchParams.set(scheme.name, placeholder);
-
-    definition.path =
-      definitionURL.pathname + definitionURL.search + definitionURL.hash;
+    if (param && includes(param, credential)) {
+      debug('Replacing api-key in query');
+      debugSensitive('Query name:', scheme.name);
+      debugSensitive('Query value:', param);
+  
+      definitionURL.searchParams.set(scheme.name, placeholder);
+  
+      definition.path =
+        definitionURL.pathname + definitionURL.search + definitionURL.hash;
+    }
   }
 
   replaceCredentialInQuery({
