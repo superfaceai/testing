@@ -97,9 +97,9 @@ function replaceCredentialInRawHeaders({
     debug('Replacing credentials in raw headers');
 
     definition.rawHeaders = definition.rawHeaders.map(header => {
-      if (includes(header, credential)){
+      if (includes(header, credential)) {
         debugSensitive('Header name/value:', header);
-  
+
         return replaceCredential({
           payload: header,
           credential,
@@ -107,7 +107,7 @@ function replaceCredentialInRawHeaders({
         });
       }
 
-      return header
+      return header;
     });
   }
 }
@@ -299,15 +299,15 @@ function replaceApiKeyInQuery({
     scheme.name !== undefined &&
     definitionURL.searchParams.has(scheme.name)
   ) {
-    const param = definitionURL.searchParams.get(scheme.name)
+    const param = definitionURL.searchParams.get(scheme.name);
 
     if (param && includes(param, credential)) {
       debug('Replacing api-key in query');
       debugSensitive('Query name:', scheme.name);
       debugSensitive('Query value:', param);
-  
+
       definitionURL.searchParams.set(scheme.name, placeholder);
-  
+
       definition.path =
         definitionURL.pathname + definitionURL.search + definitionURL.hash;
     }
