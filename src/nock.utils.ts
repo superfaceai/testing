@@ -94,10 +94,9 @@ function replaceCredentialInRawHeaders({
   placeholder,
 }: ReplaceOptions): void {
   if (definition.rawHeaders) {
-    debug('Replacing credentials in raw headers');
-
     definition.rawHeaders = definition.rawHeaders.map(header => {
       if (includes(header, credential)) {
+        debug('Replacing credentials in raw header');
         debugSensitive('Header name/value:', header);
 
         return replaceCredential({
