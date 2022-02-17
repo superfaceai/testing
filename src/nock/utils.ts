@@ -9,8 +9,8 @@ import createDebug from 'debug';
 import { ReplyBody, RequestBodyMatcher } from 'nock/types';
 import { URL } from 'url';
 
-import { RecordingDefinition } from '.';
-import { UnexpectedError } from './common/errors';
+import { RecordingDefinition } from '..';
+import { UnexpectedError } from '../common/errors';
 
 interface ReplaceOptions {
   definition: RecordingDefinition;
