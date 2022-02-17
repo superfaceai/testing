@@ -836,7 +836,7 @@ describe('nock utils', () => {
     });
 
     describe('when sensitive information are URL encoded', () => {
-      it('replaces api key in body', async () => {
+      it('replaces parameter in body', async () => {
         const secret = 'шеллы';
         const encodedSecret = encodeURIComponent(secret);
         const definition: RecordingDefinition = {
@@ -867,7 +867,7 @@ describe('nock utils', () => {
         });
       });
 
-      it('replaces placeholder for api key in body', async () => {
+      it('replaces placeholder for parameter in body', async () => {
         const secret = 'шеллы';
         const definition: RecordingDefinition = {
           scope: BASE_URL,
@@ -897,7 +897,7 @@ describe('nock utils', () => {
         });
       });
 
-      it('replaces apikey in query', () => {
+      it('replaces parameter in query', () => {
         const secret = 'шеллы';
         const encodedSecret = encodeURIComponent(secret);
         const definition: RecordingDefinition = {
@@ -922,7 +922,7 @@ describe('nock utils', () => {
         });
       });
 
-      it('replaces apikey in path', () => {
+      it('replaces parameter in path', () => {
         const secret = 'шеллы';
         const encodedSecret = encodeURIComponent(secret);
         const definition: RecordingDefinition = {
@@ -1149,7 +1149,7 @@ describe('nock utils', () => {
     });
 
     describe('when sensitive information are URL encoded', () => {
-      it('replaces api key in body', async () => {
+      it('replaces input in body', async () => {
         const secret = 'шеллы';
         const encodedSecret = encodeURIComponent(secret);
         const definition: RecordingDefinition = {
@@ -1180,7 +1180,7 @@ describe('nock utils', () => {
         });
       });
 
-      it('replaces placeholder for api key in body', async () => {
+      it('replaces placeholder for input in body', async () => {
         const secret = 'шеллы';
         const definition: RecordingDefinition = {
           scope: BASE_URL,
@@ -1210,7 +1210,7 @@ describe('nock utils', () => {
         });
       });
 
-      it('replaces apikey in query', () => {
+      it('replaces input in query', () => {
         const secret = 'шеллы';
         const encodedSecret = encodeURIComponent(secret);
         const definition: RecordingDefinition = {
@@ -1235,7 +1235,7 @@ describe('nock utils', () => {
         });
       });
 
-      it('replaces apikey in path', () => {
+      it('replaces input in path', () => {
         const secret = 'шеллы';
         const encodedSecret = encodeURIComponent(secret);
         const definition: RecordingDefinition = {
