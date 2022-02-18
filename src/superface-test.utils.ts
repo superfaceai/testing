@@ -50,7 +50,7 @@ import {
   replaceCredentialInDefinition,
   replaceInputInDefinition,
   replaceParameterInDefinition,
-} from './nock.utils';
+} from './nock';
 
 const debug = createDebug('superface:testing');
 
