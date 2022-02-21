@@ -2,6 +2,7 @@ import {
   isApiKeySecurityValues,
   isBasicAuthSecurityValues,
   isBearerTokenSecurityValues,
+  isDigestSecurityValues,
   NormalizedSuperJsonDocument,
   SecurityScheme,
   SecurityValues,
@@ -247,6 +248,10 @@ export function resolveCredential(securityValue: SecurityValues): string {
     }
 
     return Buffer.from(user + ':' + password).toString('base64');
+  }
+
+  if (isDigestSecurityValues(securityValue)) {
+    return 'Unknown';
   }
 
   if (isBearerTokenSecurityValues(securityValue)) {
