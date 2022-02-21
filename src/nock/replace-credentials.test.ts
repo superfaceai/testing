@@ -468,6 +468,320 @@ describe('replaceCredentials', () => {
     });
   });
 
+  describe('when replacing digest token', () => {
+    const enteredCredential = 'Digest secret';
+    const expectedValue = `Digest ${TMP_PLACEHOLDER}`;
+    let header: string;
+
+    describe('in Authorization header', () => {
+      beforeAll(() => {
+        header = 'Authorization';
+      });
+
+      it('replaces digest token', () => {
+        const definition: RecordingDefinition = {
+          scope: BASE_URL,
+          path: '/get?text=123',
+          method: 'GET',
+          status: 200,
+          reqheaders: {
+            [header]: enteredCredential,
+          },
+        };
+  
+        replaceCredentialInDefinition({
+          definition,
+          scheme: {
+            id: 'digest',
+            type: SecurityType.HTTP,
+            scheme: HttpScheme.DIGEST,
+          },
+          baseUrl: BASE_URL,
+          credential: 'Unknown',
+          placeholder: TMP_PLACEHOLDER,
+        });
+  
+        expect(definition).toEqual({
+          scope: BASE_URL,
+          path: '/get?text=123',
+          method: 'GET',
+          status: 200,
+          reqheaders: {
+            [header]: expectedValue,
+          },
+        });
+      });
+  
+      it('replaces digest token in raw headers', () => {
+        const definition: RecordingDefinition = {
+          scope: BASE_URL,
+          path: '/get?text=123',
+          method: 'GET',
+          status: 200,
+          reqheaders: {
+            [header]: enteredCredential,
+          },
+          rawHeaders: [header, enteredCredential],
+        };
+  
+        replaceCredentialInDefinition({
+          definition,
+          scheme: {
+            id: 'digest',
+            type: SecurityType.HTTP,
+            scheme: HttpScheme.DIGEST,
+          },
+          baseUrl: BASE_URL,
+          credential: 'Unknown',
+          placeholder: TMP_PLACEHOLDER,
+        });
+  
+        expect(definition).toEqual({
+          scope: BASE_URL,
+          path: '/get?text=123',
+          method: 'GET',
+          status: 200,
+          reqheaders: {
+            [header]: expectedValue,
+          },
+          rawHeaders: [header, expectedValue],
+        });
+      });
+    });
+
+    describe('in WWW-Authenticate header', () => {
+      beforeAll(() => {
+        header = 'WWW-Authenticate';
+      });
+
+      it('replaces digest token', () => {
+        const definition: RecordingDefinition = {
+          scope: BASE_URL,
+          path: '/get?text=123',
+          method: 'GET',
+          status: 200,
+          reqheaders: {
+            [header]: enteredCredential,
+          },
+        };
+  
+        replaceCredentialInDefinition({
+          definition,
+          scheme: {
+            id: 'digest',
+            type: SecurityType.HTTP,
+            scheme: HttpScheme.DIGEST,
+          },
+          baseUrl: BASE_URL,
+          credential: 'Unknown',
+          placeholder: TMP_PLACEHOLDER,
+        });
+  
+        expect(definition).toEqual({
+          scope: BASE_URL,
+          path: '/get?text=123',
+          method: 'GET',
+          status: 200,
+          reqheaders: {
+            [header]: expectedValue,
+          },
+        });
+      });
+  
+      it('replaces digest token in raw headers', () => {
+        const definition: RecordingDefinition = {
+          scope: BASE_URL,
+          path: '/get?text=123',
+          method: 'GET',
+          status: 200,
+          reqheaders: {
+            [header]: enteredCredential,
+          },
+          rawHeaders: [header, enteredCredential],
+        };
+  
+        replaceCredentialInDefinition({
+          definition,
+          scheme: {
+            id: 'digest',
+            type: SecurityType.HTTP,
+            scheme: HttpScheme.DIGEST,
+          },
+          baseUrl: BASE_URL,
+          credential: 'Unknown',
+          placeholder: TMP_PLACEHOLDER,
+        });
+  
+        expect(definition).toEqual({
+          scope: BASE_URL,
+          path: '/get?text=123',
+          method: 'GET',
+          status: 200,
+          reqheaders: {
+            [header]: expectedValue,
+          },
+          rawHeaders: [header, expectedValue],
+        });
+      });
+    });
+
+    describe('in challenge header', () => {
+      beforeAll(() => {
+        header = 'Custom-Challenge-Header';
+      });
+
+      it('replaces digest token', () => {
+        const definition: RecordingDefinition = {
+          scope: BASE_URL,
+          path: '/get?text=123',
+          method: 'GET',
+          status: 200,
+          reqheaders: {
+            [header]: enteredCredential,
+          },
+        };
+  
+        replaceCredentialInDefinition({
+          definition,
+          scheme: {
+            id: 'digest',
+            type: SecurityType.HTTP,
+            scheme: HttpScheme.DIGEST,
+            challengeHeader: header,
+          },
+          baseUrl: BASE_URL,
+          credential: 'Unknown',
+          placeholder: TMP_PLACEHOLDER,
+        });
+  
+        expect(definition).toEqual({
+          scope: BASE_URL,
+          path: '/get?text=123',
+          method: 'GET',
+          status: 200,
+          reqheaders: {
+            [header]: expectedValue,
+          },
+        });
+      });
+  
+      it('replaces digest token in raw headers', () => {
+        const definition: RecordingDefinition = {
+          scope: BASE_URL,
+          path: '/get?text=123',
+          method: 'GET',
+          status: 200,
+          reqheaders: {
+            [header]: enteredCredential,
+          },
+          rawHeaders: [header, enteredCredential],
+        };
+  
+        replaceCredentialInDefinition({
+          definition,
+          scheme: {
+            id: 'digest',
+            type: SecurityType.HTTP,
+            scheme: HttpScheme.DIGEST,
+            challengeHeader: header,
+          },
+          baseUrl: BASE_URL,
+          credential: 'Unknown',
+          placeholder: TMP_PLACEHOLDER,
+        });
+  
+        expect(definition).toEqual({
+          scope: BASE_URL,
+          path: '/get?text=123',
+          method: 'GET',
+          status: 200,
+          reqheaders: {
+            [header]: expectedValue,
+          },
+          rawHeaders: [header, expectedValue],
+        });
+      });
+    });
+
+    describe('in custom authorization header', () => {
+      beforeAll(() => {
+        header = 'Custom-Authorization-Header';
+      })
+
+      it('replaces digest token', () => {
+        const definition: RecordingDefinition = {
+          scope: BASE_URL,
+          path: '/get?text=123',
+          method: 'GET',
+          status: 200,
+          reqheaders: {
+            [header]: enteredCredential,
+          },
+        };
+  
+        replaceCredentialInDefinition({
+          definition,
+          scheme: {
+            id: 'digest',
+            type: SecurityType.HTTP,
+            scheme: HttpScheme.DIGEST,
+            authorizationHeader: header,
+          },
+          baseUrl: BASE_URL,
+          credential: 'Unknown',
+          placeholder: TMP_PLACEHOLDER,
+        });
+  
+        expect(definition).toEqual({
+          scope: BASE_URL,
+          path: '/get?text=123',
+          method: 'GET',
+          status: 200,
+          reqheaders: {
+            [header]: expectedValue,
+          },
+        });
+      });
+  
+      it('replaces digest token in raw headers', () => {
+        const definition: RecordingDefinition = {
+          scope: BASE_URL,
+          path: '/get?text=123',
+          method: 'GET',
+          status: 200,
+          reqheaders: {
+            [header]: enteredCredential,
+          },
+          rawHeaders: [header, enteredCredential],
+        };
+  
+        replaceCredentialInDefinition({
+          definition,
+          scheme: {
+            id: 'digest',
+            type: SecurityType.HTTP,
+            scheme: HttpScheme.DIGEST,
+            authorizationHeader: header,
+          },
+          baseUrl: BASE_URL,
+          credential: 'Unknown',
+          placeholder: TMP_PLACEHOLDER,
+        });
+  
+        expect(definition).toEqual({
+          scope: BASE_URL,
+          path: '/get?text=123',
+          method: 'GET',
+          status: 200,
+          reqheaders: {
+            [header]: expectedValue,
+          },
+          rawHeaders: [header, expectedValue],
+        });
+      });
+    });
+  });
+
   describe('when sensitive information are URL encoded', () => {
     it('replaces api key in body', async () => {
       const secret = 'шеллы';
