@@ -488,7 +488,7 @@ describe('replaceCredentials', () => {
             [header]: enteredCredential,
           },
         };
-  
+
         replaceCredentialInDefinition({
           definition,
           scheme: {
@@ -500,7 +500,7 @@ describe('replaceCredentials', () => {
           credential: 'Unknown',
           placeholder: TMP_PLACEHOLDER,
         });
-  
+
         expect(definition).toEqual({
           scope: BASE_URL,
           path: '/get?text=123',
@@ -511,7 +511,7 @@ describe('replaceCredentials', () => {
           },
         });
       });
-  
+
       it('replaces digest token in raw headers', () => {
         const definition: RecordingDefinition = {
           scope: BASE_URL,
@@ -523,7 +523,7 @@ describe('replaceCredentials', () => {
           },
           rawHeaders: [header, enteredCredential],
         };
-  
+
         replaceCredentialInDefinition({
           definition,
           scheme: {
@@ -535,7 +535,7 @@ describe('replaceCredentials', () => {
           credential: 'Unknown',
           placeholder: TMP_PLACEHOLDER,
         });
-  
+
         expect(definition).toEqual({
           scope: BASE_URL,
           path: '/get?text=123',
@@ -564,7 +564,7 @@ describe('replaceCredentials', () => {
             [header]: enteredCredential,
           },
         };
-  
+
         replaceCredentialInDefinition({
           definition,
           scheme: {
@@ -576,7 +576,7 @@ describe('replaceCredentials', () => {
           credential: 'Unknown',
           placeholder: TMP_PLACEHOLDER,
         });
-  
+
         expect(definition).toEqual({
           scope: BASE_URL,
           path: '/get?text=123',
@@ -587,7 +587,7 @@ describe('replaceCredentials', () => {
           },
         });
       });
-  
+
       it('replaces digest token in raw headers', () => {
         const definition: RecordingDefinition = {
           scope: BASE_URL,
@@ -599,7 +599,7 @@ describe('replaceCredentials', () => {
           },
           rawHeaders: [header, enteredCredential],
         };
-  
+
         replaceCredentialInDefinition({
           definition,
           scheme: {
@@ -611,7 +611,7 @@ describe('replaceCredentials', () => {
           credential: 'Unknown',
           placeholder: TMP_PLACEHOLDER,
         });
-  
+
         expect(definition).toEqual({
           scope: BASE_URL,
           path: '/get?text=123',
@@ -640,7 +640,7 @@ describe('replaceCredentials', () => {
             [header]: enteredCredential,
           },
         };
-  
+
         replaceCredentialInDefinition({
           definition,
           scheme: {
@@ -653,7 +653,7 @@ describe('replaceCredentials', () => {
           credential: 'Unknown',
           placeholder: TMP_PLACEHOLDER,
         });
-  
+
         expect(definition).toEqual({
           scope: BASE_URL,
           path: '/get?text=123',
@@ -664,7 +664,7 @@ describe('replaceCredentials', () => {
           },
         });
       });
-  
+
       it('replaces digest token in raw headers', () => {
         const definition: RecordingDefinition = {
           scope: BASE_URL,
@@ -676,7 +676,7 @@ describe('replaceCredentials', () => {
           },
           rawHeaders: [header, enteredCredential],
         };
-  
+
         replaceCredentialInDefinition({
           definition,
           scheme: {
@@ -689,7 +689,7 @@ describe('replaceCredentials', () => {
           credential: 'Unknown',
           placeholder: TMP_PLACEHOLDER,
         });
-  
+
         expect(definition).toEqual({
           scope: BASE_URL,
           path: '/get?text=123',
@@ -706,7 +706,7 @@ describe('replaceCredentials', () => {
     describe('in custom authorization header', () => {
       beforeAll(() => {
         header = 'Custom-Authorization-Header';
-      })
+      });
 
       it('replaces digest token', () => {
         const definition: RecordingDefinition = {
@@ -718,7 +718,7 @@ describe('replaceCredentials', () => {
             [header]: enteredCredential,
           },
         };
-  
+
         replaceCredentialInDefinition({
           definition,
           scheme: {
@@ -731,7 +731,7 @@ describe('replaceCredentials', () => {
           credential: 'Unknown',
           placeholder: TMP_PLACEHOLDER,
         });
-  
+
         expect(definition).toEqual({
           scope: BASE_URL,
           path: '/get?text=123',
@@ -742,7 +742,7 @@ describe('replaceCredentials', () => {
           },
         });
       });
-  
+
       it('replaces digest token in raw headers', () => {
         const definition: RecordingDefinition = {
           scope: BASE_URL,
@@ -754,7 +754,7 @@ describe('replaceCredentials', () => {
           },
           rawHeaders: [header, enteredCredential],
         };
-  
+
         replaceCredentialInDefinition({
           definition,
           scheme: {
@@ -767,7 +767,7 @@ describe('replaceCredentials', () => {
           credential: 'Unknown',
           placeholder: TMP_PLACEHOLDER,
         });
-  
+
         expect(definition).toEqual({
           scope: BASE_URL,
           path: '/get?text=123',
