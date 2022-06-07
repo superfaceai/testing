@@ -513,7 +513,7 @@ describe('SuperfaceTest', () => {
         mocked(matchWildCard).mockReturnValueOnce(true);
 
         await expect(superfaceTest.run({ input: {} })).resolves.toEqual({
-          error: new MapASTError('error').toString(),
+          error: new MapASTError('error'),
         });
 
         expect(performSpy).toHaveBeenCalledTimes(1);
