@@ -1,4 +1,5 @@
 import {
+  PerformError,
   Profile,
   Provider,
   Result,
@@ -41,7 +42,7 @@ export interface SuperfaceTestConfig {
 
 export type CompleteSuperfaceTestConfig = Required<SuperfaceTestConfig>;
 
-export type TestingReturn = Result<unknown, string>;
+export type TestingReturn = Result<unknown, PerformError>;
 
 export interface NockConfig {
   path?: string;
