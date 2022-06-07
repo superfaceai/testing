@@ -32,11 +32,7 @@ import {
   RecordingsNotFoundError,
   UnexpectedError,
 } from './common/errors';
-import {
-  getFixtureName,
-  matchWildCard,
-  removeTimestamp,
-} from './common/format';
+import { getFixtureName, matchWildCard } from './common/format';
 import { exists, readFileQuiet } from './common/io';
 import { writeRecordings } from './common/output-stream';
 import { IGenerator } from './generate-hash';
@@ -143,7 +139,7 @@ export class SuperfaceTest {
     if (result.isErr()) {
       debug('Perform failed with error:', result.error.toString());
 
-      return err(removeTimestamp(result.error.toString()));
+      return err(result.error);
     }
 
     if (result.isOk()) {
