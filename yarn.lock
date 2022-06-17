@@ -566,10 +566,10 @@
     ajv "^8.8.2"
     ajv-formats "^2.1.1"
 
-"@superfaceai/one-sdk@^1.5.2-rc.0":
-  version "1.5.2-rc.0"
-  resolved "https://registry.yarnpkg.com/@superfaceai/one-sdk/-/one-sdk-1.5.2-rc.0.tgz#c8fba0e5776ffd889bbdaa95d6cd617050c66d45"
-  integrity sha512-0fk3fc/8lQIjomr4zS1DBTgRPADk1qp3/W+59n4pc+sEv/OZnRsqfE7S2uy2q1MDDbCB+Stxrv4sRUJAXSRGIQ==
+"@superfaceai/one-sdk@^1.5.2":
+  version "1.5.2"
+  resolved "https://registry.yarnpkg.com/@superfaceai/one-sdk/-/one-sdk-1.5.2.tgz#754c2bbe3363671549308674c87ba359c9f60e9f"
+  integrity sha512-8dWrcktQBrUb3Y8M6MtbCW+0a70tbSnv7+/Oh4fKIxqdvKRTfFjJ3Bv/1LsPxLHlah0pta+cA5ZTXCBkIP6iTA==
   dependencies:
     "@superfaceai/ast" "1.2.0"
     "@superfaceai/parser" "1.2.0"
