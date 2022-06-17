@@ -181,7 +181,11 @@ export class SuperfaceTest {
     const { configuration } = this.boundProfileProvider;
     const integrationParameters = configuration.parameters ?? {};
     const securitySchemes = configuration.security;
-    const securityValues = this.sfConfig.provider.configuration.security;
+    const securityValues =
+      this.sfConfig.client.superJson.normalized?.providers[
+        this.sfConfig.provider.configuration.name
+      ].security ?? [];
+
     const baseUrl = configuration.services.getUrl();
 
     if (baseUrl === undefined) {
@@ -285,7 +289,11 @@ export class SuperfaceTest {
       assertBoundProfileProvider(this.boundProfileProvider);
 
       const { configuration } = this.boundProfileProvider;
-      const securityValues = this.sfConfig.provider.configuration.security;
+      const securityValues =
+        this.sfConfig.client.superJson.normalized?.providers[
+          this.sfConfig.provider.configuration.name
+        ].security ?? [];
+
       const securitySchemes = configuration.security;
       const integrationParameters = configuration.parameters ?? {};
 
