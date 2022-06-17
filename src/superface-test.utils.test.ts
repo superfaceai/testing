@@ -12,6 +12,7 @@ import {
   InstanceMissingError,
   MapUndefinedError,
   ProfileUndefinedError,
+  ProviderUndefinedError,
   SuperJsonLoadingFailedError,
   SuperJsonNotFoundError,
   UnexpectedError,
@@ -35,6 +36,7 @@ import {
   getGenerator,
   getProfileId,
   getProviderName,
+  getSecurityValues,
   getSuperJson,
   getUseCaseName,
   isProfileProviderLocal,
@@ -232,6 +234,62 @@ describe('SuperfaceTest', () => {
       expect(() => {
         isProfileProviderLocal('provider', 'profile', mockSuperJson.normalized);
       }).not.toThrow();
+    });
+  });
+
+  describe('get security values', () => {
+    it('returns security values', async () => {
+      const superJson = new SuperJson({
+        profiles: {
+          profile: {
+            file: 'path/to/profile.supr',
+            providers: {
+              provider: {
+                file: 'path/to/map.suma',
+              },
+            },
+          },
+        },
+        providers: {
+          provider: {
+            file: 'path/to/provider.json',
+            security: [{ id: 'api-key', apikey: 'secret' }],
+          },
+        },
+      });
+
+      expect(getSecurityValues('provider', superJson.normalized)).toEqual([
+        { id: 'api-key', apikey: 'secret' },
+      ]);
+    });
+
+    it('returns empty array', async () => {
+      const superJson = new SuperJson({
+        profiles: {
+          profile: {
+            file: 'path/to/profile.supr',
+            providers: {
+              provider: {
+                file: 'path/to/map.suma',
+              },
+            },
+          },
+        },
+        providers: {
+          provider: {
+            file: 'path/to/provider.json',
+          },
+        },
+      });
+
+      expect(getSecurityValues('provider', superJson.normalized)).toEqual([]);
+    });
+
+    it('throws when provider is not defined', () => {
+      const superJson = new SuperJson();
+      expect(() =>
+        getSecurityValues('provider', superJson.normalized)
+      ).toThrowError(new ProviderUndefinedError('provider'));
     });
   });
 
