@@ -37,6 +37,7 @@ import {
   InstanceMissingError,
   MapUndefinedError,
   ProfileUndefinedError,
+  ProviderUndefinedError,
   SuperJsonLoadingFailedError,
   SuperJsonNotFoundError,
 } from './common/errors';
@@ -150,6 +151,24 @@ export function isProfileProviderLocal(
   if (!('file' in targetedProfileProvider)) {
     throw new MapUndefinedError(profileId, providerId);
   }
+}
+
+/**
+ * Return Security values from super.json file for specified provider
+ * @param provider name of provider
+ * @param superJsonNormalized normalized super.json document
+ * @returns array of SecurityValue
+ */
+export function getSecurityValues(
+  provider: string,
+  superJsonNormalized: NormalizedSuperJsonDocument
+): SecurityValues[] {
+  const providerSettings = superJsonNormalized.providers[provider];
+  if (providerSettings === undefined) {
+    throw new ProviderUndefinedError(provider);
+  }
+
+  return providerSettings.security;
 }
 
 /**
