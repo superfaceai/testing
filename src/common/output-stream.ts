@@ -62,8 +62,12 @@ export async function writeRecordings(
   path: string,
   recordings: string[] | RecordingDefinition[]
 ): Promise<void> {
-  await OutputStream.writeIfAbsent(path, JSON.stringify(recordings, null, 2), {
-    dirs: true,
-    force: true,
-  });
+  await OutputStream.writeIfAbsent(
+    `${path}.json`,
+    JSON.stringify(recordings, null, 2),
+    {
+      dirs: true,
+      force: true,
+    }
+  );
 }

@@ -29,13 +29,14 @@ import {
   ComponentUndefinedError,
   FixturesPathUndefinedError,
   RecordingPathUndefinedError,
-  RecordingsNotFoundError,
   UnexpectedError,
 } from './common/errors';
 import { getFixtureName, matchWildCard } from './common/format';
 import { exists, readFileQuiet } from './common/io';
 import { writeRecordings } from './common/output-stream';
 import { IGenerator } from './generate-hash';
+import { matchTraffic } from './nock/matcher';
+import { replaceNoise } from './nock/replace-noise';
 import {
   NockConfig,
   SuperfaceTestConfigPayload,
@@ -197,13 +198,13 @@ export class SuperfaceTest {
 
       debug('Recording HTTP traffic started');
     } else {
-      const recordingExists = await exists(this.recordingPath);
+      const recordingExists = await exists(`${this.recordingPath}.json`);
 
       if (!recordingExists) {
-        throw new RecordingsNotFoundError();
+        return;
       }
 
-      const definitionFile = await readFileQuiet(this.recordingPath);
+      const definitionFile = await readFileQuiet(`${this.recordingPath}.json`);
 
       if (definitionFile === undefined) {
         throw new UnexpectedError('Reading recording file failed');
@@ -327,7 +328,37 @@ export class SuperfaceTest {
         );
       }
 
-      await writeRecordings(this.recordingPath, definitions);
+      const recordingExists = await exists(`${this.recordingPath}.json`);
+
+      if (!recordingExists) {
+        // recording file does not exist -> record new traffic
+        await writeRecordings(this.recordingPath, definitions);
+
+      } else {
+        // recording file exist -> record and compare new traffic
+        const oldRecording = await readFileQuiet(`${this.recordingPath}.json`);
+
+        if (oldRecording === undefined) {
+          throw new UnexpectedError('Reading recording file failed');
+        }
+
+        const oldRecordingDefs = JSON.parse(oldRecording) as RecordingDefinitions;
+
+        // Match new HTTP traffic to saved for breaking changes
+        const matching = matchTraffic(oldRecordingDefs, definitions);
+        
+        if (matching) {
+          // do not save new recording as there were no breaking changes found
+        } else {
+          // save new recording next to old one as there were breaking changes and map need to be updated
+          // Alert changes
+          // can consist of call to some monitoring service or just calling some custom webhook
+          
+          // Save new recording as unsupported
+          await writeRecordings(`${this.recordingPath}-unsupported`, definitions);
+        }
+      }
+      
       debug('Recorded definitions written');
     } else {
       restoreRecordings();
@@ -363,7 +394,7 @@ export class SuperfaceTest {
     this.recordingPath = joinPath(
       this.fixturesPath,
       fixtureName,
-      `${this.nockConfig?.fixture ?? 'recording'}-${inputHash}.json`
+      `${this.nockConfig?.fixture ?? 'recording'}-${inputHash}`
     );
 
     debugSetup('Prepare path to recording:', this.recordingPath);
