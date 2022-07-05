@@ -32,7 +32,7 @@ export class JestGenerateHash implements IGenerator {
       return generate(JSON.stringify(options.input));
     }
 
-    return generate(this.payload.currentTestName + JSON.stringify(options.input));
+    return generate(this.payload.currentTestName);
   }
 }
 

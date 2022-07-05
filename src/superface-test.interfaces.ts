@@ -64,4 +64,5 @@ export interface RecordingProcessOptions {
   beforeRecordingSave?: ProcessingFunction;
   beforeRecordingLoad?: ProcessingFunction;
   hideInput?: string[];
+  recordingVersion?: string;
 }

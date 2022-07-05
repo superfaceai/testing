@@ -16,7 +16,7 @@ import {
   recorder,
   restore as restoreRecordings,
 } from 'nock';
-import { join as joinPath } from 'path';
+import { basename, dirname, join as joinPath } from 'path';
 
 import {
   InputVariables,
@@ -29,14 +29,14 @@ import {
   ComponentUndefinedError,
   FixturesPathUndefinedError,
   RecordingPathUndefinedError,
+  RecordingsNotFoundError,
   UnexpectedError,
 } from './common/errors';
 import { getFixtureName, matchWildCard } from './common/format';
-import { exists, readFileQuiet } from './common/io';
+import { exists, mkdirQuiet, readFileQuiet, rename } from './common/io';
 import { writeRecordings } from './common/output-stream';
 import { IGenerator } from './generate-hash';
 import { matchTraffic } from './nock/matcher';
-import { replaceNoise } from './nock/replace-noise';
 import {
   NockConfig,
   SuperfaceTestConfigPayload,
@@ -52,6 +52,7 @@ import {
   getProfileId,
   getSuperJson,
   isProfileProviderLocal,
+  parsePublishEnv,
   replaceCredentials,
   searchValues,
 } from './superface-test.utils';
@@ -104,6 +105,11 @@ export class SuperfaceTest {
 
     this.setupRecordingPath(getFixtureName(this.sfConfig), hash);
 
+    // Replace unsupported recordings with currently supported
+    if (await this.canReplaceRecording()) {
+      await this.replaceUnsupportedRecording();
+    }
+
     // Parse env variable and check if test should be recorded
     const record = matchWildCard(this.sfConfig, process.env.SUPERFACE_LIVE_API);
     const processRecordings = options?.processRecordings ?? true;
@@ -113,6 +119,7 @@ export class SuperfaceTest {
       record,
       processRecordings,
       inputVariables,
+      options?.recordingVersion,
       options?.beforeRecordingLoad
     );
 
@@ -152,6 +159,33 @@ export class SuperfaceTest {
     throw new UnexpectedError('Unexpected result object');
   }
 
+  private async replaceUnsupportedRecording(): Promise<void> {
+    const pathToUnsupported = this.composeRecordingPath('unsupported');
+    const pathToCurrent = this.composeRecordingPath();
+
+    await mkdirQuiet(joinPath(dirname(pathToCurrent), 'old'));
+
+    // TODO: compose version based on executed usecase
+    await rename(pathToCurrent, this.composeRecordingPath('1.0.0'));
+    await rename(pathToUnsupported, pathToCurrent);
+  }
+
+  private async canReplaceRecording(): Promise<boolean> {
+    const replaceRecording = parsePublishEnv(
+      process.env.PUBLISH_UNSUPPORTED_RECORDINGS
+    );
+
+    if (replaceRecording) {
+      if (!(await exists(this.composeRecordingPath('unsupported')))) {
+        return false;
+      }
+
+      return true;
+    }
+
+    return false;
+  }
+
   /**
    * Starts recording or loads recording fixture if exists.
    *
@@ -166,11 +200,39 @@ export class SuperfaceTest {
     record: boolean,
     processRecordings: boolean,
     inputVariables?: InputVariables,
+    recordingVersion?: string,
     beforeRecordingLoad?: ProcessingFunction
   ): Promise<void> {
-    if (!this.recordingPath) {
-      throw new RecordingPathUndefinedError();
+    if (record) {
+      const enable_reqheaders_recording =
+        this.nockConfig?.enableReqheadersRecording ?? false;
+
+      recorder.rec({
+        dont_print: true,
+        output_objects: true,
+        use_separator: false,
+        enable_reqheaders_recording,
+      });
+
+      debug('Recording HTTP traffic started');
+    } else {
+      await this.loadRecordings(
+        processRecordings,
+        inputVariables,
+        recordingVersion,
+        beforeRecordingLoad
+      );
     }
+  }
+
+  private async loadRecordings(
+    processRecordings: boolean,
+    inputVariables?: InputVariables,
+    recordingVersion?: string,
+    beforeRecordingLoad?: ProcessingFunction
+  ): Promise<void> {
+    // TODO: validate version format
+    const definitions = await this.getRecordings(recordingVersion);
 
     assertsPreparedConfig(this.sfConfig);
     assertBoundProfileProvider(this.boundProfileProvider);
@@ -185,63 +247,53 @@ export class SuperfaceTest {
       throw new BaseURLNotFoundError(this.sfConfig.provider.configuration.name);
     }
 
-    if (record) {
-      const enable_reqheaders_recording =
-        this.nockConfig?.enableReqheadersRecording ?? false;
-
-      recorder.rec({
-        dont_print: true,
-        output_objects: true,
-        use_separator: false,
-        enable_reqheaders_recording,
+    if (processRecordings) {
+      replaceCredentials({
+        definitions,
+        securitySchemes,
+        securityValues,
+        integrationParameters,
+        inputVariables,
+        baseUrl,
+        beforeSave: false,
       });
-
-      debug('Recording HTTP traffic started');
-    } else {
-      const recordingExists = await exists(`${this.recordingPath}.json`);
-
-      if (!recordingExists) {
-        return;
-      }
-
-      const definitionFile = await readFileQuiet(`${this.recordingPath}.json`);
-
-      if (definitionFile === undefined) {
-        throw new UnexpectedError('Reading recording file failed');
-      }
-
-      const definitions = JSON.parse(definitionFile) as RecordingDefinitions;
-
-      if (processRecordings) {
-        replaceCredentials({
-          definitions,
-          securitySchemes,
-          securityValues,
-          integrationParameters,
-          inputVariables,
-          baseUrl,
-          beforeSave: false,
-        });
-      }
-
-      if (beforeRecordingLoad) {
-        debug(
-          "Calling custom 'beforeRecordingLoad' hook on loaded recording definitions"
-        );
-
-        await beforeRecordingLoad(definitions);
-      }
-
-      define(definitions);
-
-      debug('Loaded and mocked recorded traffic based on recording fixture');
-
-      disableNetConnect();
-
-      if (!isNockActive()) {
-        activateNock();
-      }
     }
+
+    if (beforeRecordingLoad) {
+      debug(
+        "Calling custom 'beforeRecordingLoad' hook on loaded recording definitions"
+      );
+
+      await beforeRecordingLoad(definitions);
+    }
+
+    define(definitions);
+
+    debug('Loaded and mocked recorded traffic based on recording fixture');
+
+    disableNetConnect();
+
+    if (!isNockActive()) {
+      activateNock();
+    }
+  }
+
+  async getRecordings(version?: string): Promise<RecordingDefinitions> {
+    const recordingExists = await exists(this.composeRecordingPath(version));
+
+    if (!recordingExists) {
+      throw new RecordingsNotFoundError();
+    }
+
+    const definitionFile = await readFileQuiet(
+      this.composeRecordingPath(version)
+    );
+
+    if (definitionFile === undefined) {
+      throw new UnexpectedError('Reading recording file failed');
+    }
+
+    return JSON.parse(definitionFile) as RecordingDefinitions;
   }
 
   /**
@@ -258,10 +310,6 @@ export class SuperfaceTest {
     inputVariables?: InputVariables,
     beforeRecordingSave?: ProcessingFunction
   ): Promise<void> {
-    if (!this.recordingPath) {
-      throw new RecordingPathUndefinedError();
-    }
-
     if (record) {
       const definitions = recorder.play();
       recorder.clear();
@@ -271,8 +319,8 @@ export class SuperfaceTest {
         'Recording ended - Restored HTTP requests and cleared recorded traffic'
       );
 
-      if (definitions === undefined || definitions.length === 0) {
-        await writeRecordings(this.recordingPath, []);
+      if (definitions.length === 0) {
+        await writeRecordings(this.composeRecordingPath(), []);
 
         return;
       }
@@ -328,37 +376,41 @@ export class SuperfaceTest {
         );
       }
 
-      const recordingExists = await exists(`${this.recordingPath}.json`);
+      const recordingExists = await exists(this.composeRecordingPath());
 
       if (!recordingExists) {
         // recording file does not exist -> record new traffic
-        await writeRecordings(this.recordingPath, definitions);
-
+        await writeRecordings(this.composeRecordingPath(), definitions);
       } else {
         // recording file exist -> record and compare new traffic
-        const oldRecording = await readFileQuiet(`${this.recordingPath}.json`);
+        const oldRecording = await readFileQuiet(this.composeRecordingPath());
 
         if (oldRecording === undefined) {
           throw new UnexpectedError('Reading recording file failed');
         }
 
-        const oldRecordingDefs = JSON.parse(oldRecording) as RecordingDefinitions;
+        const oldRecordingDefs = JSON.parse(
+          oldRecording
+        ) as RecordingDefinitions;
 
         // Match new HTTP traffic to saved for breaking changes
-        const matching = matchTraffic(oldRecordingDefs, definitions);
-        
+        const matching = await matchTraffic(oldRecordingDefs, definitions);
+
         if (matching) {
           // do not save new recording as there were no breaking changes found
         } else {
           // save new recording next to old one as there were breaking changes and map need to be updated
           // Alert changes
           // can consist of call to some monitoring service or just calling some custom webhook
-          
+
           // Save new recording as unsupported
-          await writeRecordings(`${this.recordingPath}-unsupported`, definitions);
+          await writeRecordings(
+            this.composeRecordingPath('unsupported'),
+            definitions
+          );
         }
       }
-      
+
       debug('Recorded definitions written');
     } else {
       restoreRecordings();
@@ -368,6 +420,25 @@ export class SuperfaceTest {
 
       return;
     }
+  }
+
+  private composeRecordingPath(version?: string): string {
+    if (!this.recordingPath) {
+      throw new RecordingPathUndefinedError();
+    }
+
+    if (version === 'unsupported') {
+      return `${this.recordingPath}-unsupported.json`;
+    }
+
+    if (version !== undefined) {
+      const baseDir = dirname(this.recordingPath);
+      const hash = basename(this.recordingPath);
+
+      return joinPath(baseDir, 'old', `${hash}_${version}.json`);
+    }
+
+    return `${this.recordingPath}.json`;
   }
 
   /**

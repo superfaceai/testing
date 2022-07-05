@@ -533,3 +533,15 @@ export function getGenerator(testInstance: unknown): IGenerator {
 
   return new InputGenerateHash();
 }
+
+export function parsePublishEnv(variable: string | undefined): boolean {
+  if (variable === 'true') {
+    return true;
+  }
+
+  if (variable === 'false') {
+    return false;
+  }
+
+  return false;
+}
