@@ -1,28 +1,50 @@
 import Ajv from 'ajv';
 import createDebug from 'debug';
 import { createSchema } from 'genson-js/dist';
+import { inspect } from 'util';
 
 import { RecordingDefinitions } from '../superface-test.interfaces';
+import { decodeResponse, getHeaderValue } from './matcher.utils';
+
+interface MatchHeaders {
+  old?: string;
+  new?: string;
+}
+
+interface ResponseHeaderMatch {
+  valid: boolean;
+  contentEncoding?: MatchHeaders;
+  contentType?: MatchHeaders;
+}
 
 const schemaValidator = new Ajv();
 const debugMatching = createDebug('superface:testing:matching');
 const debugMatchingSensitive = createDebug(
   'superface:testing:matching:sensitive'
 );
+debugMatchingSensitive(
+  `
+WARNING: YOU HAVE ALLOWED LOGGING SENSITIVE INFORMATION.
+THIS LOGGING LEVEL DOES NOT PREVENT LEAKING SECRETS AND SHOULD NOT BE USED IF THE LOGS ARE GOING TO BE SHARED.
+CONSIDER DISABLING SENSITIVE INFORMATION LOGGING BY APPENDING THE DEBUG ENVIRONMENT VARIABLE WITH ",-*:sensitive".
+`
+);
 
 /**
  * Matches old recording file to new recorded traffic.
  * Assumes we always have correct order of HTTP calls.
  *
- * @param oldTrafficDefs - old recording file
+ * @param oldTrafficDefs - old traffic loaded from recording file
  * @param newTrafficDefs - new recorded traffic
  * @returns boolean representing whether recordings match or not
  */
-export function matchTraffic(
+export async function matchTraffic(
   oldTrafficDefs: RecordingDefinitions,
   newTrafficDefs: RecordingDefinitions
-): boolean {
+): Promise<boolean> {
   if (oldTrafficDefs.length != newTrafficDefs.length) {
+    debugMatching('Number of recorded HTTP calls do not match');
+
     return false;
   }
 
@@ -32,15 +54,15 @@ export function matchTraffic(
     const newTraffic = newTrafficDefs[i];
 
     debugMatching(
-      `Found already existing recordings - Matching HTTP calls  ${
-        oldTraffic.scope + oldTraffic.path
-      } : ${newTraffic.scope + newTraffic.path}`
+      `Matching HTTP calls  ${oldTraffic.scope + oldTraffic.path} : ${
+        newTraffic.scope + newTraffic.path
+      }`
     );
 
     // method
-    debugMatching('Matching request method');
+    debugMatching('\trequest method');
     if (oldTraffic.method !== newTraffic.method) {
-      debugMatchingSensitive(
+      debugMatching(
         `Request method does not match: "${
           oldTraffic.method ?? 'not-existing'
         }" - "${newTraffic.method ?? 'not-existing'}"`
@@ -50,9 +72,9 @@ export function matchTraffic(
     }
 
     // status
-    debugMatching('Matching response status');
+    debugMatching('\tresponse status');
     if (oldTraffic.status !== newTraffic.status) {
-      debugMatchingSensitive(
+      debugMatching(
         `Status codes do not match: "${
           oldTraffic.status ?? 'not-existing'
         }" - "${newTraffic.status ?? 'not-existing'}"`
@@ -62,7 +84,7 @@ export function matchTraffic(
     }
 
     // scope
-    debugMatching('Matching request scope');
+    debugMatching('\trequest scope');
     if (oldTraffic.scope !== newTraffic.scope) {
       debugMatchingSensitive(
         `Scopes do not match: "${oldTraffic.scope}" - "${newTraffic.scope}"`
@@ -72,7 +94,7 @@ export function matchTraffic(
     }
 
     // path
-    debugMatching('Matching request path');
+    debugMatching('\trequest path');
     if (oldTraffic.path !== newTraffic.path) {
       debugMatchingSensitive(
         `Paths do not match: "${oldTraffic.path}" - "${newTraffic.path}"`
@@ -82,48 +104,31 @@ export function matchTraffic(
     }
 
     // response headers
-    const matchResponseHeaders = compareResponseHeaders(
+    const { valid, contentEncoding } = matchResponseHeaders(
       oldTraffic.rawHeaders,
       newTraffic.rawHeaders
     );
 
-    if (!matchResponseHeaders) {
+    if (!valid) {
       return false;
     }
 
-    // body
+    // request body
     if (oldTraffic.body !== undefined) {
-      debugMatching('Matching request body');
-
-      const bodyJsonSchema = createSchema(oldTraffic.body);
-      const valid = schemaValidator.validate(bodyJsonSchema, newTraffic.body);
-
-      if (!valid) {
-        debugMatchingSensitive(
-          'Request body does not match:',
-          schemaValidator.errors
-        );
-        console.warn(
-          `Recordings does not match: ${schemaValidator.errorsText()}`
-        );
-
+      if (!matchRequestBody(oldTraffic.body, newTraffic.body)) {
         return false;
       }
     }
 
     // response
     if (oldTraffic.response !== undefined) {
-      debugMatching('Matching response');
-
-      const responseJsonSchema = createSchema(oldTraffic);
-      const valid = schemaValidator.validate(responseJsonSchema, newTraffic);
-
-      if (!valid) {
-        debugMatching(schemaValidator.errors);
-        console.warn(
-          `Recordings does not match: ${schemaValidator.errorsText()}`
-        );
-
+      if (
+        !(await matchResponse(
+          oldTraffic.response,
+          newTraffic.response,
+          contentEncoding
+        ))
+      ) {
         return false;
       }
     }
@@ -134,11 +139,12 @@ export function matchTraffic(
   return true;
 }
 
-const compareResponseHeaders = (
+function matchResponseHeaders(
   oldHeaders?: string[],
   newHeaders?: string[]
-): boolean => {
-  debugMatching('Matching response headers');
+): ResponseHeaderMatch {
+  let valid = true;
+  debugMatching('\tresponse headers');
 
   if (oldHeaders === undefined) {
     throw new Error('Old traffic does not contain rawHeaders');
@@ -148,28 +154,35 @@ const compareResponseHeaders = (
     throw new Error('New traffic does not contain rawHeaders');
   }
 
-  // check content type
-  const oldHeaderContentType = oldHeaders.find(
-    (_, i, headers) =>
-      headers[i === 0 ? i : i - 1].toLowerCase() === 'content-type'
-  );
-  const newHeaderContentType = newHeaders.find(
-    (_, i, headers) =>
-      headers[i === 0 ? i : i - 1].toLowerCase() === 'content-type'
-  );
+  // match content type
+  const contentType = getHeaderValue(oldHeaders, newHeaders, 'content-type');
 
-  if (oldHeaderContentType !== newHeaderContentType) {
+  if (contentType.old !== contentType.new) {
     debugMatchingSensitive(
       `Response header "Content-Type" does not match: "${
-        oldHeaderContentType ?? 'not-existing'
-      }" - "${newHeaderContentType ?? 'not-existing'}"`
+        contentType.old ?? 'not-existing'
+      }" - "${contentType.new ?? 'not-existing'}"`
     );
 
-    return false;
+    valid = false;
   }
 
-  // check other stuf
-  // ...
+  // match content Encoding
+  const contentEncoding = getHeaderValue(
+    oldHeaders,
+    newHeaders,
+    'content-encoding'
+  );
+
+  if (contentEncoding.old !== contentEncoding.new) {
+    debugMatchingSensitive(
+      `Response header "Content-Encoding" does not match: "${
+        contentEncoding.old ?? 'not-existing'
+      }" - "${contentEncoding.new ?? 'not-existing'}"`
+    );
+
+    valid = false;
+  }
 
   // do we want to check the order of headers or just some?
   // for (let i = 0; i <= oldTraffic.rawHeaders.length; i += 2) {
@@ -177,5 +190,79 @@ const compareResponseHeaders = (
   //   const headerValue = oldTraffic.rawHeaders[i + 1];
   // }
 
+  return {
+    valid,
+    contentEncoding,
+  };
+}
+
+// TODO - check if body is also encoded
+function matchRequestBody(oldBody: unknown, newBody: unknown): boolean {
+  debugMatching('\trequest body');
+
+  const bodyJsonSchema = createSchema(oldBody);
+  debugMatchingSensitive(
+    'generated json schema for body:',
+    inspect(bodyJsonSchema, true, 25)
+  );
+  const valid = schemaValidator.validate(bodyJsonSchema, newBody);
+
+  if (!valid) {
+    debugMatchingSensitive(
+      'Request body does not match:',
+      schemaValidator.errorsText()
+    );
+    debugMatchingSensitive(schemaValidator.errors);
+
+    console.warn(`Recordings does not match: ${schemaValidator.errorsText()}`);
+
+    return false;
+  }
+
   return true;
-};
+}
+
+async function matchResponse(
+  oldResponse: unknown,
+  newResponse: unknown,
+  contentEncoding?: MatchHeaders
+): Promise<boolean> {
+  debugMatching('\tresponse');
+  let oldRes = oldResponse,
+    newRes = newResponse;
+
+  // if responses are encoded - decode them
+  if (contentEncoding?.old !== undefined) {
+    debugMatching(
+      `Decoding old response based on ${contentEncoding.old} encoding`
+    );
+
+    oldRes = await decodeResponse(oldResponse, contentEncoding.old);
+  }
+
+  if (contentEncoding?.new !== undefined) {
+    debugMatching(
+      `Decoding new response based on ${contentEncoding.new} encoding`
+    );
+
+    newRes = await decodeResponse(newResponse, contentEncoding.new);
+  }
+
+  // validate responses
+  const responseJsonSchema = createSchema(oldRes);
+  debugMatchingSensitive(
+    'Generated json schema for response:',
+    inspect(responseJsonSchema, true, 25)
+  );
+
+  const valid = schemaValidator.validate(responseJsonSchema, newRes);
+
+  if (!valid) {
+    debugMatching(schemaValidator.errors);
+    console.warn(`Recordings does not match: ${schemaValidator.errorsText()}`);
+
+    return false;
+  }
+
+  return true;
+}
