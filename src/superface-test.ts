@@ -4,7 +4,6 @@ import {
   ok,
   PerformError,
   Result,
-  SuperfaceClient,
 } from '@superfaceai/one-sdk';
 import createDebug from 'debug';
 import {
@@ -24,6 +23,7 @@ import {
   RecordingDefinitions,
   RecordingProcessOptions,
 } from '.';
+import { ISuperfaceClient, TestClient } from './client';
 import {
   BaseURLNotFoundError,
   ComponentUndefinedError,
@@ -65,6 +65,7 @@ const debugHashing = createDebug('superface:testing:hash');
 
 export class SuperfaceTest {
   private sfConfig: SuperfaceTestConfigPayload;
+  private client: ISuperfaceClient;
   private boundProfileProvider?: BoundProfileProvider;
   private nockConfig?: NockConfig;
   private fixturesPath?: string;
@@ -72,6 +73,7 @@ export class SuperfaceTest {
   private generator: IGenerator;
 
   constructor(sfConfig?: SuperfaceTestConfigPayload, nockConfig?: NockConfig) {
+    this.client = new TestClient();
     this.sfConfig = sfConfig ?? {};
     this.nockConfig = nockConfig;
     this.generator = getGenerator(sfConfig?.testInstance);
@@ -94,9 +96,13 @@ export class SuperfaceTest {
     await this.checkForMapInSuperJson();
 
     this.boundProfileProvider =
-      await this.sfConfig.client.cacheBoundProfileProvider(
-        this.sfConfig.profile.configuration,
-        this.sfConfig.provider.configuration
+      await this.client.boundProfileProviderCache.getCached(
+        this.sfConfig.profile.configuration.cacheKey +
+          this.sfConfig.provider.configuration.cacheKey,
+        () => ({
+          provider: this.boundProfileProvider,
+          expiresAt: Infinity,
+        })
       );
 
     // Create a hash for access to recording files
@@ -377,10 +383,6 @@ export class SuperfaceTest {
    * Sets up entered payload to current Superface configuration
    */
   private prepareSuperfaceConfig(payload: SuperfaceTestConfigPayload): void {
-    if (payload.client !== undefined) {
-      this.sfConfig.client = payload.client;
-    }
-
     if (payload.profile !== undefined) {
       this.sfConfig.profile = payload.profile;
     }
@@ -401,14 +403,8 @@ export class SuperfaceTest {
    * that is represented by string to instance of that corresponding component.
    */
   private async setupSuperfaceConfig(): Promise<void> {
-    if (!this.sfConfig.client) {
-      this.sfConfig.client = new SuperfaceClient();
-
-      debugSetup('Superface client initialized:', this.sfConfig.client);
-    }
-
     if (typeof this.sfConfig.profile === 'string') {
-      this.sfConfig.profile = await this.sfConfig.client.getProfile(
+      this.sfConfig.profile = await this.client.getProfile(
         this.sfConfig.profile
       );
 
@@ -416,7 +412,7 @@ export class SuperfaceTest {
     }
 
     if (typeof this.sfConfig.provider === 'string') {
-      this.sfConfig.provider = await this.sfConfig.client.getProvider(
+      this.sfConfig.provider = await this.client.getProvider(
         this.sfConfig.provider
       );
 
@@ -444,7 +440,7 @@ export class SuperfaceTest {
     assertsPreparedConfig(this.sfConfig);
 
     const profileId = getProfileId(this.sfConfig.profile);
-    const superJson = this.sfConfig.client?.superJson ?? (await getSuperJson());
+    const superJson = this.client.superJson ?? (await getSuperJson());
 
     isProfileProviderLocal(
       this.sfConfig.provider,

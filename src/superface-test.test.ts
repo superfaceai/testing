@@ -5,7 +5,6 @@ import {
   ok,
   Profile,
   Provider,
-  SuperfaceClient,
   SuperJson,
 } from '@superfaceai/one-sdk';
 import nock, { pendingMocks, recorder } from 'nock';
@@ -26,7 +25,6 @@ import {
   getProfileMock,
   getProviderMock,
   getUseCaseMock,
-  SuperfaceClientMock,
 } from './superface.mock';
 import { SuperfaceTest } from './superface-test';
 import {
@@ -67,18 +65,15 @@ describe('SuperfaceTest', () => {
 
   describe('run', () => {
     describe('when preparing configuration', () => {
-      let client: SuperfaceClient,
-        mockedProfile: Profile,
-        mockedProvider: Provider;
+      let mockedProfile: Profile, mockedProvider: Provider;
 
       beforeAll(async () => {
-        client = new SuperfaceClientMock();
         mockedProfile = await getProfileMock('profile');
         mockedProvider = await getProviderMock('provider');
       });
 
       it('throws when Profile is not entered', async () => {
-        const superface = new SuperfaceTest({ client });
+        const superface = new SuperfaceTest();
 
         await expect(
           superface.run({
@@ -89,7 +84,6 @@ describe('SuperfaceTest', () => {
 
       it('throws when UseCase is entered, but Profile is not entered', async () => {
         const superface = new SuperfaceTest({
-          client,
           useCase: 'some-use-case',
         });
 
@@ -101,7 +95,7 @@ describe('SuperfaceTest', () => {
       });
 
       it('throws when Provider is not entered', async () => {
-        const superface = new SuperfaceTest({ client, profile: mockedProfile });
+        const superface = new SuperfaceTest({ profile: mockedProfile });
 
         await expect(
           superface.run({
@@ -112,7 +106,6 @@ describe('SuperfaceTest', () => {
 
       it('throws when UseCase is not entered', async () => {
         const superface = new SuperfaceTest({
-          client,
           profile: mockedProfile,
           provider: mockedProvider,
         });

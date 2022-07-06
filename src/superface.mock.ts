@@ -147,14 +147,14 @@ export const getMockedSfConfig = async (options?: {
   securityValues?: SecurityValues[];
   parameters?: Record<string, string>;
 }): Promise<CompleteSuperfaceTestConfig> => ({
-  client: new SuperfaceClientMock({
-    superJson: options?.superJson ?? DEFAULT_SUPERJSON,
-    configuration: {
-      baseUrl: options?.baseUrl ?? 'https://base.url',
-      securitySchemes: options?.securitySchemes,
-      parameters: options?.parameters,
-    },
-  }),
+  // client: new SuperfaceClientMock({
+  //   superJson: options?.superJson ?? DEFAULT_SUPERJSON,
+  //   configuration: {
+  //     baseUrl: options?.baseUrl ?? 'https://base.url',
+  //     securitySchemes: options?.securitySchemes,
+  //     parameters: options?.parameters,
+  //   },
+  // }),
   profile: await getProfileMock('profile'),
   provider: await getProviderMock('provider', {
     securityValues: options?.securityValues ?? [],

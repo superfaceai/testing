@@ -8,20 +8,18 @@ import {
 } from '@superfaceai/ast';
 import {
   BoundProfileProvider,
+  getValue,
+  isPrimitive,
+  NonPrimitive,
+  Primitive,
   Profile,
   Provider,
   SuperfaceClient,
   SuperJson,
   UnexpectedError,
   UseCase,
-} from '@superfaceai/one-sdk';
-import {
-  getValue,
-  isPrimitive,
-  NonPrimitive,
-  Primitive,
   Variables,
-} from '@superfaceai/one-sdk/dist/internal/interpreter/variables';
+} from '@superfaceai/one-sdk';
 import createDebug from 'debug';
 import { join as joinPath } from 'path';
 
