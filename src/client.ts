@@ -1,13 +1,16 @@
-import { SuperJsonDocument } from '@superfaceai/ast';
 import {
+  AuthCache,
+  BoundProfileProvider,
   Config,
   Events,
   IBoundProfileProvider,
   IConfig,
   ICrypto,
   IEnvironment,
+  IFetch,
   IFileSystem,
   ILogger,
+  Interceptable,
   InternalClient,
   noConfiguredProviderError,
   NodeCrypto,
@@ -17,39 +20,59 @@ import {
   NodeLogger,
   NodeTimers,
   Profile,
+  ProfileProvider,
   Provider,
   ProviderConfiguration,
   registerHooks,
+  SecurityConfiguration,
   SuperCache,
   SuperJson,
   unconfiguredProviderError,
 } from '@superfaceai/one-sdk';
 
+import { CompleteSuperfaceTestConfig } from './superface-test.interfaces';
+
 export interface ISuperfaceClient {
   readonly superJson: SuperJson;
-  readonly boundProfileProviderCache: SuperCache<{
+  readonly cache: SuperCache<{
     provider: IBoundProfileProvider;
     expiresAt: number;
   }>;
+
+  config: Config;
+  events: Events;
+  fileSystem: IFileSystem;
+  crypto: ICrypto;
+  fetchInstance: IFetch & Interceptable & AuthCache;
 
   getProfile(profileId: string): Promise<Profile>;
   getProvider(providerName: string): Promise<Provider>;
   getProviderForProfile(profileId: string): Promise<Provider>;
   on(...args: Parameters<Events['on']>): void;
+
+  addBoundProfileProvider(
+    config: CompleteSuperfaceTestConfig,
+    securityValues?: SecurityConfiguration[]
+  ): Promise<BoundProfileProviderConfiguration>;
 }
+
+export type BoundProfileProviderConfiguration = ConstructorParameters<
+  typeof BoundProfileProvider
+>[4];
 
 /**
  * Internal Superface client for testing
  * @internal
  */
 export class TestClient implements ISuperfaceClient {
-  public readonly superJson: SuperJson;
-  public readonly boundProfileProviderCache: SuperCache<{
+  public readonly cache: SuperCache<{
     provider: IBoundProfileProvider;
     expiresAt: number;
   }>;
 
+  public fetchInstance: IFetch & Interceptable & AuthCache;
   public config: Config;
+  public fileSystem: IFileSystem;
   public events: Events;
   public environment: IEnvironment;
   public internalClient: InternalClient;
@@ -58,7 +81,7 @@ export class TestClient implements ISuperfaceClient {
   public crypto: ICrypto;
 
   constructor(
-    superJson?: SuperJson | SuperJsonDocument,
+    public readonly superJson: SuperJson,
     parameters?: {
       configOverride?: Partial<IConfig>;
       fileSystemOverride?: Partial<IFileSystem>;
@@ -75,85 +98,63 @@ export class TestClient implements ISuperfaceClient {
     this.events = new Events(this.timers, this.logger);
     registerHooks(this.events, this.timers, this.logger);
 
-    this.boundProfileProviderCache = new SuperCache<{
+    this.cache = new SuperCache<{
       provider: IBoundProfileProvider;
       expiresAt: number;
     }>();
 
-    let fileSystem: IFileSystem = NodeFileSystem;
+    this.fileSystem = NodeFileSystem;
 
     if (parameters?.fileSystemOverride !== undefined) {
-      fileSystem = {
-        ...fileSystem,
+      this.fileSystem = {
+        ...this.fileSystem,
         ...parameters.fileSystemOverride,
       };
     }
 
-    this.superJson = resolveSuperJson(
-      this.config.superfacePath,
-      this.environment,
-      this.crypto,
-      superJson,
-      this.logger
-    );
+    this.fetchInstance = new NodeFetch(this.timers);
 
     this.internalClient = new InternalClient(
       this.events,
       this.superJson,
       this.config,
       this.timers,
-      fileSystem,
-      this.boundProfileProviderCache,
+      this.fileSystem,
+      this.cache,
       this.crypto,
-      new NodeFetch(this.timers),
+      this.fetchInstance,
       this.logger
     );
   }
 
-  // public addBoundProfileProvider(
-  //   profile: ProfileDocumentNode,
-  //   map: MapDocumentNode,
-  //   providerJson: ProviderJson,
-  //   baseUrl: string,
-  //   securityValues: SecurityConfiguration[] = [],
-  //   profileConfigOverride?: ProfileConfiguration
-  // ): void {
-  //   const providerConfiguration = new ProviderConfiguration(
-  //     providerJson.name,
-  //     []
-  //   );
-  //   const boundProfileProvider = new BoundProfileProvider(
-  //     profile,
-  //     map,
-  //     providerJson,
-  //     this.config,
-  //     {
-  //       services: ServiceSelector.withDefaultUrl(baseUrl),
-  //       security: securityValues,
-  //     },
-  //     this.crypto,
-  //     new NodeFetch(this.timers),
-  //     this.logger,
-  //     this.events
-  //   );
+  public async addBoundProfileProvider(
+    { profile, provider }: CompleteSuperfaceTestConfig,
+    securityValues?: SecurityConfiguration[]
+  ): Promise<BoundProfileProviderConfiguration> {
+    const profileProvider = new ProfileProvider(
+      this.superJson,
+      profile.configuration,
+      provider.configuration,
+      this.config,
+      this.events,
+      this.fileSystem,
+      this.crypto,
+      this.fetchInstance
+    );
 
-  //   const profileId = ProfileId.fromParameters({
-  //     scope: profile.header.scope,
-  //     name: profile.header.name,
-  //     version: ProfileVersion.fromParameters(profile.header.version),
-  //   });
-  //   const profileConfiguration =
-  //     profileConfigOverride ??
-  //     new ProfileConfiguration(
-  //       profileId.withoutVersion,
-  //       profileId.version?.toString() ?? 'unknown'
-  //     );
+    // get bound profile provider
+    const boundProfileProvider = await profileProvider.bind({
+      security: securityValues,
+    });
 
-  //   this.cache.getCached(
-  //     profileConfiguration.cacheKey + providerConfiguration.cacheKey,
-  //     () => ({ provider: boundProfileProvider, expiresAt: Infinity })
-  //   );
-  // }
+    // put created profile provider into cache
+    this.cache.getCached(
+      profile.configuration.cacheKey + provider.configuration.cacheKey,
+      () => ({ provider: boundProfileProvider, expiresAt: Infinity })
+    );
+
+    return boundProfileProvider.configuration;
+  }
 
   public on(...args: Parameters<Events['on']>): void {
     this.events.on(...args);
@@ -171,30 +172,6 @@ export class TestClient implements ISuperfaceClient {
     return getProviderForProfile(this.superJson, profileId);
   }
 }
-
-const resolveSuperJson = (
-  path: string,
-  environment: IEnvironment,
-  crypto: ICrypto,
-  superJson?: SuperJson | SuperJsonDocument,
-  logger?: ILogger
-): SuperJson => {
-  if (superJson === undefined) {
-    return SuperJson.loadSync(
-      path,
-      NodeFileSystem,
-      environment,
-      crypto,
-      logger
-    ).unwrap();
-  }
-
-  if (superJson instanceof SuperJson) {
-    return superJson;
-  }
-
-  return new SuperJson(superJson);
-};
 
 export function getProvider(
   superJson: SuperJson,

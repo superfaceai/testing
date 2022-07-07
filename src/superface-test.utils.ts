@@ -7,13 +7,13 @@ import {
   SecurityValues,
 } from '@superfaceai/ast';
 import {
-  BoundProfileProvider,
   getValue,
   isPrimitive,
   NonPrimitive,
   Primitive,
   Profile,
   Provider,
+  SecurityConfiguration,
   SuperfaceClient,
   SuperJson,
   UnexpectedError,
@@ -30,6 +30,7 @@ import {
   RecordingDefinitions,
   SuperfaceTestConfigPayload,
 } from '.';
+import { BoundProfileProviderConfiguration } from './client';
 import {
   ComponentUndefinedError,
   InstanceMissingError,
@@ -59,7 +60,6 @@ const debug = createDebug('superface:testing');
 export function assertsPreparedConfig(
   sfConfig: SuperfaceTestConfigPayload
 ): asserts sfConfig is CompleteSuperfaceTestConfig {
-  assertsPreparedClient(sfConfig.client);
   assertsPreparedProfile(sfConfig.profile);
   assertsPreparedProvider(sfConfig.provider);
   assertsPreparedUseCase(sfConfig.useCase);
@@ -110,9 +110,9 @@ export function assertsPreparedUseCase(
 }
 
 export function assertBoundProfileProvider(
-  boundProfileProvider: BoundProfileProvider | undefined
-): asserts boundProfileProvider is BoundProfileProvider {
-  if (boundProfileProvider === undefined) {
+  configuration: BoundProfileProviderConfiguration | undefined
+): asserts configuration is BoundProfileProviderConfiguration {
+  if (configuration === undefined) {
     throw new ComponentUndefinedError('BoundProfileProvider');
   }
 }
@@ -313,7 +313,7 @@ export function replaceCredentials({
   baseUrl,
 }: {
   definitions: RecordingDefinition[];
-  securitySchemes: SecurityScheme[];
+  securitySchemes: SecurityConfiguration[];
   securityValues: SecurityValues[];
   integrationParameters: Record<string, string>;
   inputVariables?: Record<string, Primitive>;

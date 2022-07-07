@@ -1,10 +1,4 @@
-import {
-  BoundProfileProvider,
-  err,
-  ok,
-  PerformError,
-  Result,
-} from '@superfaceai/one-sdk';
+import { err, ok, PerformError, Result } from '@superfaceai/one-sdk';
 import createDebug from 'debug';
 import {
   activate as activateNock,
@@ -23,7 +17,11 @@ import {
   RecordingDefinitions,
   RecordingProcessOptions,
 } from '.';
-import { ISuperfaceClient, TestClient } from './client';
+import {
+  BoundProfileProviderConfiguration,
+  ISuperfaceClient,
+  TestClient,
+} from './client';
 import {
   BaseURLNotFoundError,
   ComponentUndefinedError,
@@ -65,15 +63,14 @@ const debugHashing = createDebug('superface:testing:hash');
 
 export class SuperfaceTest {
   private sfConfig: SuperfaceTestConfigPayload;
-  private client: ISuperfaceClient;
-  private boundProfileProvider?: BoundProfileProvider;
+  private client?: ISuperfaceClient;
+  private boundProfileProviderConfiguration?: BoundProfileProviderConfiguration;
   private nockConfig?: NockConfig;
   private fixturesPath?: string;
   private recordingPath?: string;
   private generator: IGenerator;
 
   constructor(sfConfig?: SuperfaceTestConfigPayload, nockConfig?: NockConfig) {
-    this.client = new TestClient();
     this.sfConfig = sfConfig ?? {};
     this.nockConfig = nockConfig;
     this.generator = getGenerator(sfConfig?.testInstance);
@@ -95,15 +92,11 @@ export class SuperfaceTest {
     assertsPreparedConfig(this.sfConfig);
     await this.checkForMapInSuperJson();
 
-    this.boundProfileProvider =
-      await this.client.boundProfileProviderCache.getCached(
-        this.sfConfig.profile.configuration.cacheKey +
-          this.sfConfig.provider.configuration.cacheKey,
-        () => ({
-          provider: this.boundProfileProvider,
-          expiresAt: Infinity,
-        })
-      );
+    // setup bound profile provider
+    if (this.boundProfileProviderConfiguration === undefined) {
+      this.boundProfileProviderConfiguration =
+        await this.client?.addBoundProfileProvider(this.sfConfig);
+    }
 
     // Create a hash for access to recording files
     const { input, testName } = testCase;
@@ -182,13 +175,13 @@ export class SuperfaceTest {
     }
 
     assertsPreparedConfig(this.sfConfig);
-    assertBoundProfileProvider(this.boundProfileProvider);
+    assertBoundProfileProvider(this.boundProfileProviderConfiguration);
 
-    const { configuration } = this.boundProfileProvider;
-    const integrationParameters = configuration.parameters ?? {};
-    const securitySchemes = configuration.security;
+    const { parameters, security, services } =
+      this.boundProfileProviderConfiguration;
+    const integrationParameters = parameters ?? {};
     const securityValues = this.sfConfig.provider.configuration.security;
-    const baseUrl = configuration.services.getUrl();
+    const baseUrl = services.getUrl();
 
     if (baseUrl === undefined) {
       throw new BaseURLNotFoundError(this.sfConfig.provider.configuration.name);
@@ -224,7 +217,7 @@ export class SuperfaceTest {
       if (processRecordings) {
         replaceCredentials({
           definitions,
-          securitySchemes,
+          securitySchemes: security,
           securityValues,
           integrationParameters,
           inputVariables,
@@ -288,15 +281,15 @@ export class SuperfaceTest {
 
       assertsDefinitionsAreNotStrings(definitions);
       assertsPreparedConfig(this.sfConfig);
-      assertBoundProfileProvider(this.boundProfileProvider);
+      assertBoundProfileProvider(this.boundProfileProviderConfiguration);
 
-      const { configuration } = this.boundProfileProvider;
       const securityValues = this.sfConfig.provider.configuration.security;
-      const securitySchemes = configuration.security;
-      const integrationParameters = configuration.parameters ?? {};
+      const { security, parameters, services } =
+        this.boundProfileProviderConfiguration;
+      const integrationParameters = parameters ?? {};
 
       if (processRecordings) {
-        const baseUrl = configuration.services.getUrl();
+        const baseUrl = services.getUrl();
 
         if (baseUrl === undefined) {
           throw new BaseURLNotFoundError(
@@ -306,7 +299,7 @@ export class SuperfaceTest {
 
         replaceCredentials({
           definitions,
-          securitySchemes,
+          securitySchemes: security,
           securityValues,
           integrationParameters,
           inputVariables,
@@ -324,14 +317,14 @@ export class SuperfaceTest {
       }
 
       if (
-        securitySchemes.length > 0 ||
+        security.length > 0 ||
         securityValues.length > 0 ||
         (integrationParameters &&
           Object.values(integrationParameters).length > 0)
       ) {
         checkSensitiveInformation(
           definitions,
-          securitySchemes,
+          security,
           securityValues,
           integrationParameters
         );
@@ -403,6 +396,10 @@ export class SuperfaceTest {
    * that is represented by string to instance of that corresponding component.
    */
   private async setupSuperfaceConfig(): Promise<void> {
+    if (this.client === undefined) {
+      this.client = new TestClient(await getSuperJson());
+    }
+
     if (typeof this.sfConfig.profile === 'string') {
       this.sfConfig.profile = await this.client.getProfile(
         this.sfConfig.profile
@@ -440,7 +437,7 @@ export class SuperfaceTest {
     assertsPreparedConfig(this.sfConfig);
 
     const profileId = getProfileId(this.sfConfig.profile);
-    const superJson = this.client.superJson ?? (await getSuperJson());
+    const superJson = this.client?.superJson ?? (await getSuperJson());
 
     isProfileProviderLocal(
       this.sfConfig.provider,
