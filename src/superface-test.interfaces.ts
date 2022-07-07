@@ -16,7 +16,6 @@ export interface SuperfaceTestConfigPayload {
   profile?: Profile | string;
   provider?: Provider | string;
   useCase?: UseCase | string;
-  testInstance?: unknown;
 }
 
 export type InputVariables = Record<string, Primitive>;
@@ -47,6 +46,7 @@ export interface NockConfig {
   path?: string;
   fixture?: string;
   enableReqheadersRecording?: boolean;
+  testInstance?: unknown;
 }
 
 export type RecordingDefinition = Definition & {
