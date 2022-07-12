@@ -1,2 +1,2 @@
-export * from './superface-test';
-export * from './superface-test.interfaces';
+export * from './client/superface-test';
+export * from './interfaces';

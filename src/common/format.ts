@@ -1,22 +1,10 @@
-import { join as joinPath } from 'path';
-
-import { CompleteSuperfaceTestConfig } from '..';
+import { CompleteSuperfaceTestConfig } from '../interfaces';
 
 const ISO_DATE_REGEX =
   /(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2}(?:\.\d*)?)((-(\d{2}):(\d{2})|Z)?)/gm;
 
 export const removeTimestamp = (payload: string): string =>
   payload.replace(ISO_DATE_REGEX, '');
-
-export function getFixtureName(sfConfig: CompleteSuperfaceTestConfig): string {
-  const { profile, provider, useCase } = sfConfig;
-
-  return joinPath(
-    profile.configuration.id,
-    provider.configuration.name,
-    useCase.name
-  );
-}
 
 function isValidPayload(payload: string, match: string): boolean {
   if (payload === '*') {
