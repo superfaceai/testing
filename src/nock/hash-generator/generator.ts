@@ -1,13 +1,9 @@
 import { createHash } from 'crypto';
 import createDebug from 'debug';
 
-import { HashOptions } from './superface-test.interfaces';
+import { HashOptions, IGenerator } from '../../interfaces';
 
 const debugHashing = createDebug('superface:testing:hash');
-
-export interface IGenerator {
-  hash: (options: HashOptions) => string;
-}
 
 export const generate = (value: string): string => {
   debugHashing('Trying to generate hash based on specified value:', value);

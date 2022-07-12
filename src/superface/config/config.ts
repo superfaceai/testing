@@ -7,42 +7,9 @@ import {
 } from '@superfaceai/one-sdk';
 import createDebug from 'debug';
 
-import { ComponentUndefinedError } from '../common/errors';
-import {
-  getProfileId,
-  getSuperJson,
-  isProfileProviderLocal,
-} from '../superface-test.utils';
-import { assertsPreparedConfig } from './config.utils';
-
-interface TestPayload {
-  profile?: Profile | string;
-  provider?: Provider | string;
-  useCase?: UseCase | string;
-}
-
-export interface SuperfaceTestConfig {
-  client?: SuperfaceClient;
-  profile?: Profile;
-  provider?: Provider;
-  useCase?: UseCase;
-  boundProfileProvider?: BoundProfileProvider;
-}
-export type CompleteSuperfaceTestConfig = Required<SuperfaceTestConfig>;
-
-export interface ITestConfig {
-  readonly payload: TestPayload;
-
-  client?: SuperfaceClient;
-  profile?: Profile;
-  provider?: Provider;
-  useCase?: UseCase;
-  boundProfileProvider?: BoundProfileProvider;
-
-  updateConfig: (payload: TestPayload) => void;
-  setup: () => Promise<void>;
-  get: () => CompleteSuperfaceTestConfig;
-}
+import { ComponentUndefinedError } from '../../common/errors';
+import { CompleteSuperfaceTestConfig, ITestConfig, TestPayload } from '../../interfaces';
+import { assertsPreparedConfig, getProfileId, getSuperJson, isProfileProviderLocal } from './utils';
 
 const debugSetup = createDebug('superface:testing:setup');
 
@@ -55,7 +22,26 @@ export class TestConfig implements ITestConfig {
 
   constructor(public readonly payload: TestPayload) {}
 
-  public updateConfig(payload: TestPayload): void {
+  public async get(
+    testCase: TestPayload
+  ): Promise<CompleteSuperfaceTestConfig> {
+    this.updateConfig(testCase);
+    await this.setup();
+
+    const config = {
+      client: this.client,
+      profile: this.profile,
+      provider: this.provider,
+      useCase: this.useCase,
+      boundProfileProvider: this.boundProfileProvider,
+    };
+
+    assertsPreparedConfig(config);
+
+    return config;
+  }
+
+  private updateConfig(payload: TestPayload): void {
     if (payload.profile !== undefined) {
       this.payload.profile = payload.profile;
     }
@@ -71,23 +57,9 @@ export class TestConfig implements ITestConfig {
     debugSetup('Superface configuration prepared:', this.payload);
   }
 
-  public async setup(): Promise<void> {
+  private async setup(): Promise<void> {
     await this.setupSuperfaceComponents();
     await this.checkForMapInSuperJson();
-  }
-
-  public get(): CompleteSuperfaceTestConfig {
-    const config = {
-      client: this.client,
-      profile: this.profile,
-      provider: this.provider,
-      useCase: this.useCase,
-      boundProfileProvider: this.boundProfileProvider,
-    };
-
-    assertsPreparedConfig(config);
-
-    return config;
   }
 
   /**
@@ -105,12 +77,16 @@ export class TestConfig implements ITestConfig {
       this.profile = await this.client.getProfile(this.payload.profile);
 
       debugSetup('Superface Profile transformed:', this.profile);
+    } else if (this.payload.profile instanceof Profile) {
+      this.profile = this.payload.profile;
     }
 
     if (typeof this.payload.provider === 'string') {
       this.provider = await this.client.getProvider(this.payload.provider);
 
       debugSetup('Superface Provider transformed:', this.provider);
+    } else if (this.payload.provider instanceof Provider) {
+      this.provider = this.payload.provider;
     }
 
     if (typeof this.payload.useCase === 'string') {
@@ -121,6 +97,8 @@ export class TestConfig implements ITestConfig {
       this.useCase = this.profile.getUseCase(this.payload.useCase);
 
       debugSetup('Superface UseCase transformed:', this.useCase);
+    } else if (this.payload.useCase instanceof UseCase) {
+      this.useCase = this.payload.useCase;
     }
   }
 

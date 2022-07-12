@@ -9,10 +9,11 @@ import createDebug from 'debug';
 import { ReplyBody, RequestBodyMatcher } from 'nock/types';
 import { URL } from 'url';
 
-import { RecordingDefinition } from '..';
-import { UnexpectedError } from '../common/errors';
+import { UnexpectedError } from '../../../common/errors';
+import { RecordingDefinition } from '../../../interfaces/nock';
+import { includes, replaceCredential } from './utils';
 
-interface ReplaceOptions {
+export interface ReplaceOptions {
   definition: RecordingDefinition;
   credential: string;
   placeholder: string;
@@ -22,47 +23,13 @@ const debug = createDebug('superface:testing:recordings');
 const debugSensitive = createDebug('superface:testing:recordings:sensitive');
 debugSensitive(
   `
-WARNING: YOU HAVE ALLOWED LOGGING SENSITIVE INFORMATION.
-THIS LOGGING LEVEL DOES NOT PREVENT LEAKING SECRETS AND SHOULD NOT BE USED IF THE LOGS ARE GOING TO BE SHARED.
-CONSIDER DISABLING SENSITIVE INFORMATION LOGGING BY APPENDING THE DEBUG ENVIRONMENT VARIABLE WITH ",-*:sensitive".
-`
+  WARNING: YOU HAVE ALLOWED LOGGING SENSITIVE INFORMATION.
+  THIS LOGGING LEVEL DOES NOT PREVENT LEAKING SECRETS AND SHOULD NOT BE USED IF THE LOGS ARE GOING TO BE SHARED.
+  CONSIDER DISABLING SENSITIVE INFORMATION LOGGING BY APPENDING THE DEBUG ENVIRONMENT VARIABLE WITH ",-*:sensitive".
+  `
 );
 
 const AUTH_HEADER_NAME = 'Authorization';
-
-const replace = (
-  payload: string,
-  credential: string,
-  placeholder: string
-): string =>
-  payload.replace(
-    new RegExp(`${credential}|${encodeURIComponent(credential)}`, 'g'),
-    placeholder
-  );
-
-const includes = (payload: string, credential: string): boolean =>
-  payload.includes(credential) ||
-  payload.includes(encodeURIComponent(credential));
-
-function replaceCredential({
-  payload,
-  credential,
-  placeholder,
-}: {
-  payload: string;
-  credential: string;
-  placeholder: string;
-}): string {
-  if (credential !== '') {
-    debugSensitive(
-      `Replacing credential: '${credential}' for placeholder: '${placeholder}'`
-    );
-
-    return replace(payload, credential, placeholder);
-  }
-
-  return payload;
-}
 
 function replaceCredentialInHeaders({
   definition,

@@ -15,7 +15,7 @@ import {
 } from '@superfaceai/one-sdk';
 import { ServiceSelector } from '@superfaceai/one-sdk/dist/private';
 
-import { CompleteSuperfaceTestConfig } from '.';
+import { CompleteSuperfaceTestConfig } from '../../interfaces/config';
 
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 
