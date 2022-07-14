@@ -1,11 +1,8 @@
-import { MatchError, MatchErrorKind } from './error-collector.interfaces';
-
-export interface IErrorCollector {
-  readonly recordingPath: string;
-
-  add: (error: MatchError) => void;
-  get: (kind?: MatchErrorKind) => MatchError[];
-}
+import {
+  IErrorCollector,
+  MatchError,
+  MatchErrorKind,
+} from './error-collector.interfaces';
 
 export class ErrorCollector implements IErrorCollector {
   private errors: MatchError[] = [];

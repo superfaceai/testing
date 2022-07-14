@@ -73,3 +73,10 @@ export type MatchError =
   | MatchErrorRequestHeaders
   | MatchErrorRequestBody
   | MatchErrorResponse;
+
+export interface IErrorCollector {
+  readonly recordingPath: string;
+
+  add: (error: MatchError) => void;
+  get: (kind?: MatchErrorKind) => MatchError[];
+}

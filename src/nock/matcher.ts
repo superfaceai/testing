@@ -7,11 +7,8 @@ import {
   RecordingDefinition,
   RecordingDefinitions,
 } from '../superface-test.interfaces';
-import {
-  ErrorCollector,
-  IErrorCollector,
-  MatchErrorKind,
-} from './error-collector';
+import { ErrorCollector } from './error-collector';
+import { IErrorCollector, MatchErrorKind } from './error-collector.interfaces';
 import { decodeResponse, getHeaderValue } from './matcher.utils';
 
 interface MatchHeaders {

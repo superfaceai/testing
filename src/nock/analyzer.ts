@@ -1,5 +1,5 @@
 import { CompleteSuperfaceTestConfig } from '../superface-test.interfaces';
-import { IErrorCollector } from './error-collector';
+import { IErrorCollector } from './error-collector.interfaces';
 
 export interface AnalysisResult {
   profile: string;
