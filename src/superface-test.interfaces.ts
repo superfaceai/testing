@@ -12,6 +12,8 @@ import {
 } from '@superfaceai/one-sdk/dist/internal/interpreter/variables';
 import { Definition } from 'nock/types';
 
+import { AnalysisResult } from './nock/analyzer';
+
 export interface SuperfaceTestConfigPayload {
   client?: SuperfaceClient;
   profile?: Profile | string;
@@ -26,6 +28,8 @@ export interface HashOptions {
   input: NonPrimitive;
   testName?: string;
 }
+
+export type AlertFunction = (analysis: AnalysisResult) => void | Promise<void>;
 
 export type SuperfaceTestRun = Omit<
   SuperfaceTestConfigPayload,
@@ -65,4 +69,5 @@ export interface RecordingProcessOptions {
   beforeRecordingLoad?: ProcessingFunction;
   hideInput?: string[];
   recordingVersion?: string;
+  alert?: AlertFunction;
 }

@@ -26,13 +26,6 @@ import createDebug from 'debug';
 import { join as joinPath } from 'path';
 
 import {
-  CompleteSuperfaceTestConfig,
-  InputVariables,
-  RecordingDefinition,
-  RecordingDefinitions,
-  SuperfaceTestConfigPayload,
-} from '.';
-import {
   ComponentUndefinedError,
   InstanceMissingError,
   MapUndefinedError,
@@ -51,6 +44,13 @@ import {
   replaceInputInDefinition,
   replaceParameterInDefinition,
 } from './nock';
+import {
+  CompleteSuperfaceTestConfig,
+  InputVariables,
+  RecordingDefinition,
+  RecordingDefinitions,
+  SuperfaceTestConfigPayload,
+} from './superface-test.interfaces';
 
 const debug = createDebug('superface:testing');
 

@@ -19,12 +19,6 @@ import {
 import { basename, dirname, join as joinPath } from 'path';
 
 import {
-  InputVariables,
-  ProcessingFunction,
-  RecordingDefinitions,
-  RecordingProcessOptions,
-} from '.';
-import {
   BaseURLNotFoundError,
   ComponentUndefinedError,
   FixturesPathUndefinedError,
@@ -36,9 +30,15 @@ import { getFixtureName, matchWildCard } from './common/format';
 import { exists, mkdirQuiet, readFileQuiet, rename } from './common/io';
 import { writeRecordings } from './common/output-stream';
 import { IGenerator } from './generate-hash';
-import { matchTraffic } from './nock/matcher';
+import { Analyzer } from './nock/analyzer';
+import { Matcher } from './nock/matcher';
 import {
+  AlertFunction,
+  InputVariables,
   NockConfig,
+  ProcessingFunction,
+  RecordingDefinitions,
+  RecordingProcessOptions,
   SuperfaceTestConfigPayload,
   SuperfaceTestRun,
   TestingReturn,
@@ -130,12 +130,13 @@ export class SuperfaceTest {
         provider: this.sfConfig.provider,
       });
 
-      await this.endRecording(
+      await this.endRecording({
         record,
         processRecordings,
         inputVariables,
-        options?.beforeRecordingSave
-      );
+        beforeRecordingSave: options?.beforeRecordingSave,
+        alert: options?.alert,
+      });
     } catch (error: unknown) {
       restoreRecordings();
       recorder.clear();
@@ -304,12 +305,19 @@ export class SuperfaceTest {
    * based on security schemes and integration parameters defined in provider.json,
    * unless user pass in false for parameter `processRecordings`.
    */
-  private async endRecording(
-    record: boolean,
-    processRecordings: boolean,
-    inputVariables?: InputVariables,
-    beforeRecordingSave?: ProcessingFunction
-  ): Promise<void> {
+  private async endRecording({
+    record,
+    processRecordings,
+    inputVariables,
+    beforeRecordingSave,
+    alert,
+  }: {
+    record: boolean;
+    processRecordings: boolean;
+    inputVariables?: InputVariables;
+    beforeRecordingSave?: ProcessingFunction;
+    alert?: AlertFunction;
+  }): Promise<void> {
     if (record) {
       const definitions = recorder.play();
       recorder.clear();
@@ -386,7 +394,7 @@ export class SuperfaceTest {
         const oldRecording = await readFileQuiet(this.composeRecordingPath());
 
         if (oldRecording === undefined) {
-          throw new UnexpectedError('Reading recording file failed');
+          throw new UnexpectedError('Reading old recording file failed');
         }
 
         const oldRecordingDefs = JSON.parse(
@@ -394,14 +402,21 @@ export class SuperfaceTest {
         ) as RecordingDefinitions;
 
         // Match new HTTP traffic to saved for breaking changes
-        const matching = await matchTraffic(oldRecordingDefs, definitions);
+        const match = await Matcher.match(
+          this.recordingPath ?? '',
+          oldRecordingDefs,
+          definitions
+        );
 
-        if (matching) {
+        if (match.valid) {
           // do not save new recording as there were no breaking changes found
         } else {
-          // save new recording next to old one as there were breaking changes and map need to be updated
+          const analysis = Analyzer.run(this.sfConfig, match.errors);
+
           // Alert changes
-          // can consist of call to some monitoring service or just calling some custom webhook
+          if (alert !== undefined) {
+            await alert(analysis);
+          }
 
           // Save new recording as unsupported
           await writeRecordings(
