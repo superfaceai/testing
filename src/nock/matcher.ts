@@ -19,6 +19,7 @@ interface MatchHeaders {
 interface ResponseHeaderMatch {
   contentEncoding?: MatchHeaders;
   contentType?: MatchHeaders;
+  contentLength?: MatchHeaders;
 }
 
 const schemaValidator = new Ajv();
@@ -126,10 +127,10 @@ export class Matcher {
       });
     }
 
-    // scope
-    debugMatching('\trequest scope');
+    // base URL
+    debugMatching('\trequest base URL');
     if (oldTraffic.scope !== newTraffic.scope) {
-      const message = `Scopes do not match: "${oldTraffic.scope}" - "${newTraffic.scope}"`;
+      const message = `Request base URL does not match: "${oldTraffic.scope}" - "${newTraffic.scope}"`;
       debugMatchingSensitive(message);
 
       this.errorCollector.add({
@@ -156,8 +157,8 @@ export class Matcher {
 
     // response headers
     const { contentEncoding } = this.matchResponseHeaders(
-      oldTraffic.rawHeaders,
-      newTraffic.rawHeaders
+      oldTraffic.rawHeaders ?? [],
+      newTraffic.rawHeaders ?? []
     );
 
     // request body
@@ -176,18 +177,10 @@ export class Matcher {
   }
 
   private static matchResponseHeaders(
-    oldHeaders?: string[],
-    newHeaders?: string[]
+    oldHeaders: string[],
+    newHeaders: string[]
   ): ResponseHeaderMatch {
     debugMatching('\tresponse headers');
-
-    if (oldHeaders === undefined) {
-      throw new Error('Old traffic does not contain rawHeaders');
-    }
-
-    if (newHeaders === undefined) {
-      throw new Error('New traffic does not contain rawHeaders');
-    }
 
     // match content type
     const contentType = getHeaderValue(oldHeaders, newHeaders, 'content-type');
@@ -227,13 +220,34 @@ export class Matcher {
       });
     }
 
+    const contentLength = getHeaderValue(oldHeaders, newHeaders, 'content-length');
+
+    if (contentLength.old !== contentLength.new) {
+      const message = `Response header "Content-Length" does not match: "${
+        contentLength.old ?? 'not-existing'
+      }" - "${contentLength.new ?? 'not-existing'}"`;
+      debugMatchingSensitive(message);
+
+      this.errorCollector.add({
+        kind: MatchErrorKind.RESPONSE_HEADERS,
+        old: contentLength.old,
+        new: contentLength.new,
+        message,
+      });
+    }
+
+    // list of other headers to add support for:
+    // Access-Control-Allow-Origin, access-control-allow-headers, access-control-allow-methods
+    // Cache-Control, Vary, Transfer-Encoding,
+    // Pragma, Server, Connection, referrer-policy?
+
     return {
       contentType,
       contentEncoding,
+      contentLength
     };
   }
 
-  // TODO - check if body is also encoded
   private static matchRequestBody(oldBody: unknown, newBody: unknown): boolean {
     debugMatching('\trequest body');
 
