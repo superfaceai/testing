@@ -39,3 +39,36 @@ export async function decodeResponse(
     (await decodeBuffer(buffer, contentEncoding)).toString()
   ) as ReplyBody;
 }
+
+// Expect something like `To=%2B4915207930698&From=%2B13369019173&Body=Hello+World%21`
+// and want back: `{ To: "+4915207930698", From: "...", Body: "Hello World" }`
+export function parseBody(body: string): unknown {
+  if (body === '') {
+    return undefined;
+  }
+
+  const parsedBody = decodeURIComponent(body);
+  const result: Record<string, unknown> = {};
+
+  for (const bodyParam of parsedBody.split('&')) {
+    const [key, value, ...other] = bodyParam.split('=');
+
+    if (other) {
+      throw new Error('Bad parsing')
+    }
+
+    // parse value
+    let parsedValue: unknown;
+    if (value.startsWith('{') || value.startsWith('[')) {
+      parsedValue = JSON.parse(value);
+    } else {
+      // since URLSearchParams always transform params to string
+      // we can't generate correct schema for this...
+      parsedValue = value;
+    }
+
+    result[key] = parsedValue;
+  }
+
+  return result;
+}

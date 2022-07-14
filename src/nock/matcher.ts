@@ -9,7 +9,7 @@ import {
 } from '../superface-test.interfaces';
 import { ErrorCollector } from './error-collector';
 import { IErrorCollector, MatchErrorKind } from './error-collector.interfaces';
-import { decodeResponse, getHeaderValue } from './matcher.utils';
+import { decodeResponse, getHeaderValue, parseBody } from './matcher.utils';
 
 interface MatchHeaders {
   old?: string;
@@ -220,7 +220,11 @@ export class Matcher {
       });
     }
 
-    const contentLength = getHeaderValue(oldHeaders, newHeaders, 'content-length');
+    const contentLength = getHeaderValue(
+      oldHeaders,
+      newHeaders,
+      'content-length'
+    );
 
     if (contentLength.old !== contentLength.new) {
       const message = `Response header "Content-Length" does not match: "${
@@ -244,22 +248,50 @@ export class Matcher {
     return {
       contentType,
       contentEncoding,
-      contentLength
+      contentLength,
     };
   }
 
-  private static matchRequestBody(oldBody: unknown, newBody: unknown): boolean {
+  private static matchRequestBody(
+    oldRequestBody: unknown,
+    newRequestBody: unknown
+  ): void {
     debugMatching('\trequest body');
 
-    const bodyJsonSchema = createSchema(oldBody);
-    debugMatchingSensitive(
-      'generated json schema for body:',
-      inspect(bodyJsonSchema, true, 25)
-    );
-    const valid = schemaValidator.validate(bodyJsonSchema, newBody);
+    // TODO: try to parse string body or rather compare it plainly?
+    // if body is not string and is defined - expect valid JSON
+    let oldBody = oldRequestBody,
+      newBody = newRequestBody;
+
+    if (typeof oldRequestBody === 'string') {
+      oldBody = parseBody(oldRequestBody);
+    }
+
+    if (typeof newRequestBody === 'string') {
+      newBody = parseBody(newRequestBody);
+    }
+
+    // if old body is empty string or undefined - we dont create JSON scheme
+    let message = `Request body does not match: "${
+      oldBody ?? 'not-existing'
+    }" - "${newBody ?? 'not-existing'}"`;
+    if (oldBody === undefined) {
+      if (newBody !== undefined) {
+        this.errorCollector.add({
+          kind: MatchErrorKind.REQUEST_BODY,
+          old: oldBody,
+          new: newBody,
+          message,
+        });
+      }
+
+      return;
+    }
+
+    const valid = this.createAndValidateSchema(oldBody, newBody);
 
     if (!valid) {
-      const message = `Request body does not match: ${schemaValidator.errorsText()}`;
+      message = `Request body does not match: ${schemaValidator.errorsText()}`;
 
       debugMatchingSensitive(message);
       debugMatchingSensitive(schemaValidator.errors);
@@ -272,7 +304,7 @@ export class Matcher {
       });
     }
 
-    return true;
+    return;
   }
 
   private static async matchResponse(
@@ -302,13 +334,7 @@ export class Matcher {
     }
 
     // validate responses
-    const responseJsonSchema = createSchema(oldRes);
-    debugMatchingSensitive(
-      'Generated json schema for response:',
-      inspect(responseJsonSchema, true, 25)
-    );
-
-    const valid = schemaValidator.validate(responseJsonSchema, newRes);
+    const valid = this.createAndValidateSchema(oldRes, newRes);
 
     if (!valid) {
       const message = `Recordings does not match: ${schemaValidator.errorsText()}`;
@@ -323,5 +349,16 @@ export class Matcher {
         message,
       });
     }
+  }
+
+  private static createAndValidateSchema(base: unknown, payload: unknown) {
+    const bodyJsonSchema = createSchema(base);
+
+    debugMatchingSensitive(
+      'Generated JSON Schema:',
+      inspect(bodyJsonSchema, true, 25)
+    );
+
+    return schemaValidator.validate(bodyJsonSchema, payload);
   }
 }
