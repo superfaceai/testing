@@ -9,7 +9,12 @@ import {
 } from '../superface-test.interfaces';
 import { ErrorCollector } from './error-collector';
 import { IErrorCollector, MatchErrorKind } from './error-collector.interfaces';
-import { decodeResponse, getHeaderValue, parseBody } from './matcher.utils';
+import {
+  decodeResponse,
+  errorMessages,
+  getHeaderValue,
+  parseBody,
+} from './matcher.utils';
 
 export interface MatchHeaders {
   old?: string;
@@ -63,7 +68,10 @@ export class Matcher {
     this.errorCollector = new ErrorCollector(recordingPath);
 
     if (oldTrafficDefs.length !== newTrafficDefs.length) {
-      const message = 'Number of recorded HTTP calls do not match';
+      const message = errorMessages.incorrectRecordingsCount(
+        oldTrafficDefs.length,
+        newTrafficDefs.length
+      );
       debugMatching(message);
 
       this.errorCollector.add({ kind: MatchErrorKind.LENGTH, message });
@@ -94,17 +102,18 @@ export class Matcher {
     newTraffic: RecordingDefinition
   ): Promise<void> {
     debugMatching(
-      `Matching HTTP calls  ${oldTraffic.scope + oldTraffic.path} : ${
-        newTraffic.scope + newTraffic.path
-      }`
+      `Matching HTTP calls ${
+        oldTraffic.method + oldTraffic.scope + oldTraffic.path
+      } : ${oldTraffic.method + newTraffic.scope + newTraffic.path}`
     );
 
     // method
     debugMatching('\trequest method');
     if (oldTraffic.method !== newTraffic.method) {
-      const message = `Request method does not match: "${
-        oldTraffic.method ?? 'not-existing'
-      }" - "${newTraffic.method ?? 'not-existing'}"`;
+      const message = errorMessages.incorrectMethod(
+        oldTraffic.method,
+        newTraffic.method
+      );
       debugMatching(message);
 
       this.errorCollector.add({
@@ -118,9 +127,10 @@ export class Matcher {
     // status
     debugMatching('\tresponse status');
     if (oldTraffic.status !== newTraffic.status) {
-      const message = `Status codes do not match: "${
-        oldTraffic.status ?? 'not-existing'
-      }" - "${newTraffic.status ?? 'not-existing'}"`;
+      const message = errorMessages.incorrectStatusCode(
+        oldTraffic.status,
+        newTraffic.status
+      );
       debugMatching(message);
 
       this.errorCollector.add({
@@ -134,7 +144,10 @@ export class Matcher {
     // base URL
     debugMatching('\trequest base URL');
     if (oldTraffic.scope !== newTraffic.scope) {
-      const message = `Request base URL does not match: "${oldTraffic.scope}" - "${newTraffic.scope}"`;
+      const message = errorMessages.incorrectBaseUrl(
+        oldTraffic.scope,
+        newTraffic.scope
+      );
       debugMatchingSensitive(message);
 
       this.errorCollector.add({
@@ -148,7 +161,10 @@ export class Matcher {
     // path
     debugMatching('\trequest path');
     if (oldTraffic.path !== newTraffic.path) {
-      const message = `Paths do not match: "${oldTraffic.path}" - "${newTraffic.path}"`;
+      const message = errorMessages.incorrectPath(
+        oldTraffic.path,
+        newTraffic.path
+      );
       debugMatchingSensitive(message);
 
       this.errorCollector.add({
@@ -196,9 +212,11 @@ export class Matcher {
     const accept = getHeaderValue(oldHeaders, newHeaders, 'accept');
 
     if (accept.old !== accept.new) {
-      const message = `Request header "Accept" does not match: "${
-        accept.old ?? 'not-existing'
-      }" - "${accept.new ?? 'not-existing'}"`;
+      const message = errorMessages.incorrectRequestHeader(
+        'accept',
+        accept.old,
+        accept.new
+      );
       debugMatchingSensitive(message);
 
       this.errorCollector.add({
@@ -227,9 +245,10 @@ export class Matcher {
     const contentType = getHeaderValue(oldHeaders, newHeaders, 'content-type');
 
     if (contentType.old !== contentType.new) {
-      const message = `Response header "Content-Type" does not match: "${
-        contentType.old ?? 'not-existing'
-      }" - "${contentType.new ?? 'not-existing'}"`;
+      const message = errorMessages.incorrectResponseHeader(
+        'content-type',
+        contentType.old
+      );
       debugMatchingSensitive(message);
 
       this.errorCollector.add({
@@ -248,9 +267,11 @@ export class Matcher {
     );
 
     if (contentEncoding.old !== contentEncoding.new) {
-      const message = `Response header "Content-Encoding" does not match: "${
-        contentEncoding.old ?? 'not-existing'
-      }" - "${contentEncoding.new ?? 'not-existing'}"`;
+      const message = errorMessages.incorrectResponseHeader(
+        'content-type',
+        contentEncoding.old,
+        contentEncoding.new
+      );
       debugMatchingSensitive(message);
 
       this.errorCollector.add({
@@ -282,7 +303,7 @@ export class Matcher {
   private static matchRequestBody(
     oldRequestBody: unknown,
     newRequestBody: unknown,
-    accept?: MatchHeaders,
+    accept?: MatchHeaders
   ): void {
     debugMatching('\trequest body');
 
@@ -300,11 +321,10 @@ export class Matcher {
     }
 
     // if old body is empty string or undefined - we dont create JSON scheme
-    let message = `Request body does not match: "${
-      oldBody ?? 'not-existing'
-    }" - "${newBody ?? 'not-existing'}"`;
+    let message = errorMessages.incorrectRequestBody(oldBody, newBody);
     if (oldBody === undefined) {
       if (newBody !== undefined) {
+        debugMatchingSensitive(message);
         this.errorCollector.add({
           kind: MatchErrorKind.REQUEST_BODY,
           old: oldBody,
@@ -365,7 +385,9 @@ export class Matcher {
     const valid = this.createAndValidateSchema(oldRes, newRes);
 
     if (!valid) {
-      const message = `Recordings does not match: ${schemaValidator.errorsText()}`;
+      const message = errorMessages.incorrectResponse(
+        schemaValidator.errorsText()
+      );
 
       debugMatchingSensitive(message);
       debugMatching(schemaValidator.errors);

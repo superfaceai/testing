@@ -87,3 +87,42 @@ export function parseBody(body: string, _accept?: string): unknown {
 
   return result;
 }
+
+export const errorMessages = {
+  incorrectRecordingsCount: (oldCount: number, newCount: number) =>
+    `Number of recorded HTTP calls do not match: ${oldCount} : ${newCount}`,
+  incorrectMethod: (oldMethod?: string, newMethod?: string) =>
+    `Request method does not match: "${oldMethod ?? 'not-existing'}" : "${
+      newMethod ?? 'not-existing'
+    }"`,
+  incorrectStatusCode: (oldStatus?: number, newStatus?: number) =>
+    `Status codes do not match: "${oldStatus ?? 'not-existing'}" : "${
+      newStatus ?? 'not-existing'
+    }"`,
+  incorrectBaseUrl: (oldUrl: string, newUrl: string) =>
+    `Request Base URL does not match: "${oldUrl}" : "${newUrl}"`,
+  incorrectPath: (oldPath: string, newPath: string) =>
+    `Paths do not match: "${oldPath}" : "${newPath}"`,
+  incorrectRequestHeader: (
+    headerName: string,
+    oldRequestHeader?: string,
+    newRequestHeader?: string
+  ) =>
+    `Request header "${headerName}" does not match: "${
+      oldRequestHeader ?? 'not-existing'
+    }" : "${newRequestHeader ?? 'not-existing'}"`,
+  incorrectResponseHeader: (
+    headerName: string,
+    oldResponseHeader?: string,
+    newResponseHeader?: string
+  ) =>
+    `Response header "${headerName}" does not match: "${
+      oldResponseHeader ?? 'not-existing'
+    }" - "${newResponseHeader ?? 'not-existing'}"`,
+  incorrectRequestBody: (oldRequestBody?: unknown, newRequestBody?: unknown) =>
+    `Request body does not match: "${oldRequestBody ?? 'not-existing'}" : "${
+      newRequestBody ?? 'not-existing'
+    }"`,
+  incorrectResponse: (errors: string) =>
+    `Recordings does not match: ${errors}`,
+};
