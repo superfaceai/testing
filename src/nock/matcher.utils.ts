@@ -1,3 +1,4 @@
+import { URLSearchParams } from 'url';
 import { decodeBuffer } from 'http-encoding';
 import { ReplyBody } from 'nock/types';
 
@@ -40,8 +41,14 @@ export async function decodeResponse(
   ) as ReplyBody;
 }
 
-// Expect something like `To=%2B4915207930698&From=%2B13369019173&Body=Hello+World%21`
-// and want back: `{ To: "+4915207930698", From: "...", Body: "Hello World" }`
+/**
+ * Expect something like `To=%2Bxxx&From=%2Bxxx&Body=Hello+World%21`
+ * and want back: `{ To: "+xxx", From: "+xxx", Body: "Hello World!" }`
+ *
+ * Limitation:
+ *  since URLSearchParams always transform params to string we can't
+ *  generate correct schema for this if it contains numbers or booleans
+ */
 export function parseBody(body: string): unknown {
   if (body === '') {
     return undefined;
@@ -49,21 +56,14 @@ export function parseBody(body: string): unknown {
 
   const parsedBody = decodeURIComponent(body);
   const result: Record<string, unknown> = {};
+  const params = new URLSearchParams(parsedBody);
 
-  for (const bodyParam of parsedBody.split('&')) {
-    const [key, value, ...other] = bodyParam.split('=');
-
-    if (other) {
-      throw new Error('Bad parsing')
-    }
-
+  for (const [key, value] of params.entries()) {
     // parse value
     let parsedValue: unknown;
     if (value.startsWith('{') || value.startsWith('[')) {
       parsedValue = JSON.parse(value);
     } else {
-      // since URLSearchParams always transform params to string
-      // we can't generate correct schema for this...
       parsedValue = value;
     }
 
