@@ -11,9 +11,13 @@ import { ErrorCollector } from './error-collector';
 import { IErrorCollector, MatchErrorKind } from './error-collector.interfaces';
 import { decodeResponse, getHeaderValue, parseBody } from './matcher.utils';
 
-interface MatchHeaders {
+export interface MatchHeaders {
   old?: string;
   new?: string;
+}
+
+interface RequestHeaderMatch {
+  accept?: MatchHeaders;
 }
 
 interface ResponseHeaderMatch {
@@ -155,6 +159,13 @@ export class Matcher {
       });
     }
 
+    // TODO: research nock types of request headers and parse them correctly
+    // request headers
+    const { accept } = this.matchRequestHeaders(
+      (oldTraffic.reqheaders as Record<string, string | string[]>) ?? {},
+      (newTraffic.reqheaders as Record<string, string | string[]>) ?? {}
+    );
+
     // response headers
     const { contentEncoding } = this.matchResponseHeaders(
       oldTraffic.rawHeaders ?? [],
@@ -163,7 +174,7 @@ export class Matcher {
 
     // request body
     if (oldTraffic.body !== undefined) {
-      this.matchRequestBody(oldTraffic.body, newTraffic.body);
+      this.matchRequestBody(oldTraffic.body, newTraffic.body, accept);
     }
 
     // response
@@ -174,6 +185,36 @@ export class Matcher {
         contentEncoding
       );
     }
+  }
+
+  private static matchRequestHeaders(
+    oldHeaders: Record<string, string | string[]>,
+    newHeaders: Record<string, string | string[]>
+  ): RequestHeaderMatch {
+    debugMatching('\trequest headers');
+
+    const accept = getHeaderValue(oldHeaders, newHeaders, 'accept');
+
+    if (accept.old !== accept.new) {
+      const message = `Request header "Accept" does not match: "${
+        accept.old ?? 'not-existing'
+      }" - "${accept.new ?? 'not-existing'}"`;
+      debugMatchingSensitive(message);
+
+      this.errorCollector.add({
+        kind: MatchErrorKind.REQUEST_HEADERS,
+        old: accept.old,
+        new: accept.new,
+        message,
+      });
+    }
+
+    // list of other headers to add support for:
+    // ...
+
+    return {
+      accept,
+    };
   }
 
   private static matchResponseHeaders(
@@ -226,20 +267,6 @@ export class Matcher {
       'content-length'
     );
 
-    if (contentLength.old !== contentLength.new) {
-      const message = `Response header "Content-Length" does not match: "${
-        contentLength.old ?? 'not-existing'
-      }" - "${contentLength.new ?? 'not-existing'}"`;
-      debugMatchingSensitive(message);
-
-      this.errorCollector.add({
-        kind: MatchErrorKind.RESPONSE_HEADERS,
-        old: contentLength.old,
-        new: contentLength.new,
-        message,
-      });
-    }
-
     // list of other headers to add support for:
     // Access-Control-Allow-Origin, access-control-allow-headers, access-control-allow-methods
     // Cache-Control, Vary, Transfer-Encoding,
@@ -254,7 +281,8 @@ export class Matcher {
 
   private static matchRequestBody(
     oldRequestBody: unknown,
-    newRequestBody: unknown
+    newRequestBody: unknown,
+    accept?: MatchHeaders,
   ): void {
     debugMatching('\trequest body');
 
@@ -264,11 +292,11 @@ export class Matcher {
       newBody = newRequestBody;
 
     if (typeof oldRequestBody === 'string') {
-      oldBody = parseBody(oldRequestBody);
+      oldBody = parseBody(oldRequestBody, accept?.old);
     }
 
     if (typeof newRequestBody === 'string') {
-      newBody = parseBody(newRequestBody);
+      newBody = parseBody(newRequestBody, accept?.new);
     }
 
     // if old body is empty string or undefined - we dont create JSON scheme

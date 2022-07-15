@@ -1,20 +1,35 @@
 import { URLSearchParams } from 'url';
 import { decodeBuffer } from 'http-encoding';
 import { ReplyBody } from 'nock/types';
+import { MatchHeaders } from './matcher';
 
 export function getHeaderValue(
-  oldHeaders: string[],
-  newHeaders: string[],
+  oldHeaders: string[] | Record<string, string | string[]>,
+  newHeaders: string[] | Record<string, string | string[]>,
   headerName: string
-): { old?: string; new?: string } {
-  const oldHeader = oldHeaders.find(
-    (_, i, headers) =>
-      headers[i === 0 ? i : i - 1].toLowerCase() === headerName.toLowerCase()
-  );
-  const newHeader = newHeaders.find(
-    (_, i, headers) =>
-      headers[i === 0 ? i : i - 1].toLowerCase() === headerName.toLowerCase()
-  );
+): MatchHeaders {
+  let oldHeader = Array.isArray(oldHeaders)
+    ? oldHeaders.find(
+        (_, i, headers) =>
+          headers[i === 0 ? i : i - 1].toLowerCase() ===
+          headerName.toLowerCase()
+      )
+    : oldHeaders[headerName.toLowerCase()];
+  let newHeader = Array.isArray(newHeaders)
+    ? newHeaders.find(
+        (_, i, headers) =>
+          headers[i === 0 ? i : i - 1].toLowerCase() ===
+          headerName.toLowerCase()
+      )
+    : newHeaders[headerName.toLowerCase()];
+
+  if (Array.isArray(oldHeader)) {
+    oldHeader = oldHeader.join(', ');
+  }
+
+  if (Array.isArray(newHeader)) {
+    newHeader = newHeader.join(', ');
+  }
 
   return {
     old: oldHeader,
@@ -49,7 +64,7 @@ export async function decodeResponse(
  *  since URLSearchParams always transform params to string we can't
  *  generate correct schema for this if it contains numbers or booleans
  */
-export function parseBody(body: string): unknown {
+export function parseBody(body: string, _accept?: string): unknown {
   if (body === '') {
     return undefined;
   }
