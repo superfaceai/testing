@@ -12,7 +12,6 @@ export enum MatchErrorKind {
 
 interface MatchErrorBase {
   kind: MatchErrorKind;
-  message: string;
 }
 
 interface MatchErrorStringBase extends MatchErrorBase {
@@ -23,6 +22,8 @@ interface MatchErrorStringBase extends MatchErrorBase {
 
 interface MatchErrorLength extends MatchErrorBase {
   kind: MatchErrorKind.LENGTH;
+  old: number;
+  new: number;
 }
 
 interface MatchErrorMethod extends MatchErrorStringBase {
@@ -35,32 +36,36 @@ interface MatchErrorStatus extends MatchErrorBase {
   new?: number;
 }
 
-interface MatchErrorBaseURL extends MatchErrorStringBase {
+interface MatchErrorBaseURL extends Required<MatchErrorStringBase> {
   kind: MatchErrorKind.BASE_URL;
 }
 
-interface MatchErrorPath extends MatchErrorStringBase {
+interface MatchErrorPath extends Required<MatchErrorStringBase> {
   kind: MatchErrorKind.PATH;
 }
 
 interface MatchErrorResponseHeaders extends MatchErrorStringBase {
   kind: MatchErrorKind.RESPONSE_HEADERS;
+  headerName: string;
 }
 
 interface MatchErrorRequestHeaders extends MatchErrorStringBase {
   kind: MatchErrorKind.REQUEST_HEADERS;
+  headerName: string;
 }
 
 interface MatchErrorRequestBody extends MatchErrorBase {
   kind: MatchErrorKind.REQUEST_BODY;
   old?: unknown;
   new?: unknown;
+  schemeValidation?: string;
 }
 
 interface MatchErrorResponse extends MatchErrorBase {
   kind: MatchErrorKind.RESPONSE;
   old: unknown;
   new: unknown;
+  schemeValidation?: string;
 }
 
 export type MatchError =

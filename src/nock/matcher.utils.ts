@@ -119,10 +119,26 @@ export const errorMessages = {
     `Response header "${headerName}" does not match: "${
       oldResponseHeader ?? 'not-existing'
     }" - "${newResponseHeader ?? 'not-existing'}"`,
-  incorrectRequestBody: (oldRequestBody?: unknown, newRequestBody?: unknown) =>
-    `Request body does not match: "${oldRequestBody ?? 'not-existing'}" : "${
-      newRequestBody ?? 'not-existing'
-    }"`,
-  incorrectResponse: (errors: string) =>
-    `Recordings does not match: ${errors}`,
+  incorrectRequestBody: (
+    payload: string | { old?: unknown; new?: unknown }
+  ) => {
+    if (typeof payload === 'string') {
+      return `Request body does not match: ${payload}`;
+    }
+
+    return `Request body does not match: "${
+      payload.old ?? 'not-existing'
+    }" : "${payload.new ?? 'not-existing'}"`;
+  },
+  incorrectResponse: (
+    payload: string | { old?: unknown; new?: unknown }
+  ) => {
+    if (typeof payload === 'string') {
+      return `Response does not match: ${payload}`;
+    }
+
+    return `Response does not match: "${
+      payload.old ?? 'not-existing'
+    }" : "${payload.new ?? 'not-existing'}"`;
+  },
 };

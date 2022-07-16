@@ -68,13 +68,11 @@ export class Matcher {
     this.errorCollector = new ErrorCollector(recordingPath);
 
     if (oldTrafficDefs.length !== newTrafficDefs.length) {
-      const message = errorMessages.incorrectRecordingsCount(
-        oldTrafficDefs.length,
-        newTrafficDefs.length
-      );
-      debugMatching(message);
-
-      this.errorCollector.add({ kind: MatchErrorKind.LENGTH, message });
+      this.errorCollector.add({
+        kind: MatchErrorKind.LENGTH,
+        old: oldTrafficDefs.length,
+        new: newTrafficDefs.length,
+      });
     }
 
     for (let i = 0; i < oldTrafficDefs.length; i++) {
@@ -110,68 +108,40 @@ export class Matcher {
     // method
     debugMatching('\trequest method');
     if (oldTraffic.method !== newTraffic.method) {
-      const message = errorMessages.incorrectMethod(
-        oldTraffic.method,
-        newTraffic.method
-      );
-      debugMatching(message);
-
       this.errorCollector.add({
         kind: MatchErrorKind.METHOD,
         old: oldTraffic.method,
         new: newTraffic.method,
-        message,
       });
     }
 
     // status
     debugMatching('\tresponse status');
     if (oldTraffic.status !== newTraffic.status) {
-      const message = errorMessages.incorrectStatusCode(
-        oldTraffic.status,
-        newTraffic.status
-      );
-      debugMatching(message);
-
       this.errorCollector.add({
         kind: MatchErrorKind.STATUS,
         old: oldTraffic.status,
         new: newTraffic.status,
-        message,
       });
     }
 
     // base URL
     debugMatching('\trequest base URL');
     if (oldTraffic.scope !== newTraffic.scope) {
-      const message = errorMessages.incorrectBaseUrl(
-        oldTraffic.scope,
-        newTraffic.scope
-      );
-      debugMatchingSensitive(message);
-
       this.errorCollector.add({
         kind: MatchErrorKind.BASE_URL,
         old: oldTraffic.scope,
         new: newTraffic.scope,
-        message,
       });
     }
 
     // path
     debugMatching('\trequest path');
     if (oldTraffic.path !== newTraffic.path) {
-      const message = errorMessages.incorrectPath(
-        oldTraffic.path,
-        newTraffic.path
-      );
-      debugMatchingSensitive(message);
-
       this.errorCollector.add({
         kind: MatchErrorKind.PATH,
         old: oldTraffic.path,
         new: newTraffic.path,
-        message,
       });
     }
 
@@ -212,18 +182,11 @@ export class Matcher {
     const accept = getHeaderValue(oldHeaders, newHeaders, 'accept');
 
     if (accept.old !== accept.new) {
-      const message = errorMessages.incorrectRequestHeader(
-        'accept',
-        accept.old,
-        accept.new
-      );
-      debugMatchingSensitive(message);
-
       this.errorCollector.add({
         kind: MatchErrorKind.REQUEST_HEADERS,
         old: accept.old,
         new: accept.new,
-        message,
+        headerName: 'Accept',
       });
     }
 
@@ -245,17 +208,11 @@ export class Matcher {
     const contentType = getHeaderValue(oldHeaders, newHeaders, 'content-type');
 
     if (contentType.old !== contentType.new) {
-      const message = errorMessages.incorrectResponseHeader(
-        'content-type',
-        contentType.old
-      );
-      debugMatchingSensitive(message);
-
       this.errorCollector.add({
         kind: MatchErrorKind.RESPONSE_HEADERS,
         old: contentType.old,
         new: contentType.new,
-        message,
+        headerName: 'Content-Type',
       });
     }
 
@@ -267,18 +224,11 @@ export class Matcher {
     );
 
     if (contentEncoding.old !== contentEncoding.new) {
-      const message = errorMessages.incorrectResponseHeader(
-        'content-type',
-        contentEncoding.old,
-        contentEncoding.new
-      );
-      debugMatchingSensitive(message);
-
       this.errorCollector.add({
         kind: MatchErrorKind.RESPONSE_HEADERS,
         old: contentEncoding.old,
         new: contentEncoding.new,
-        message,
+        headerName: 'Content-Encoding',
       });
     }
 
@@ -321,15 +271,12 @@ export class Matcher {
     }
 
     // if old body is empty string or undefined - we dont create JSON scheme
-    let message = errorMessages.incorrectRequestBody(oldBody, newBody);
     if (oldBody === undefined) {
       if (newBody !== undefined) {
-        debugMatchingSensitive(message);
         this.errorCollector.add({
           kind: MatchErrorKind.REQUEST_BODY,
           old: oldBody,
           new: newBody,
-          message,
         });
       }
 
@@ -339,16 +286,13 @@ export class Matcher {
     const valid = this.createAndValidateSchema(oldBody, newBody);
 
     if (!valid) {
-      message = `Request body does not match: ${schemaValidator.errorsText()}`;
-
-      debugMatchingSensitive(message);
       debugMatchingSensitive(schemaValidator.errors);
 
       this.errorCollector.add({
         kind: MatchErrorKind.REQUEST_BODY,
         old: oldBody,
         new: newBody,
-        message,
+        schemeValidation: schemaValidator.errorsText(),
       });
     }
 
@@ -385,18 +329,13 @@ export class Matcher {
     const valid = this.createAndValidateSchema(oldRes, newRes);
 
     if (!valid) {
-      const message = errorMessages.incorrectResponse(
-        schemaValidator.errorsText()
-      );
-
-      debugMatchingSensitive(message);
       debugMatching(schemaValidator.errors);
 
       this.errorCollector.add({
         kind: MatchErrorKind.RESPONSE,
         old: oldResponse,
         new: newResponse,
-        message,
+        schemeValidation: schemaValidator.errorsText(),
       });
     }
   }
