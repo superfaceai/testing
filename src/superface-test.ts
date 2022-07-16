@@ -34,6 +34,7 @@ import { Analyzer } from './nock/analyzer';
 import { Matcher } from './nock/matcher';
 import {
   AlertFunction,
+  CompleteSuperfaceTestConfig,
   InputVariables,
   NockConfig,
   ProcessingFunction,
@@ -390,40 +391,7 @@ export class SuperfaceTest {
         // recording file does not exist -> record new traffic
         await writeRecordings(this.composeRecordingPath(), definitions);
       } else {
-        // recording file exist -> record and compare new traffic
-        const oldRecording = await readFileQuiet(this.composeRecordingPath());
-
-        if (oldRecording === undefined) {
-          throw new UnexpectedError('Reading old recording file failed');
-        }
-
-        const oldRecordingDefs = JSON.parse(
-          oldRecording
-        ) as RecordingDefinitions;
-
-        // Match new HTTP traffic to saved for breaking changes
-        const match = await Matcher.match(
-          this.recordingPath ?? '',
-          oldRecordingDefs,
-          definitions
-        );
-
-        if (match.valid) {
-          // do not save new recording as there were no breaking changes found
-        } else {
-          const analysis = Analyzer.run(this.sfConfig, match.errors);
-
-          // Alert changes
-          if (alert !== undefined) {
-            await alert(analysis);
-          }
-
-          // Save new recording as unsupported
-          await writeRecordings(
-            this.composeRecordingPath('unsupported'),
-            definitions
-          );
-        }
+        await this.matchTraffic(definitions, alert);
       }
 
       debug('Recorded definitions written');
@@ -434,6 +402,47 @@ export class SuperfaceTest {
       debug('Restored HTTP requests and enabled outgoing requests');
 
       return;
+    }
+  }
+
+  private async matchTraffic(
+    newTraffic: RecordingDefinitions,
+    alert?: AlertFunction
+  ) {
+    // recording file exist -> record and compare new traffic
+    const oldRecording = await readFileQuiet(this.composeRecordingPath());
+
+    if (oldRecording === undefined) {
+      throw new UnexpectedError('Reading old recording file failed');
+    }
+
+    const oldRecordingDefs = JSON.parse(oldRecording) as RecordingDefinitions;
+
+    // Match new HTTP traffic to saved for breaking changes
+    const match = await Matcher.match(
+      this.recordingPath ?? '',
+      oldRecordingDefs,
+      newTraffic
+    );
+
+    if (match.valid) {
+      // do not save new recording as there were no breaking changes found
+    } else {
+      const analysis = Analyzer.run(
+        this.sfConfig as CompleteSuperfaceTestConfig,
+        match.errors
+      );
+
+      // Alert changes
+      if (alert !== undefined) {
+        await alert(analysis);
+      }
+
+      // Save new recording as unsupported
+      await writeRecordings(
+        this.composeRecordingPath('unsupported'),
+        newTraffic
+      );
     }
   }
 
