@@ -1,6 +1,7 @@
-import { URLSearchParams } from 'url';
 import { decodeBuffer } from 'http-encoding';
 import { ReplyBody } from 'nock/types';
+import { URLSearchParams } from 'url';
+
 import { MatchHeaders } from './matcher';
 
 export function getHeaderValue(
@@ -130,15 +131,13 @@ export const errorMessages = {
       payload.old ?? 'not-existing'
     }" : "${payload.new ?? 'not-existing'}"`;
   },
-  incorrectResponse: (
-    payload: string | { old?: unknown; new?: unknown }
-  ) => {
+  incorrectResponse: (payload: string | { old?: unknown; new?: unknown }) => {
     if (typeof payload === 'string') {
       return `Response does not match: ${payload}`;
     }
 
-    return `Response does not match: "${
-      payload.old ?? 'not-existing'
-    }" : "${payload.new ?? 'not-existing'}"`;
+    return `Response does not match: "${payload.old ?? 'not-existing'}" : "${
+      payload.new ?? 'not-existing'
+    }"`;
   },
 };

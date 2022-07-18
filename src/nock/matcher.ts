@@ -9,12 +9,7 @@ import {
 } from '../superface-test.interfaces';
 import { ErrorCollector } from './error-collector';
 import { IErrorCollector, MatchErrorKind } from './error-collector.interfaces';
-import {
-  decodeResponse,
-  errorMessages,
-  getHeaderValue,
-  parseBody,
-} from './matcher.utils';
+import { decodeResponse, getHeaderValue, parseBody } from './matcher.utils';
 
 export interface MatchHeaders {
   old?: string;
@@ -100,9 +95,9 @@ export class Matcher {
     newTraffic: RecordingDefinition
   ): Promise<void> {
     debugMatching(
-      `Matching HTTP calls ${
-        oldTraffic.method + oldTraffic.scope + oldTraffic.path
-      } : ${oldTraffic.method + newTraffic.scope + newTraffic.path}`
+      `Matching HTTP calls ${oldTraffic.scope + oldTraffic.path} : ${
+        newTraffic.scope + newTraffic.path
+      }`
     );
 
     // method

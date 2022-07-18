@@ -281,15 +281,14 @@ export class SuperfaceTest {
   }
 
   async getRecordings(version?: string): Promise<RecordingDefinitions> {
-    const recordingExists = await exists(this.composeRecordingPath(version));
+    const recordingPath = this.composeRecordingPath(version);
+    const recordingExists = await exists(recordingPath);
 
     if (!recordingExists) {
-      throw new RecordingsNotFoundError();
+      throw new RecordingsNotFoundError(recordingPath);
     }
 
-    const definitionFile = await readFileQuiet(
-      this.composeRecordingPath(version)
-    );
+    const definitionFile = await readFileQuiet(recordingPath);
 
     if (definitionFile === undefined) {
       throw new UnexpectedError('Reading recording file failed');
