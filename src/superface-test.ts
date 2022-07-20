@@ -149,7 +149,7 @@ export class SuperfaceTest {
     if (result.isErr()) {
       debug('Perform failed with error:', result.error.toString());
 
-      return err(result.error);
+      return err(this.mapError(result.error));
     }
 
     if (result.isOk()) {
@@ -159,6 +159,25 @@ export class SuperfaceTest {
     }
 
     throw new UnexpectedError('Unexpected result object');
+  }
+
+  private mapError(error: PerformError): Partial<PerformError> {
+    const { kind, message } = error;
+    let properties, originalError, astPath;
+
+    if ('properties' in error) {
+      properties = error.properties;
+    }
+
+    if ('originalError' in error) {
+      originalError = error.originalError;
+    }
+
+    if ('path' in error) {
+      astPath = error.astPath;
+    }
+
+    return { kind, message, properties, originalError, astPath };
   }
 
   private async replaceUnsupportedRecording(): Promise<void> {
