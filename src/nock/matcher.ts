@@ -26,7 +26,10 @@ interface ResponseHeaderMatch {
   contentLength?: MatchHeaders;
 }
 
-const schemaValidator = new Ajv();
+const schemaValidator = new Ajv({
+  allErrors: true,
+});
+
 const debugMatching = createDebug('superface:testing:matching');
 const debugMatchingSensitive = createDebug(
   'superface:testing:matching:sensitive'
@@ -335,14 +338,17 @@ export class Matcher {
     }
   }
 
-  private static createAndValidateSchema(base: unknown, payload: unknown) {
-    const bodyJsonSchema = createSchema(base);
+  private static createAndValidateSchema(
+    base: unknown,
+    payload: unknown
+  ): boolean {
+    const oldJsonSchema = createSchema(base);
 
     debugMatchingSensitive(
-      'Generated JSON Schema:',
-      inspect(bodyJsonSchema, true, 25)
+      'Generated JSON Schema from old recording:',
+      inspect(oldJsonSchema, true, 25)
     );
 
-    return schemaValidator.validate(bodyJsonSchema, payload);
+    return schemaValidator.validate(oldJsonSchema, payload);
   }
 }

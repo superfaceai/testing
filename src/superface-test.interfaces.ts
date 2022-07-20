@@ -1,5 +1,4 @@
 import {
-  PerformError,
   Profile,
   Provider,
   Result,
@@ -49,7 +48,7 @@ export type CompleteSuperfaceTestConfig = Required<SuperfaceTestConfig>;
 export interface MapError {
   kind: string;
   message: string;
-  properties?: unknown,
+  properties?: unknown;
   statusCode?: number;
   originalError?: Error;
   astPath?: string[];
