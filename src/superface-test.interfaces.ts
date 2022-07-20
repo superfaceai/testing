@@ -46,7 +46,15 @@ export interface SuperfaceTestConfig {
 
 export type CompleteSuperfaceTestConfig = Required<SuperfaceTestConfig>;
 
-export type TestingReturn = Result<unknown, Partial<PerformError>>;
+export interface MapError {
+  kind: string;
+  message: string;
+  properties?: unknown,
+  statusCode?: number;
+  originalError?: Error;
+  astPath?: string[];
+}
+export type TestingReturn = Result<unknown, MapError>;
 
 export interface NockConfig {
   path?: string;

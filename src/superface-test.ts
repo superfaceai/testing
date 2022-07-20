@@ -36,6 +36,7 @@ import {
   AlertFunction,
   CompleteSuperfaceTestConfig,
   InputVariables,
+  MapError,
   NockConfig,
   ProcessingFunction,
   RecordingDefinitions,
@@ -161,23 +162,34 @@ export class SuperfaceTest {
     throw new UnexpectedError('Unexpected result object');
   }
 
-  private mapError(error: PerformError): Partial<PerformError> {
+  /**
+   * @param error - error returned from perform
+   * @returns mapped perform error without ast metadata
+   */
+  private mapError(error: PerformError): MapError {
     const { kind, message } = error;
-    let properties, originalError, astPath;
+    const result: MapError = {
+      kind,
+      message,
+    };
 
     if ('properties' in error) {
-      properties = error.properties;
+      result.properties = error.properties;
+    }
+
+    if ('statusCode' in error) {
+      result.statusCode = error.statusCode;
     }
 
     if ('originalError' in error) {
-      originalError = error.originalError;
+      result.originalError = error.originalError;
     }
 
     if ('path' in error) {
-      astPath = error.astPath;
+      result.astPath = error.astPath;
     }
 
-    return { kind, message, properties, originalError, astPath };
+    return result;
   }
 
   private async replaceUnsupportedRecording(): Promise<void> {
