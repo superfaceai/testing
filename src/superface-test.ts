@@ -36,7 +36,6 @@ import {
   AlertFunction,
   CompleteSuperfaceTestConfig,
   InputVariables,
-  MapError,
   NockConfig,
   ProcessingFunction,
   RecordingDefinitions,
@@ -54,6 +53,7 @@ import {
   getProfileId,
   getSuperJson,
   isProfileProviderLocal,
+  mapError,
   parsePublishEnv,
   replaceCredentials,
   searchValues,
@@ -150,7 +150,7 @@ export class SuperfaceTest {
     if (result.isErr()) {
       debug('Perform failed with error:', result.error.toString());
 
-      return err(this.mapError(result.error));
+      return err(mapError(result.error));
     }
 
     if (result.isOk()) {
@@ -160,36 +160,6 @@ export class SuperfaceTest {
     }
 
     throw new UnexpectedError('Unexpected result object');
-  }
-
-  /**
-   * @param error - error returned from perform
-   * @returns mapped perform error without ast metadata
-   */
-  private mapError(error: PerformError): MapError {
-    const { kind, message } = error;
-    const result: MapError = {
-      kind,
-      message,
-    };
-
-    if ('properties' in error) {
-      result.properties = error.properties;
-    }
-
-    if ('statusCode' in error) {
-      result.statusCode = error.statusCode;
-    }
-
-    if ('originalError' in error) {
-      result.originalError = error.originalError;
-    }
-
-    if ('path' in error) {
-      result.astPath = error.astPath;
-    }
-
-    return result;
   }
 
   private async replaceUnsupportedRecording(): Promise<void> {

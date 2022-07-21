@@ -8,6 +8,7 @@ import {
 } from '@superfaceai/ast';
 import {
   BoundProfileProvider,
+  PerformError,
   Profile,
   Provider,
   SuperfaceClient,
@@ -544,4 +545,18 @@ export function parsePublishEnv(variable: string | undefined): boolean {
   }
 
   return false;
+}
+
+/**
+ * @param error - error returned from perform
+ * @returns perform error without ast metadata
+ */
+export function mapError(error: PerformError): PerformError {
+ let result = error;
+
+ if ('metadata' in result) {
+   delete result.metadata;
+ }
+
+ return result;
 }

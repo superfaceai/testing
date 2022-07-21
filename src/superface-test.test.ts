@@ -9,7 +9,7 @@ import {
   SuperJson,
 } from '@superfaceai/one-sdk';
 import nock, { pendingMocks, recorder } from 'nock';
-import { join as joinPath } from 'path';
+import { join as joinPath, resolve as resolvePath } from 'path';
 import { mocked } from 'ts-jest/utils';
 
 import {
@@ -169,7 +169,7 @@ describe('SuperfaceTest', () => {
         ]);
         const endRecSpy = jest.spyOn(nock, 'restore');
 
-        mocked(exists).mockResolvedValue(true);
+        mocked(exists).mockResolvedValue(false);
         mocked(matchWildCard).mockReturnValueOnce(true);
 
         await superfaceTest.run({ input: {} });
@@ -208,7 +208,7 @@ describe('SuperfaceTest', () => {
         const recorderSpy = jest.spyOn(recorder, 'rec');
         jest.spyOn(recorder, 'play').mockReturnValueOnce([]);
 
-        mocked(exists).mockResolvedValue(true);
+        mocked(exists).mockResolvedValue(false);
         mocked(matchWildCard).mockReturnValueOnce(true);
 
         await superfaceTest.run({ input: {} });
@@ -254,7 +254,7 @@ describe('SuperfaceTest', () => {
           },
         ]);
 
-        mocked(exists).mockResolvedValue(true);
+        mocked(exists).mockResolvedValue(false);
         mocked(matchWildCard).mockReturnValueOnce(true);
 
         await superfaceTest.run({ input: {} });
@@ -295,7 +295,7 @@ describe('SuperfaceTest', () => {
           },
         ]);
 
-        mocked(exists).mockResolvedValue(true);
+        mocked(exists).mockResolvedValue(false);
         mocked(matchWildCard).mockReturnValueOnce(true);
 
         await superfaceTest.run({ input: {} });
@@ -338,7 +338,7 @@ describe('SuperfaceTest', () => {
           },
         ]);
 
-        mocked(exists).mockResolvedValue(true);
+        mocked(exists).mockResolvedValue(false);
         mocked(matchWildCard).mockReturnValueOnce(true);
 
         await superfaceTest.run(
@@ -452,17 +452,24 @@ describe('SuperfaceTest', () => {
     });
 
     describe('when loading recordings', () => {
-      it('throws when recording fixture does not exist', async () => {
-        superfaceTest = new SuperfaceTest(await getMockedSfConfig());
+      fit('throws when recording fixture does not exist', async () => {
+        const config = await getMockedSfConfig();
+        const testName = 'my-test-name';
+        const expectedHash = generate(testName);
+        const recordingPath = resolvePath(
+          `nock/${config.profile.configuration.id}/${config.provider.configuration.name}/${config.useCase.name}/recording-${expectedHash}.json`
+        );
+
+        superfaceTest = new SuperfaceTest(config);
 
         const recorderSpy = jest.spyOn(recorder, 'rec');
 
         mocked(exists).mockResolvedValueOnce(false);
         mocked(matchWildCard).mockReturnValueOnce(false);
 
-        await expect(superfaceTest.run({ input: {} })).rejects.toThrowError(
-          new RecordingsNotFoundError()
-        );
+        await expect(
+          superfaceTest.run({ input: {}, testName })
+        ).rejects.toThrowError(new RecordingsNotFoundError(recordingPath));
 
         expect(recorderSpy).not.toHaveBeenCalled();
       });
