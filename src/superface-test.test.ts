@@ -452,7 +452,7 @@ describe('SuperfaceTest', () => {
     });
 
     describe('when loading recordings', () => {
-      fit('throws when recording fixture does not exist', async () => {
+      it('throws when recording fixture does not exist', async () => {
         const config = await getMockedSfConfig();
         const testName = 'my-test-name';
         const expectedHash = generate(testName);

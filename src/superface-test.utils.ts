@@ -552,11 +552,11 @@ export function parsePublishEnv(variable: string | undefined): boolean {
  * @returns perform error without ast metadata
  */
 export function mapError(error: PerformError): PerformError {
- let result = error;
+  const result = error;
 
- if ('metadata' in result) {
-   delete result.metadata;
- }
+  if ('metadata' in result) {
+    delete result.metadata;
+  }
 
- return result;
+  return result;
 }
