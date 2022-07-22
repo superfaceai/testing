@@ -4,7 +4,16 @@ import {
   SecurityType,
   SecurityValues,
 } from '@superfaceai/ast';
-import { err, SDKExecutionError, SuperJson } from '@superfaceai/one-sdk';
+import {
+  err,
+  normalizeSuperJsonDocument,
+  SDKExecutionError,
+} from '@superfaceai/one-sdk';
+import {
+  detectSuperJson,
+  loadSuperJson,
+} from '@superfaceai/one-sdk/dist/schema-tools/superjson';
+import { mocked } from 'ts-jest/utils';
 
 import { RecordingDefinitions } from '.';
 import {
@@ -26,7 +35,6 @@ import {
   getProfileMock,
   getProviderMock,
   getUseCaseMock,
-  SuperfaceClientMock,
 } from './superface.mock';
 import {
   assertsDefinitionsAreNotStrings,
@@ -40,9 +48,17 @@ import {
   isProfileProviderLocal,
 } from './superface-test.utils';
 
+jest.mock('@superfaceai/one-sdk/dist/schema-tools/superjson', () => ({
+  ...jest.requireActual('@superfaceai/one-sdk/dist/schema-tools/superjson'),
+  detectSuperJson: jest.fn(),
+  loadSuperJson: jest.fn(),
+}));
+
 describe('SuperfaceTest', () => {
   afterEach(() => {
     jest.restoreAllMocks();
+    mocked(detectSuperJson).mockReset();
+    mocked(loadSuperJson).mockReset();
   });
 
   describe('assertsPreparedConfig', () => {
@@ -82,18 +98,8 @@ describe('SuperfaceTest', () => {
     });
 
     describe('throws if configuration has some undefined components', () => {
-      it('client missing', () => {
-        const superface = {};
-
-        expect(() => {
-          assertsPreparedConfig(superface);
-        }).toThrowError(new ComponentUndefinedError('Client'));
-      });
-
       it('profile missing', () => {
-        const superface = {
-          client: new SuperfaceClientMock(),
-        };
+        const superface = {};
 
         expect(() => {
           assertsPreparedConfig(superface);
@@ -102,7 +108,6 @@ describe('SuperfaceTest', () => {
 
       it('provider missing', async () => {
         const superface = {
-          client: new SuperfaceClientMock(),
           profile: await getProfileMock('profile'),
         };
 
@@ -113,7 +118,6 @@ describe('SuperfaceTest', () => {
 
       it('usecase missing', async () => {
         const superface = {
-          client: new SuperfaceClientMock(),
           profile: await getProfileMock('profile'),
           provider: await getProviderMock('provider'),
         };
@@ -135,7 +139,7 @@ describe('SuperfaceTest', () => {
 
   describe('isProfileProviderLocal', () => {
     it('throws profile undefined error when given profile is not defined', () => {
-      const mockSuperJson = new SuperJson({
+      const mockSuperJson = {
         profiles: {
           profile: {
             version: '0.0.1',
@@ -149,19 +153,19 @@ describe('SuperfaceTest', () => {
             security: [],
           },
         },
-      });
+      };
 
       expect(() => {
         isProfileProviderLocal(
           'provider',
           'non-existing-profile',
-          mockSuperJson.normalized
+          normalizeSuperJsonDocument(mockSuperJson)
         );
       }).toThrowError(new ProfileUndefinedError('non-existing-profile'));
     });
 
     it('throws map undefined error when provider is not defined', () => {
-      const mockSuperJson = new SuperJson({
+      const mockSuperJson = {
         profiles: {
           profile: {
             version: '0.0.1',
@@ -175,13 +179,13 @@ describe('SuperfaceTest', () => {
             security: [],
           },
         },
-      });
+      };
 
       expect(() => {
         isProfileProviderLocal(
           'not-existing-provider',
           'profile',
-          mockSuperJson.normalized
+          normalizeSuperJsonDocument(mockSuperJson)
         );
       }).toThrowError(
         new MapUndefinedError('profile', 'not-existing-provider')
@@ -189,7 +193,7 @@ describe('SuperfaceTest', () => {
     });
 
     it('throws map undefined error when provider is not local', () => {
-      const mockSuperJson = new SuperJson({
+      const mockSuperJson = {
         profiles: {
           profile: {
             version: '0.0.1',
@@ -203,15 +207,19 @@ describe('SuperfaceTest', () => {
             security: [],
           },
         },
-      });
+      };
 
       expect(() => {
-        isProfileProviderLocal('provider', 'profile', mockSuperJson.normalized);
+        isProfileProviderLocal(
+          'provider',
+          'profile',
+          normalizeSuperJsonDocument(mockSuperJson)
+        );
       }).toThrowError(new MapUndefinedError('profile', 'provider'));
     });
 
     it('does not throw when profile provider is local', () => {
-      const mockSuperJson = new SuperJson({
+      const mockSuperJson = {
         profiles: {
           profile: {
             file: 'some/path/to/profile.supr',
@@ -227,10 +235,14 @@ describe('SuperfaceTest', () => {
             security: [],
           },
         },
-      });
+      };
 
       expect(() => {
-        isProfileProviderLocal('provider', 'profile', mockSuperJson.normalized);
+        isProfileProviderLocal(
+          'provider',
+          'profile',
+          normalizeSuperJsonDocument(mockSuperJson)
+        );
       }).not.toThrow();
     });
   });
@@ -257,11 +269,9 @@ describe('SuperfaceTest', () => {
 
   describe('getSuperJson', () => {
     it('throws when detecting superJson fails', async () => {
-      const detectSpy = jest
-        .spyOn(SuperJson, 'detectSuperJson')
-        .mockResolvedValueOnce(undefined);
-
-      const loadSpy = jest.spyOn(SuperJson, 'load');
+      const detectSpy =
+        mocked(detectSuperJson).mockResolvedValueOnce(undefined);
+      const loadSpy = mocked(loadSuperJson);
 
       await expect(getSuperJson()).rejects.toThrowError(
         new SuperJsonNotFoundError()
@@ -272,14 +282,11 @@ describe('SuperfaceTest', () => {
     });
 
     it('throws when superJson loading fails', async () => {
-      const detectSpy = jest
-        .spyOn(SuperJson, 'detectSuperJson')
-        .mockResolvedValueOnce('.');
-
+      const detectSpy = mocked(detectSuperJson).mockResolvedValueOnce('.');
       const loadingError = new SDKExecutionError('super.json error', [], []);
-      const loadSpy = jest
-        .spyOn(SuperJson, 'load')
-        .mockResolvedValueOnce(err(loadingError));
+      const loadSpy = mocked(loadSuperJson).mockResolvedValueOnce(
+        err(loadingError)
+      );
 
       await expect(getSuperJson()).rejects.toThrowError(
         new SuperJsonLoadingFailedError(loadingError)
