@@ -5,21 +5,26 @@ import {
   NormalizedSuperJsonDocument,
   SecurityScheme,
   SecurityValues,
+  SuperJsonDocument,
 } from '@superfaceai/ast';
 import {
   getValue,
   isPrimitive,
+  NodeFileSystem,
   NonPrimitive,
   Primitive,
   Profile,
   Provider,
   SecurityConfiguration,
   SuperfaceClient,
-  SuperJson,
   UnexpectedError,
   UseCase,
   Variables,
 } from '@superfaceai/one-sdk';
+import {
+  detectSuperJson,
+  loadSuperJson,
+} from '@superfaceai/one-sdk/dist/schema-tools/superjson';
 import createDebug from 'debug';
 import { join as joinPath } from 'path';
 
@@ -186,8 +191,8 @@ export function getUseCaseName(useCase: UseCase | string): string {
 /**
  * Returns SuperJson based on path detected with its abstract method.
  */
-export async function getSuperJson(): Promise<SuperJson> {
-  const superPath = await SuperJson.detectSuperJson(process.cwd(), 3);
+export async function getSuperJson(): Promise<SuperJsonDocument> {
+  const superPath = await detectSuperJson(process.cwd(), NodeFileSystem, 3);
 
   debug('Loading super.json from path:', superPath);
 
@@ -195,8 +200,9 @@ export async function getSuperJson(): Promise<SuperJson> {
     throw new SuperJsonNotFoundError();
   }
 
-  const superJsonResult = await SuperJson.load(
-    joinPath(superPath, 'super.json')
+  const superJsonResult = await loadSuperJson(
+    joinPath(superPath, 'super.json'),
+    NodeFileSystem
   );
 
   debug('Found super.json:', superJsonResult);

@@ -1,3 +1,4 @@
+import { NormalizedSuperJsonDocument } from '@superfaceai/ast';
 import {
   AuthCache,
   BoundProfileProvider,
@@ -26,14 +27,13 @@ import {
   registerHooks,
   SecurityConfiguration,
   SuperCache,
-  SuperJson,
   unconfiguredProviderError,
 } from '@superfaceai/one-sdk';
 
 import { CompleteSuperfaceTestConfig } from './superface-test.interfaces';
 
 export interface ISuperfaceClient {
-  readonly superJson: SuperJson;
+  readonly superJson: NormalizedSuperJsonDocument;
   readonly cache: SuperCache<{
     provider: IBoundProfileProvider;
     expiresAt: number;
@@ -81,7 +81,7 @@ export class TestClient implements ISuperfaceClient {
   public crypto: ICrypto;
 
   constructor(
-    public readonly superJson: SuperJson,
+    public readonly superJson: NormalizedSuperJsonDocument,
     parameters?: {
       configOverride?: Partial<IConfig>;
       fileSystemOverride?: Partial<IFileSystem>;
@@ -174,10 +174,10 @@ export class TestClient implements ISuperfaceClient {
 }
 
 export function getProvider(
-  superJson: SuperJson,
+  superJson: NormalizedSuperJsonDocument,
   providerName: string
 ): Provider {
-  const providerSettings = superJson.normalized.providers[providerName];
+  const providerSettings = superJson.providers[providerName];
 
   if (providerSettings === undefined) {
     throw unconfiguredProviderError(providerName);
@@ -189,11 +189,10 @@ export function getProvider(
 }
 
 export function getProviderForProfile(
-  superJson: SuperJson,
+  superJson: NormalizedSuperJsonDocument,
   profileId: string
 ): Provider {
-  const priorityProviders =
-    superJson.normalized.profiles[profileId]?.priority ?? [];
+  const priorityProviders = superJson.profiles[profileId]?.priority ?? [];
   if (priorityProviders.length > 0) {
     const name = priorityProviders[0];
 
@@ -201,7 +200,7 @@ export function getProviderForProfile(
   }
 
   const knownProfileProviders = Object.keys(
-    superJson.normalized.profiles[profileId]?.providers ?? {}
+    superJson.profiles[profileId]?.providers ?? {}
   );
   if (knownProfileProviders.length > 0) {
     const name = knownProfileProviders[0];

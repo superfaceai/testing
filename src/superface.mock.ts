@@ -3,6 +3,7 @@ import {
   ProfileDocumentNode,
   SecurityScheme,
   SecurityValues,
+  SuperJsonDocument,
 } from '@superfaceai/ast';
 import {
   PerformError,
@@ -10,14 +11,11 @@ import {
   Provider,
   Result,
   SuperfaceClient,
-  SuperJson,
   UseCase,
 } from '@superfaceai/one-sdk';
 import { ServiceSelector } from '@superfaceai/one-sdk/dist/private';
 
 import { CompleteSuperfaceTestConfig } from '.';
-
-/* eslint-disable @typescript-eslint/no-unsafe-return */
 
 interface UseCaseOptions {
   isOk?: boolean;
@@ -56,9 +54,6 @@ export const getProfileMock = jest.fn<
   Parameters<(profileId: string, options?: ProfileOptions) => Promise<Profile>>
 >(async (profileId: string, options?: ProfileOptions) => ({
   ...Object.create(Profile.prototype),
-  client: jest.createMockFromModule<SuperfaceClient>(
-    '@superfaceai/one-sdk/dist/client/client'
-  ),
   configuration: {
     id: profileId ?? 'profile',
     version: options?.version ?? '1.0.0',
@@ -85,7 +80,7 @@ export const getProviderMock = jest.fn<
 }));
 
 export interface SuperfaceClientOptions {
-  superJson?: SuperJson;
+  superJson?: SuperJsonDocument;
   profileAst?: ProfileDocumentNode;
   mapAst?: MapDocumentNode;
   providerName?: string;
@@ -96,7 +91,7 @@ export interface SuperfaceClientOptions {
   };
 }
 
-const DEFAULT_SUPERJSON = new SuperJson({
+const DEFAULT_SUPERJSON = {
   profiles: {
     profile: {
       file: 'path/to/profile.supr',
@@ -113,7 +108,7 @@ const DEFAULT_SUPERJSON = new SuperJson({
       security: [],
     },
   },
-});
+};
 
 export const SuperfaceClientMock = jest.fn<
   SuperfaceClient,
@@ -138,7 +133,6 @@ export const SuperfaceClientMock = jest.fn<
 }));
 
 export const getMockedSfConfig = async (options?: {
-  superJson?: SuperJson;
   isOk?: boolean;
   isErr?: boolean;
   result?: Result<unknown, PerformError>;

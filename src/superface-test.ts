@@ -1,4 +1,11 @@
-import { err, ok, PerformError, Result } from '@superfaceai/one-sdk';
+import {
+  err,
+  normalizeSuperJsonDocument,
+  ok,
+  PerformError,
+  Result,
+  UnexpectedError as SdkUnexpectedError,
+} from '@superfaceai/one-sdk';
 import createDebug from 'debug';
 import {
   activate as activateNock,
@@ -118,7 +125,7 @@ export class SuperfaceTest {
       options?.beforeRecordingLoad
     );
 
-    let result: Result<unknown, PerformError>;
+    let result: Result<unknown, PerformError | SdkUnexpectedError>;
     try {
       // Run perform method on specified configuration
       result = await this.sfConfig.useCase.perform(input, {
@@ -397,7 +404,9 @@ export class SuperfaceTest {
    */
   private async setupSuperfaceConfig(): Promise<void> {
     if (this.client === undefined) {
-      this.client = new TestClient(await getSuperJson());
+      this.client = new TestClient(
+        normalizeSuperJsonDocument(await getSuperJson())
+      );
     }
 
     if (typeof this.sfConfig.profile === 'string') {
@@ -437,12 +446,12 @@ export class SuperfaceTest {
     assertsPreparedConfig(this.sfConfig);
 
     const profileId = getProfileId(this.sfConfig.profile);
-    const superJson = this.client?.superJson ?? (await getSuperJson());
+    const superJsonDocument = this.client?.superJson ?? (await getSuperJson());
 
     isProfileProviderLocal(
       this.sfConfig.provider,
       profileId,
-      superJson.normalized
+      normalizeSuperJsonDocument(superJsonDocument)
     );
   }
 }
