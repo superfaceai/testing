@@ -503,7 +503,7 @@ describe('SuperfaceTest', () => {
     });
 
     describe('when performing', () => {
-      it('returns error from perform', async () => {
+      it('returns full error from perform', async () => {
         const mockedProvider = await getProviderMock('provider');
         const mockedUseCase = getUseCaseMock('usecase');
 
@@ -519,8 +519,38 @@ describe('SuperfaceTest', () => {
 
         mocked(matchWildCard).mockReturnValueOnce(true);
 
-        await expect(superfaceTest.run({ input: {} })).resolves.toEqual({
+        await expect(
+          superfaceTest.run({ input: {} }, { fullError: true })
+        ).resolves.toEqual({
           error: new MapASTError('error'),
+        });
+
+        expect(performSpy).toHaveBeenCalledTimes(1);
+        expect(performSpy).toHaveBeenCalledWith(
+          {},
+          { provider: mockedProvider }
+        );
+      });
+
+      it('returns (by default) stringified error from perform', async () => {
+        const mockedProvider = await getProviderMock('provider');
+        const mockedUseCase = getUseCaseMock('usecase');
+        const mockedMapASTError = new MapASTError('error');
+
+        superfaceTest = new SuperfaceTest({
+          ...(await getMockedSfConfig()),
+          provider: mockedProvider,
+          useCase: mockedUseCase,
+        });
+
+        const performSpy = jest
+          .spyOn(mockedUseCase, 'perform')
+          .mockResolvedValueOnce(err(mockedMapASTError));
+
+        mocked(matchWildCard).mockReturnValueOnce(true);
+
+        await expect(superfaceTest.run({ input: {} })).resolves.toEqual({
+          error: mockedMapASTError.toString(),
         });
 
         expect(performSpy).toHaveBeenCalledTimes(1);

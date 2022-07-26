@@ -3,7 +3,6 @@ import {
   err,
   ok,
   PerformError,
-  Result,
   SuperfaceClient,
 } from '@superfaceai/one-sdk';
 import createDebug from 'debug';
