@@ -125,7 +125,7 @@ export class SuperfaceTest {
       options?.beforeRecordingLoad
     );
 
-    let result: Result<unknown, PerformError>;
+    let result: TestingReturn;
     try {
       // Run perform method on specified configuration
       result = await this.sfConfig.useCase.perform(input, {
@@ -150,7 +150,11 @@ export class SuperfaceTest {
     if (result.isErr()) {
       debug('Perform failed with error:', result.error.toString());
 
-      return err(mapError(result.error));
+      if (options?.fullError) {
+        return err(mapError(result.error as PerformError));
+      }
+
+      return err(result.error.toString());
     }
 
     if (result.isOk()) {

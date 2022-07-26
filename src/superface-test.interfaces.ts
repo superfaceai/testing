@@ -46,7 +46,7 @@ export interface SuperfaceTestConfig {
 
 export type CompleteSuperfaceTestConfig = Required<SuperfaceTestConfig>;
 
-export type TestingReturn = Result<unknown, PerformError>;
+export type TestingReturn = Result<unknown, PerformError | string>;
 
 export interface NockConfig {
   path?: string;
@@ -70,4 +70,5 @@ export interface RecordingProcessOptions {
   hideInput?: string[];
   recordingVersion?: string;
   alert?: AlertFunction;
+  fullError?: boolean;
 }
