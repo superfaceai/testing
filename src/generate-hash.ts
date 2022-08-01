@@ -32,7 +32,10 @@ export class JestGenerateHash implements IGenerator {
       return generate(JSON.stringify(options.input));
     }
 
-    return generate(this.payload.currentTestName);
+    // removes jest tag to support same recordings
+    const testName = this.payload.currentTestName.replace(/\(.*\) *: */, '');
+
+    return generate(testName);
   }
 }
 
