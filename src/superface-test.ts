@@ -437,12 +437,13 @@ export class SuperfaceTest {
     assertsPreparedConfig(this.sfConfig);
 
     const profileId = getProfileId(this.sfConfig.profile);
-    const superJson = this.client?.superJson ?? (await getSuperJson());
 
-    isProfileProviderLocal(
-      this.sfConfig.provider,
-      profileId,
-      superJson.normalized
-    );
+    if (this.client?.superJson) {
+      isProfileProviderLocal(
+        this.sfConfig.provider,
+        profileId,
+        this.client.superJson.normalized
+      );
+    }
   }
 }

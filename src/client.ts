@@ -12,7 +12,6 @@ import {
   ILogger,
   Interceptable,
   InternalClient,
-  noConfiguredProviderError,
   NodeCrypto,
   NodeEnvironment,
   NodeFetch,
@@ -21,6 +20,7 @@ import {
   NodeTimers,
   Profile,
   ProfileProvider,
+  ProfileProviderConfiguration,
   Provider,
   ProviderConfiguration,
   registerHooks,
@@ -33,7 +33,7 @@ import {
 import { CompleteSuperfaceTestConfig } from './superface-test.interfaces';
 
 export interface ISuperfaceClient {
-  readonly superJson: SuperJson;
+  readonly superJson: SuperJson | undefined;
   readonly cache: SuperCache<{
     provider: IBoundProfileProvider;
     expiresAt: number;
@@ -47,7 +47,6 @@ export interface ISuperfaceClient {
 
   getProfile(profileId: string): Promise<Profile>;
   getProvider(providerName: string): Promise<Provider>;
-  getProviderForProfile(profileId: string): Promise<Provider>;
   on(...args: Parameters<Events['on']>): void;
 
   addBoundProfileProvider(
@@ -81,7 +80,7 @@ export class TestClient implements ISuperfaceClient {
   public crypto: ICrypto;
 
   constructor(
-    public readonly superJson: SuperJson,
+    public readonly superJson: SuperJson | undefined,
     parameters?: {
       configOverride?: Partial<IConfig>;
       fileSystemOverride?: Partial<IFileSystem>;
@@ -133,8 +132,9 @@ export class TestClient implements ISuperfaceClient {
   ): Promise<BoundProfileProviderConfiguration> {
     const profileProvider = new ProfileProvider(
       this.superJson,
-      profile.configuration,
+      profile.ast,
       provider.configuration,
+      new ProfileProviderConfiguration(),
       this.config,
       this.events,
       this.fileSystem,
@@ -168,46 +168,23 @@ export class TestClient implements ISuperfaceClient {
     return getProvider(this.superJson, providerName);
   }
 
-  public async getProviderForProfile(profileId: string): Promise<Provider> {
-    return getProviderForProfile(this.superJson, profileId);
-  }
 }
 
 export function getProvider(
-  superJson: SuperJson,
+  superJson: SuperJson | undefined,
   providerName: string
 ): Provider {
-  const providerSettings = superJson.normalized.providers[providerName];
+  if (superJson) {
+    const providerSettings = superJson.normalized.providers[providerName];
 
-  if (providerSettings === undefined) {
-    throw unconfiguredProviderError(providerName);
+    if (providerSettings === undefined) {
+      throw unconfiguredProviderError(providerName);
+    }
+
+    return new Provider(
+      new ProviderConfiguration(providerName, providerSettings.security)
+    );
   }
 
-  return new Provider(
-    new ProviderConfiguration(providerName, providerSettings.security)
-  );
-}
-
-export function getProviderForProfile(
-  superJson: SuperJson,
-  profileId: string
-): Provider {
-  const priorityProviders =
-    superJson.normalized.profiles[profileId]?.priority ?? [];
-  if (priorityProviders.length > 0) {
-    const name = priorityProviders[0];
-
-    return getProvider(superJson, name);
-  }
-
-  const knownProfileProviders = Object.keys(
-    superJson.normalized.profiles[profileId]?.providers ?? {}
-  );
-  if (knownProfileProviders.length > 0) {
-    const name = knownProfileProviders[0];
-
-    return getProvider(superJson, name);
-  }
-
-  throw noConfiguredProviderError(profileId);
+  return new Provider(new ProviderConfiguration(providerName, []));
 }

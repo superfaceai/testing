@@ -82,18 +82,8 @@ describe('SuperfaceTest', () => {
     });
 
     describe('throws if configuration has some undefined components', () => {
-      it('client missing', () => {
-        const superface = {};
-
-        expect(() => {
-          assertsPreparedConfig(superface);
-        }).toThrowError(new ComponentUndefinedError('Client'));
-      });
-
       it('profile missing', () => {
-        const superface = {
-          client: new SuperfaceClientMock(),
-        };
+        const superface = {};
 
         expect(() => {
           assertsPreparedConfig(superface);

@@ -37,7 +37,6 @@ import {
   MapUndefinedError,
   ProfileUndefinedError,
   SuperJsonLoadingFailedError,
-  SuperJsonNotFoundError,
 } from './common/errors';
 import {
   IGenerator,
@@ -186,13 +185,13 @@ export function getUseCaseName(useCase: UseCase | string): string {
 /**
  * Returns SuperJson based on path detected with its abstract method.
  */
-export async function getSuperJson(): Promise<SuperJson> {
+export async function getSuperJson(): Promise<SuperJson | undefined> {
   const superPath = await SuperJson.detectSuperJson(process.cwd(), 3);
 
   debug('Loading super.json from path:', superPath);
 
   if (superPath === undefined) {
-    throw new SuperJsonNotFoundError();
+    return undefined;
   }
 
   const superJsonResult = await SuperJson.load(

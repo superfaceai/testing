@@ -56,9 +56,6 @@ export const getProfileMock = jest.fn<
   Parameters<(profileId: string, options?: ProfileOptions) => Promise<Profile>>
 >(async (profileId: string, options?: ProfileOptions) => ({
   ...Object.create(Profile.prototype),
-  client: jest.createMockFromModule<SuperfaceClient>(
-    '@superfaceai/one-sdk/dist/client/client'
-  ),
   configuration: {
     id: profileId ?? 'profile',
     version: options?.version ?? '1.0.0',
