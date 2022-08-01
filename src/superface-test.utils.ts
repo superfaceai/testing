@@ -8,6 +8,7 @@ import {
 } from '@superfaceai/ast';
 import {
   BoundProfileProvider,
+  PerformError,
   Profile,
   Provider,
   SuperfaceClient,
@@ -25,13 +26,6 @@ import {
 import createDebug from 'debug';
 import { join as joinPath } from 'path';
 
-import {
-  CompleteSuperfaceTestConfig,
-  InputVariables,
-  RecordingDefinition,
-  RecordingDefinitions,
-  SuperfaceTestConfigPayload,
-} from '.';
 import {
   ComponentUndefinedError,
   InstanceMissingError,
@@ -51,6 +45,13 @@ import {
   replaceInputInDefinition,
   replaceParameterInDefinition,
 } from './nock';
+import {
+  CompleteSuperfaceTestConfig,
+  InputVariables,
+  RecordingDefinition,
+  RecordingDefinitions,
+  SuperfaceTestConfigPayload,
+} from './superface-test.interfaces';
 
 const debug = createDebug('superface:testing');
 
@@ -532,4 +533,30 @@ export function getGenerator(testInstance: unknown): IGenerator {
   }
 
   return new InputGenerateHash();
+}
+
+export function parsePublishEnv(variable: string | undefined): boolean {
+  if (variable === 'true') {
+    return true;
+  }
+
+  if (variable === 'false') {
+    return false;
+  }
+
+  return false;
+}
+
+/**
+ * @param error - error returned from perform
+ * @returns perform error without ast metadata
+ */
+export function mapError(error: PerformError): PerformError {
+  const result = error;
+
+  if ('metadata' in result) {
+    delete result.metadata;
+  }
+
+  return result;
 }

@@ -9,7 +9,7 @@ import {
   SuperJson,
 } from '@superfaceai/one-sdk';
 import nock, { pendingMocks, recorder } from 'nock';
-import { join as joinPath } from 'path';
+import { join as joinPath, resolve as resolvePath } from 'path';
 import { mocked } from 'ts-jest/utils';
 
 import {
@@ -169,7 +169,7 @@ describe('SuperfaceTest', () => {
         ]);
         const endRecSpy = jest.spyOn(nock, 'restore');
 
-        mocked(exists).mockResolvedValue(true);
+        mocked(exists).mockResolvedValue(false);
         mocked(matchWildCard).mockReturnValueOnce(true);
 
         await superfaceTest.run({ input: {} });
@@ -208,7 +208,7 @@ describe('SuperfaceTest', () => {
         const recorderSpy = jest.spyOn(recorder, 'rec');
         jest.spyOn(recorder, 'play').mockReturnValueOnce([]);
 
-        mocked(exists).mockResolvedValue(true);
+        mocked(exists).mockResolvedValue(false);
         mocked(matchWildCard).mockReturnValueOnce(true);
 
         await superfaceTest.run({ input: {} });
@@ -254,7 +254,7 @@ describe('SuperfaceTest', () => {
           },
         ]);
 
-        mocked(exists).mockResolvedValue(true);
+        mocked(exists).mockResolvedValue(false);
         mocked(matchWildCard).mockReturnValueOnce(true);
 
         await superfaceTest.run({ input: {} });
@@ -295,7 +295,7 @@ describe('SuperfaceTest', () => {
           },
         ]);
 
-        mocked(exists).mockResolvedValue(true);
+        mocked(exists).mockResolvedValue(false);
         mocked(matchWildCard).mockReturnValueOnce(true);
 
         await superfaceTest.run({ input: {} });
@@ -338,7 +338,7 @@ describe('SuperfaceTest', () => {
           },
         ]);
 
-        mocked(exists).mockResolvedValue(true);
+        mocked(exists).mockResolvedValue(false);
         mocked(matchWildCard).mockReturnValueOnce(true);
 
         await superfaceTest.run(
@@ -453,16 +453,23 @@ describe('SuperfaceTest', () => {
 
     describe('when loading recordings', () => {
       it('throws when recording fixture does not exist', async () => {
-        superfaceTest = new SuperfaceTest(await getMockedSfConfig());
+        const config = await getMockedSfConfig();
+        const testName = 'my-test-name';
+        const expectedHash = generate(testName);
+        const recordingPath = resolvePath(
+          `nock/${config.profile.configuration.id}/${config.provider.configuration.name}/${config.useCase.name}/recording-${expectedHash}.json`
+        );
+
+        superfaceTest = new SuperfaceTest(config);
 
         const recorderSpy = jest.spyOn(recorder, 'rec');
 
         mocked(exists).mockResolvedValueOnce(false);
         mocked(matchWildCard).mockReturnValueOnce(false);
 
-        await expect(superfaceTest.run({ input: {} })).rejects.toThrowError(
-          new RecordingsNotFoundError()
-        );
+        await expect(
+          superfaceTest.run({ input: {}, testName })
+        ).rejects.toThrowError(new RecordingsNotFoundError(recordingPath));
 
         expect(recorderSpy).not.toHaveBeenCalled();
       });
@@ -496,7 +503,7 @@ describe('SuperfaceTest', () => {
     });
 
     describe('when performing', () => {
-      it('returns error from perform', async () => {
+      it('returns full error from perform', async () => {
         const mockedProvider = await getProviderMock('provider');
         const mockedUseCase = getUseCaseMock('usecase');
 
@@ -512,8 +519,38 @@ describe('SuperfaceTest', () => {
 
         mocked(matchWildCard).mockReturnValueOnce(true);
 
+        await expect(
+          superfaceTest.run({ input: {} }, { fullError: true })
+        ).resolves.toEqual({
+          error: new MapASTError('error'),
+        });
+
+        expect(performSpy).toHaveBeenCalledTimes(1);
+        expect(performSpy).toHaveBeenCalledWith(
+          {},
+          { provider: mockedProvider }
+        );
+      });
+
+      it('returns (by default) stringified error from perform', async () => {
+        const mockedProvider = await getProviderMock('provider');
+        const mockedUseCase = getUseCaseMock('usecase');
+        const mockedMapASTError = new MapASTError('error');
+
+        superfaceTest = new SuperfaceTest({
+          ...(await getMockedSfConfig()),
+          provider: mockedProvider,
+          useCase: mockedUseCase,
+        });
+
+        const performSpy = jest
+          .spyOn(mockedUseCase, 'perform')
+          .mockResolvedValueOnce(err(mockedMapASTError));
+
+        mocked(matchWildCard).mockReturnValueOnce(true);
+
         await expect(superfaceTest.run({ input: {} })).resolves.toEqual({
-          error: new MapASTError('error').toString(),
+          error: mockedMapASTError.toString(),
         });
 
         expect(performSpy).toHaveBeenCalledTimes(1);

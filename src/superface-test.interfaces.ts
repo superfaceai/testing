@@ -1,4 +1,5 @@
 import {
+  PerformError,
   Profile,
   Provider,
   Result,
@@ -10,6 +11,8 @@ import {
   Primitive,
 } from '@superfaceai/one-sdk/dist/internal/interpreter/variables';
 import { Definition } from 'nock/types';
+
+import { AnalysisResult } from './nock/analyzer';
 
 export interface SuperfaceTestConfigPayload {
   client?: SuperfaceClient;
@@ -26,6 +29,8 @@ export interface HashOptions {
   testName?: string;
 }
 
+export type AlertFunction = (analysis: AnalysisResult) => void | Promise<void>;
+
 export type SuperfaceTestRun = Omit<
   SuperfaceTestConfigPayload,
   'testInstance'
@@ -41,7 +46,7 @@ export interface SuperfaceTestConfig {
 
 export type CompleteSuperfaceTestConfig = Required<SuperfaceTestConfig>;
 
-export type TestingReturn = Result<unknown, string>;
+export type TestingReturn = Result<unknown, PerformError | string>;
 
 export interface NockConfig {
   path?: string;
@@ -63,4 +68,7 @@ export interface RecordingProcessOptions {
   beforeRecordingSave?: ProcessingFunction;
   beforeRecordingLoad?: ProcessingFunction;
   hideInput?: string[];
+  recordingVersion?: string;
+  alert?: AlertFunction;
+  fullError?: boolean;
 }
