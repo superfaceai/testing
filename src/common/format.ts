@@ -56,7 +56,7 @@ function isValidPayload(payload: string, match: string): boolean {
  * SUPERFACE_LIVE_API="scope/profile:provider:usecase*"
  */
 export function matchWildCard(
-  sfConfig: CompleteSuperfaceTestConfig,
+  sfConfig: Pick<CompleteSuperfaceTestConfig, 'profile' | 'provider' | 'useCase'>,
   superfaceEnv: string | undefined
 ): boolean {
   if (superfaceEnv === undefined || superfaceEnv === '') {

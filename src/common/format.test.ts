@@ -1,4 +1,4 @@
-import { getMockedSfConfig } from '../superface.mock';
+import { getMockedSfConfig } from '../superface/mock/superface.mock';
 import { matchWildCard } from './format';
 
 describe('format', () => {

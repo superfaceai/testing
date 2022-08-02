@@ -9,7 +9,6 @@ import { err, SDKExecutionError, SuperJson } from '@superfaceai/one-sdk';
 import { RecordingDefinitions } from '.';
 import {
   ComponentUndefinedError,
-  InstanceMissingError,
   MapUndefinedError,
   ProfileUndefinedError,
   SuperJsonLoadingFailedError,
@@ -27,7 +26,7 @@ import {
   getProviderMock,
   getUseCaseMock,
   SuperfaceClientMock,
-} from './superface.mock';
+} from './superface/mock/superface.mock';
 import {
   assertsDefinitionsAreNotStrings,
   assertsPreparedConfig,
@@ -46,41 +45,6 @@ describe('SuperfaceTest', () => {
   });
 
   describe('assertsPreparedConfig', () => {
-    describe('throws if configuration has string representation of some component', () => {
-      it('profile instance missing', async () => {
-        const superface = {
-          ...(await getMockedSfConfig()),
-          profile: 'some-profile',
-        };
-
-        expect(() => {
-          assertsPreparedConfig(superface);
-        }).toThrowError(new InstanceMissingError('Profile'));
-      });
-
-      it('provider instance missing', async () => {
-        const superface = {
-          ...(await getMockedSfConfig()),
-          provider: 'some-provider',
-        };
-
-        expect(() => {
-          assertsPreparedConfig(superface);
-        }).toThrow(new InstanceMissingError('Provider'));
-      });
-
-      it('usecase instance missing', async () => {
-        const superface = {
-          ...(await getMockedSfConfig()),
-          useCase: 'some-useCase',
-        };
-
-        expect(() => {
-          assertsPreparedConfig(superface);
-        }).toThrow(new InstanceMissingError('UseCase'));
-      });
-    });
-
     describe('throws if configuration has some undefined components', () => {
       it('profile missing', () => {
         const superface = {};
