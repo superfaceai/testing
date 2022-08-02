@@ -72,3 +72,15 @@ export interface RecordingProcessOptions {
   alert?: AlertFunction;
   fullError?: boolean;
 }
+
+export interface TestCoverage {
+  pass: boolean;
+  profile: string;
+  provider: string;
+  useCase: string;
+  impact: string;
+  errors: string[];
+}
+export interface TestAnalysis {
+  testCoverage: TestCoverage[];
+}
