@@ -134,7 +134,8 @@ export class TestClient implements ISuperfaceClient {
 
     // put created profile provider into cache
     this.cache.getCached(
-      config.profile.configuration.cacheKey + config.provider.configuration.cacheKey,
+      config.profile.configuration.cacheKey +
+        config.provider.configuration.cacheKey,
       () => ({ provider: boundProfileProvider, expiresAt: Infinity })
     );
 

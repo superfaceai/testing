@@ -1,4 +1,4 @@
-import { MapDocumentNode, ProfileDocumentNode } from "@superfaceai/ast";
+import { MapDocumentNode, ProfileDocumentNode } from '@superfaceai/ast';
 
 export const mockProfileAST: ProfileDocumentNode = {
   kind: 'ProfileDocument',

@@ -1,6 +1,6 @@
 import { ProfileDocumentNode, SecurityValues } from '@superfaceai/ast';
 import {
-    BoundProfileProvider,
+  BoundProfileProvider,
   Config,
   Events,
   NodeCrypto,

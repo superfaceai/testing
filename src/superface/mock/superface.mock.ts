@@ -23,9 +23,7 @@ import {
   UseCase,
 } from '@superfaceai/one-sdk';
 
-import {
-  CompleteSuperfaceTestConfig,
-} from '../../superface-test.interfaces';
+import { CompleteSuperfaceTestConfig } from '../../superface-test.interfaces';
 import { ISuperfaceClient } from '../client';
 import { mockProfileAST } from './ast';
 import { mockFileSystem } from './file-system';
