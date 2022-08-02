@@ -18,13 +18,7 @@ import {
   RecordingProcessOptions,
 } from '.';
 import {
-  BoundProfileProviderConfiguration,
-  ISuperfaceClient,
-  TestClient,
-} from './client';
-import {
   BaseURLNotFoundError,
-  ComponentUndefinedError,
   FixturesPathUndefinedError,
   RecordingPathUndefinedError,
   RecordingsNotFoundError,
@@ -38,21 +32,18 @@ import {
 import { exists, readFileQuiet } from './common/io';
 import { writeRecordings } from './common/output-stream';
 import { IGenerator } from './generate-hash';
+import { ITestConfig, TestConfig } from './superface/config';
 import {
+  CompleteSuperfaceTestConfig,
   NockConfig,
   SuperfaceTestConfigPayload,
   SuperfaceTestRun,
   TestingReturn,
 } from './superface-test.interfaces';
 import {
-  assertBoundProfileProvider,
   assertsDefinitionsAreNotStrings,
-  assertsPreparedConfig,
   checkSensitiveInformation,
   getGenerator,
-  getProfileId,
-  getSuperJson,
-  isProfileProviderLocal,
   replaceCredentials,
   searchValues,
 } from './superface-test.utils';
@@ -62,18 +53,16 @@ const debugSetup = createDebug('superface:testing:setup');
 const debugHashing = createDebug('superface:testing:hash');
 
 export class SuperfaceTest {
-  private sfConfig: SuperfaceTestConfigPayload;
-  private client?: ISuperfaceClient;
-  private boundProfileProviderConfiguration?: BoundProfileProviderConfiguration;
+  private config: ITestConfig;
   private nockConfig?: NockConfig;
   private fixturesPath?: string;
   private recordingPath?: string;
   private generator: IGenerator;
 
-  constructor(sfConfig?: SuperfaceTestConfigPayload, nockConfig?: NockConfig) {
-    this.sfConfig = sfConfig ?? {};
+  constructor(payload?: SuperfaceTestConfigPayload, nockConfig?: NockConfig) {
+    this.config = new TestConfig(payload);
     this.nockConfig = nockConfig;
-    this.generator = getGenerator(sfConfig?.testInstance);
+    this.generator = getGenerator(nockConfig?.testInstance);
 
     this.setupFixturesPath();
   }
@@ -86,16 +75,13 @@ export class SuperfaceTest {
     testCase: SuperfaceTestRun,
     options?: RecordingProcessOptions
   ): Promise<TestingReturn> {
-    this.prepareSuperfaceConfig(testCase);
-    await this.setupSuperfaceConfig();
-
-    assertsPreparedConfig(this.sfConfig);
-    await this.checkForMapInSuperJson();
+    const config = await this.config.get(testCase);
+    const { provider, boundProfileProvider } = config;
 
     // setup bound profile provider
-    if (this.boundProfileProviderConfiguration === undefined) {
-      this.boundProfileProviderConfiguration =
-        await this.client?.addBoundProfileProvider(this.sfConfig);
+    if (this.config.boundProfileProvider === undefined) {
+      this.config.boundProfileProvider =
+        await this.config.client?.addBoundProfileProvider(config);
     }
 
     // Create a hash for access to recording files
@@ -104,33 +90,41 @@ export class SuperfaceTest {
 
     debugHashing('Created hash:', hash);
 
-    this.setupRecordingPath(getFixtureName(this.sfConfig), hash);
+    this.setupRecordingPath(getFixtureName(config), hash);
 
     // Parse env variable and check if test should be recorded
-    const record = matchWildCard(this.sfConfig, process.env.SUPERFACE_LIVE_API);
+    const record = matchWildCard(config, process.env.SUPERFACE_LIVE_API);
     const processRecordings = options?.processRecordings ?? true;
     const inputVariables = searchValues(testCase.input, options?.hideInput);
 
-    await this.startRecording(
+    await this.startRecording({
       record,
       processRecordings,
+      config: {
+        boundProfileProvider,
+        provider,
+      },
       inputVariables,
-      options?.beforeRecordingLoad
-    );
+      beforeRecordingLoad: options?.beforeRecordingLoad,
+    });
 
     let result: Result<unknown, PerformError>;
     try {
       // Run perform method on specified configuration
-      result = await this.sfConfig.useCase.perform(input, {
-        provider: this.sfConfig.provider,
+      result = await config.useCase.perform(input, {
+        provider: config.provider,
       });
 
-      await this.endRecording(
+      await this.endRecording({
         record,
         processRecordings,
+        config: {
+          boundProfileProvider,
+          provider,
+        },
         inputVariables,
-        options?.beforeRecordingSave
-      );
+        beforeRecordingSave: options?.beforeRecordingSave,
+      });
     } catch (error: unknown) {
       restoreRecordings();
       recorder.clear();
@@ -164,27 +158,34 @@ export class SuperfaceTest {
    *
    * Recordings do not get processed if user specifies parameter `processRecordings` as false.
    */
-  private async startRecording(
-    record: boolean,
-    processRecordings: boolean,
-    inputVariables?: InputVariables,
-    beforeRecordingLoad?: ProcessingFunction
-  ): Promise<void> {
+  private async startRecording({
+    record,
+    processRecordings,
+    config: { boundProfileProvider, provider },
+    inputVariables,
+    beforeRecordingLoad,
+  }: {
+    record: boolean;
+    processRecordings: boolean;
+    config: Pick<
+      CompleteSuperfaceTestConfig,
+      'boundProfileProvider' | 'provider'
+    >;
+    inputVariables?: InputVariables;
+    beforeRecordingLoad?: ProcessingFunction;
+  }): Promise<void> {
     if (!this.recordingPath) {
       throw new RecordingPathUndefinedError();
     }
 
-    assertsPreparedConfig(this.sfConfig);
-    assertBoundProfileProvider(this.boundProfileProviderConfiguration);
-
     const { parameters, security, services } =
-      this.boundProfileProviderConfiguration;
+      boundProfileProvider.configuration;
     const integrationParameters = parameters ?? {};
-    const securityValues = this.sfConfig.provider.configuration.security;
+    const securityValues = provider.configuration.security;
     const baseUrl = services.getUrl();
 
     if (baseUrl === undefined) {
-      throw new BaseURLNotFoundError(this.sfConfig.provider.configuration.name);
+      throw new BaseURLNotFoundError(provider.configuration.name);
     }
 
     if (record) {
@@ -254,12 +255,22 @@ export class SuperfaceTest {
    * based on security schemes and integration parameters defined in provider.json,
    * unless user pass in false for parameter `processRecordings`.
    */
-  private async endRecording(
-    record: boolean,
-    processRecordings: boolean,
-    inputVariables?: InputVariables,
-    beforeRecordingSave?: ProcessingFunction
-  ): Promise<void> {
+  private async endRecording({
+    record,
+    processRecordings,
+    config: { boundProfileProvider, provider },
+    inputVariables,
+    beforeRecordingSave,
+  }: {
+    record: boolean;
+    processRecordings: boolean;
+    config: Pick<
+      CompleteSuperfaceTestConfig,
+      'boundProfileProvider' | 'provider'
+    >;
+    inputVariables?: InputVariables;
+    beforeRecordingSave?: ProcessingFunction;
+  }): Promise<void> {
     if (!this.recordingPath) {
       throw new RecordingPathUndefinedError();
     }
@@ -280,21 +291,17 @@ export class SuperfaceTest {
       }
 
       assertsDefinitionsAreNotStrings(definitions);
-      assertsPreparedConfig(this.sfConfig);
-      assertBoundProfileProvider(this.boundProfileProviderConfiguration);
 
-      const securityValues = this.sfConfig.provider.configuration.security;
+      const securityValues = provider.configuration.security;
       const { security, parameters, services } =
-        this.boundProfileProviderConfiguration;
+        boundProfileProvider.configuration;
       const integrationParameters = parameters ?? {};
 
       if (processRecordings) {
         const baseUrl = services.getUrl();
 
         if (baseUrl === undefined) {
-          throw new BaseURLNotFoundError(
-            this.sfConfig.provider.configuration.name
-          );
+          throw new BaseURLNotFoundError(provider.configuration.name);
         }
 
         replaceCredentials({
@@ -370,80 +377,5 @@ export class SuperfaceTest {
     );
 
     debugSetup('Prepare path to recording:', this.recordingPath);
-  }
-
-  /**
-   * Sets up entered payload to current Superface configuration
-   */
-  private prepareSuperfaceConfig(payload: SuperfaceTestConfigPayload): void {
-    if (payload.profile !== undefined) {
-      this.sfConfig.profile = payload.profile;
-    }
-
-    if (payload.provider !== undefined) {
-      this.sfConfig.provider = payload.provider;
-    }
-
-    if (payload.useCase !== undefined) {
-      this.sfConfig.useCase = payload.useCase;
-    }
-
-    debugSetup('Superface configuration prepared:', this.sfConfig);
-  }
-
-  /**
-   * Sets up current configuration - transforms every component
-   * that is represented by string to instance of that corresponding component.
-   */
-  private async setupSuperfaceConfig(): Promise<void> {
-    if (this.client === undefined) {
-      this.client = new TestClient(await getSuperJson());
-    }
-
-    if (typeof this.sfConfig.profile === 'string') {
-      this.sfConfig.profile = await this.client.getProfile(
-        this.sfConfig.profile
-      );
-
-      debugSetup('Superface Profile transformed:', this.sfConfig.profile);
-    }
-
-    if (typeof this.sfConfig.provider === 'string') {
-      this.sfConfig.provider = await this.client.getProvider(
-        this.sfConfig.provider
-      );
-
-      debugSetup('Superface Provider transformed:', this.sfConfig.provider);
-    }
-
-    if (typeof this.sfConfig.useCase === 'string') {
-      if (this.sfConfig.profile === undefined) {
-        throw new ComponentUndefinedError('Profile');
-      }
-
-      this.sfConfig.useCase = this.sfConfig.profile.getUseCase(
-        this.sfConfig.useCase
-      );
-
-      debugSetup('Superface UseCase transformed:', this.sfConfig.useCase);
-    }
-  }
-
-  /**
-   * Checks whether current components in sfConfig
-   * are locally linked in super.json.
-   */
-  private async checkForMapInSuperJson(): Promise<void> {
-    assertsPreparedConfig(this.sfConfig);
-
-    const profileId = getProfileId(this.sfConfig.profile);
-
-    if (this.client?.superJson) {
-      isProfileProviderLocal(
-        this.sfConfig.provider,
-        profileId,
-        this.client.superJson.normalized
-      );
-    }
   }
 }

@@ -7,6 +7,7 @@ import {
   SecurityValues,
 } from '@superfaceai/ast';
 import {
+  BoundProfileProvider,
   getValue,
   isPrimitive,
   NonPrimitive,
@@ -14,7 +15,6 @@ import {
   Profile,
   Provider,
   SecurityConfiguration,
-  SuperfaceClient,
   SuperJson,
   UnexpectedError,
   UseCase,
@@ -28,9 +28,8 @@ import {
   InputVariables,
   RecordingDefinition,
   RecordingDefinitions,
-  SuperfaceTestConfigPayload,
+  SuperfaceTestConfig,
 } from '.';
-import { BoundProfileProviderConfiguration } from './client';
 import {
   ComponentUndefinedError,
   InstanceMissingError,
@@ -49,6 +48,7 @@ import {
   replaceInputInDefinition,
   replaceParameterInDefinition,
 } from './nock';
+import { ISuperfaceClient } from './superface/client';
 
 const debug = createDebug('superface:testing');
 
@@ -57,16 +57,18 @@ const debug = createDebug('superface:testing');
  * that every component is instance of corresponding class not string.
  */
 export function assertsPreparedConfig(
-  sfConfig: SuperfaceTestConfigPayload
+  sfConfig: SuperfaceTestConfig
 ): asserts sfConfig is CompleteSuperfaceTestConfig {
+  assertsPreparedClient(sfConfig.client);
   assertsPreparedProfile(sfConfig.profile);
   assertsPreparedProvider(sfConfig.provider);
   assertsPreparedUseCase(sfConfig.useCase);
+  assertBoundProfileProvider(sfConfig.boundProfileProvider);
 }
 
 export function assertsPreparedClient(
-  client: SuperfaceClient | undefined
-): asserts client is SuperfaceClient {
+  client: ISuperfaceClient | undefined
+): asserts client is ISuperfaceClient {
   if (client === undefined) {
     throw new ComponentUndefinedError('Client');
   }
@@ -109,8 +111,8 @@ export function assertsPreparedUseCase(
 }
 
 export function assertBoundProfileProvider(
-  configuration: BoundProfileProviderConfiguration | undefined
-): asserts configuration is BoundProfileProviderConfiguration {
+  configuration: BoundProfileProvider | undefined
+): asserts configuration is BoundProfileProvider {
   if (configuration === undefined) {
     throw new ComponentUndefinedError('BoundProfileProvider');
   }
