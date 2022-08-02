@@ -1,16 +1,12 @@
 import {
-  AuthCache,
   BoundProfileProvider,
   Config,
   Events,
-  IBoundProfileProvider,
   IConfig,
   ICrypto,
   IEnvironment,
-  IFetch,
   IFileSystem,
   ILogger,
-  Interceptable,
   InternalClient,
   NodeCrypto,
   NodeEnvironment,
@@ -30,12 +26,12 @@ import {
   unconfiguredProviderError,
 } from '@superfaceai/one-sdk';
 
-import { CompleteSuperfaceTestConfig } from './superface-test.interfaces';
+import { CompleteSuperfaceTestConfig } from '../../superface-test.interfaces';
 
 export interface ISuperfaceClient {
   readonly superJson: SuperJson | undefined;
   readonly cache: SuperCache<{
-    provider: IBoundProfileProvider;
+    provider: BoundProfileProvider;
     expiresAt: number;
   }>;
 
@@ -43,7 +39,7 @@ export interface ISuperfaceClient {
   events: Events;
   fileSystem: IFileSystem;
   crypto: ICrypto;
-  fetchInstance: IFetch & Interceptable & AuthCache;
+  fetchInstance: NodeFetch;
 
   getProfile(profileId: string): Promise<Profile>;
   getProvider(providerName: string): Promise<Provider>;
@@ -52,12 +48,8 @@ export interface ISuperfaceClient {
   addBoundProfileProvider(
     config: CompleteSuperfaceTestConfig,
     securityValues?: SecurityConfiguration[]
-  ): Promise<BoundProfileProviderConfiguration>;
+  ): Promise<BoundProfileProvider>;
 }
-
-export type BoundProfileProviderConfiguration = ConstructorParameters<
-  typeof BoundProfileProvider
->[4];
 
 /**
  * Internal Superface client for testing
@@ -65,11 +57,11 @@ export type BoundProfileProviderConfiguration = ConstructorParameters<
  */
 export class TestClient implements ISuperfaceClient {
   public readonly cache: SuperCache<{
-    provider: IBoundProfileProvider;
+    provider: BoundProfileProvider;
     expiresAt: number;
   }>;
 
-  public fetchInstance: IFetch & Interceptable & AuthCache;
+  public fetchInstance: NodeFetch;
   public config: Config;
   public fileSystem: IFileSystem;
   public events: Events;
@@ -98,7 +90,7 @@ export class TestClient implements ISuperfaceClient {
     registerHooks(this.events, this.timers, this.logger);
 
     this.cache = new SuperCache<{
-      provider: IBoundProfileProvider;
+      provider: BoundProfileProvider;
       expiresAt: number;
     }>();
 
@@ -127,33 +119,26 @@ export class TestClient implements ISuperfaceClient {
   }
 
   public async addBoundProfileProvider(
-    { profile, provider }: CompleteSuperfaceTestConfig,
+    config: Pick<CompleteSuperfaceTestConfig, 'profile' | 'provider'>,
     securityValues?: SecurityConfiguration[]
-  ): Promise<BoundProfileProviderConfiguration> {
-    const profileProvider = new ProfileProvider(
-      this.superJson,
-      profile.ast,
-      provider.configuration,
-      new ProfileProviderConfiguration(),
-      this.config,
-      this.events,
-      this.fileSystem,
-      this.crypto,
-      this.fetchInstance
-    );
-
-    // get bound profile provider
-    const boundProfileProvider = await profileProvider.bind({
-      security: securityValues,
+  ): Promise<BoundProfileProvider> {
+    const boundProfileProvider = await addBoundProfileProvider(config, {
+      superJson: this.superJson,
+      config: this.config,
+      events: this.events,
+      fileSystem: this.fileSystem,
+      crypto: this.crypto,
+      fetchInstance: this.fetchInstance,
+      securityValues,
     });
 
     // put created profile provider into cache
     this.cache.getCached(
-      profile.configuration.cacheKey + provider.configuration.cacheKey,
+      config.profile.configuration.cacheKey + config.provider.configuration.cacheKey,
       () => ({ provider: boundProfileProvider, expiresAt: Infinity })
     );
 
-    return boundProfileProvider.configuration;
+    return boundProfileProvider;
   }
 
   public on(...args: Parameters<Events['on']>): void {
@@ -167,7 +152,41 @@ export class TestClient implements ISuperfaceClient {
   public async getProvider(providerName: string): Promise<Provider> {
     return getProvider(this.superJson, providerName);
   }
+}
 
+export async function addBoundProfileProvider(
+  {
+    profile,
+    provider,
+  }: Pick<CompleteSuperfaceTestConfig, 'profile' | 'provider'>,
+  options: {
+    superJson?: SuperJson;
+    config: Config;
+    events: Events;
+    fileSystem: IFileSystem;
+    crypto: ICrypto;
+    fetchInstance: NodeFetch;
+    securityValues?: SecurityConfiguration[];
+  }
+): Promise<BoundProfileProvider> {
+  const profileProvider = new ProfileProvider(
+    options.superJson,
+    profile.ast,
+    provider.configuration,
+    new ProfileProviderConfiguration(),
+    options.config,
+    options.events,
+    options.fileSystem,
+    options.crypto,
+    options.fetchInstance
+  );
+
+  // get bound profile provider
+  const boundProfileProvider = await profileProvider.bind({
+    security: options.securityValues,
+  });
+
+  return boundProfileProvider;
 }
 
 export function getProvider(
