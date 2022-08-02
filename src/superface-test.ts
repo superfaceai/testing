@@ -27,9 +27,9 @@ import {
 } from './common/errors';
 import { getFixtureName, matchWildCard } from './common/format';
 import { exists, mkdirQuiet, readFileQuiet, rename } from './common/io';
-import { writeRecordings } from './common/output-stream';
+import { OutputStream, writeRecordings } from './common/output-stream';
 import { IGenerator } from './generate-hash';
-import { Analyzer } from './nock/analyzer';
+import { AnalysisResult, Analyzer } from './nock/analyzer';
 import { Matcher } from './nock/matcher';
 import {
   AlertFunction,
@@ -41,6 +41,7 @@ import {
   RecordingProcessOptions,
   SuperfaceTestConfigPayload,
   SuperfaceTestRun,
+  TestAnalysis,
   TestingReturn,
 } from './superface-test.interfaces';
 import {
@@ -163,6 +164,79 @@ export class SuperfaceTest {
     }
 
     throw new UnexpectedError('Unexpected result object');
+  }
+
+  static async collectData(
+    testResult: boolean,
+    analysis: AnalysisResult
+  ): Promise<void> {
+    let data = `TEST_PASSED:${testResult ? 'true' : 'false'}\n\n`;
+
+    data += `${analysis.profile}\n`;
+    data += `${analysis.provider}\n`;
+    data += `${analysis.useCase}\n`;
+
+    data += `${analysis.impact}\n`;
+    data += `${analysis.errors.join('\n')}\n`;
+
+    const basePath = joinPath(
+      './coverage',
+      analysis.profile,
+      analysis.provider,
+      analysis.useCase
+    );
+    let path = joinPath(basePath, 'test.txt');
+    let i = 0;
+
+    while (await exists(path)) {
+      path = joinPath(basePath, `test${i}.txt`);
+      i++;
+    }
+
+    const write = await OutputStream.writeIfAbsent(path, data, { dirs: true });
+
+    if (!write) {
+      console.warn('Writing coverage data failed');
+    }
+  }
+
+  static async report(
+    alert: (analysis: TestAnalysis) => void | Promise<void> | unknown | Promise<unknown>,
+    _options?: {
+      onlyFailedTests?: boolean
+    }
+  ): Promise<void> {
+    const basePath = joinPath(
+      './coverage',
+    );
+    // TODO: find all files written during test run
+    const paths = [joinPath(basePath, 'test.txt')];
+    const analysis: TestAnalysis = []
+
+    for(const path of paths) {
+      if (await exists(path)) {
+        const data = await readFileQuiet(path);
+
+        if (!data) {
+          console.warn('Loading coverage data failed');
+        }
+
+        // TODO
+        // parse data
+        // const parsedData: TestCoverage = {}
+        
+        // filter data based on parameters
+        
+        // store analysis
+        // analysis.push(parsedData);
+      }
+    }
+
+    // ALERT
+    await alert(analysis);
+
+    // TODO: clean up for the next test run
+
   }
 
   private async replaceUnsupportedRecording(): Promise<void> {
