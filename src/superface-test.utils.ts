@@ -8,20 +8,18 @@ import {
 } from '@superfaceai/ast';
 import {
   BoundProfileProvider,
-  Profile,
-  Provider,
-  SuperfaceClient,
-  SuperJson,
-  UnexpectedError,
-  UseCase,
-} from '@superfaceai/one-sdk';
-import {
   getValue,
   isPrimitive,
   NonPrimitive,
   Primitive,
+  Profile,
+  Provider,
+  SecurityConfiguration,
+  SuperJson,
+  UnexpectedError,
+  UseCase,
   Variables,
-} from '@superfaceai/one-sdk/dist/internal/interpreter/variables';
+} from '@superfaceai/one-sdk';
 import createDebug from 'debug';
 import { join as joinPath } from 'path';
 
@@ -30,7 +28,7 @@ import {
   InputVariables,
   RecordingDefinition,
   RecordingDefinitions,
-  SuperfaceTestConfigPayload,
+  SuperfaceTestConfig,
 } from '.';
 import {
   ComponentUndefinedError,
@@ -38,7 +36,6 @@ import {
   MapUndefinedError,
   ProfileUndefinedError,
   SuperJsonLoadingFailedError,
-  SuperJsonNotFoundError,
 } from './common/errors';
 import {
   IGenerator,
@@ -51,6 +48,7 @@ import {
   replaceInputInDefinition,
   replaceParameterInDefinition,
 } from './nock';
+import { ISuperfaceClient } from './superface/client';
 
 const debug = createDebug('superface:testing');
 
@@ -59,17 +57,18 @@ const debug = createDebug('superface:testing');
  * that every component is instance of corresponding class not string.
  */
 export function assertsPreparedConfig(
-  sfConfig: SuperfaceTestConfigPayload
+  sfConfig: SuperfaceTestConfig
 ): asserts sfConfig is CompleteSuperfaceTestConfig {
   assertsPreparedClient(sfConfig.client);
   assertsPreparedProfile(sfConfig.profile);
   assertsPreparedProvider(sfConfig.provider);
   assertsPreparedUseCase(sfConfig.useCase);
+  assertBoundProfileProvider(sfConfig.boundProfileProvider);
 }
 
 export function assertsPreparedClient(
-  client: SuperfaceClient | undefined
-): asserts client is SuperfaceClient {
+  client: ISuperfaceClient | undefined
+): asserts client is ISuperfaceClient {
   if (client === undefined) {
     throw new ComponentUndefinedError('Client');
   }
@@ -112,9 +111,9 @@ export function assertsPreparedUseCase(
 }
 
 export function assertBoundProfileProvider(
-  boundProfileProvider: BoundProfileProvider | undefined
-): asserts boundProfileProvider is BoundProfileProvider {
-  if (boundProfileProvider === undefined) {
+  configuration: BoundProfileProvider | undefined
+): asserts configuration is BoundProfileProvider {
+  if (configuration === undefined) {
     throw new ComponentUndefinedError('BoundProfileProvider');
   }
 }
@@ -188,13 +187,13 @@ export function getUseCaseName(useCase: UseCase | string): string {
 /**
  * Returns SuperJson based on path detected with its abstract method.
  */
-export async function getSuperJson(): Promise<SuperJson> {
+export async function getSuperJson(): Promise<SuperJson | undefined> {
   const superPath = await SuperJson.detectSuperJson(process.cwd(), 3);
 
   debug('Loading super.json from path:', superPath);
 
   if (superPath === undefined) {
-    throw new SuperJsonNotFoundError();
+    return undefined;
   }
 
   const superJsonResult = await SuperJson.load(
@@ -315,7 +314,7 @@ export function replaceCredentials({
   baseUrl,
 }: {
   definitions: RecordingDefinition[];
-  securitySchemes: SecurityScheme[];
+  securitySchemes: SecurityConfiguration[];
   securityValues: SecurityValues[];
   integrationParameters: Record<string, string>;
   inputVariables?: Record<string, Primitive>;
