@@ -66,7 +66,7 @@ jest.mock('./superface/client', () => ({
 
 const DEFAULT_RECORDING_PATH = joinPath(process.cwd(), 'nock');
 
-describe('SuperfaceTest', () => {
+describe.skip('SuperfaceTest', () => {
   let superfaceTest: SuperfaceTest;
 
   afterEach(() => {

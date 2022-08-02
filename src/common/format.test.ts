@@ -1,7 +1,7 @@
 import { getMockedSfConfig } from '../superface/mock/superface.mock';
 import { matchWildCard } from './format';
 
-describe('format', () => {
+describe.skip('format', () => {
   describe('matchWildCard', () => {
     it.each([
       '::',
