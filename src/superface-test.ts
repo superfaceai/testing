@@ -149,7 +149,7 @@ export class SuperfaceTest {
 
     // TODO: add some env variable to enable/disable this
     if (this.analysis) {
-      Reporter.save({
+      await Reporter.save({
         result,
         path: getFixtureName(this.sfConfig),
         hash: this.generator.hash({ input, testName }),
@@ -177,18 +177,16 @@ export class SuperfaceTest {
   }
 
   static async collectData(): Promise<void> {
-    Reporter.collect();
+    await Reporter.collect();
   }
 
   static async report(
-    alert: (
-      analysis: TestAnalysis
-    ) => unknown | Promise<unknown>,
+    alert: (analysis: TestAnalysis) => unknown | Promise<unknown>,
     options?: {
       onlyFailedTests?: boolean;
     }
   ): Promise<void> {
-    Reporter.report(alert, options);
+    await Reporter.report(alert, options);
   }
 
   private async replaceUnsupportedRecording(): Promise<void> {

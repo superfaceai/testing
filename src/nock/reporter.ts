@@ -1,8 +1,8 @@
 import createDebug from 'debug';
 import { join as joinPath } from 'path';
+
 import { exists, readFileQuiet, readFilesInDir, rimraf } from '../common/io';
 import { OutputStream } from '../common/output-stream';
-
 import {
   TestAnalysis,
   TestCoverageBase,
@@ -58,7 +58,6 @@ export class Reporter {
   // TODO: collect coverage for completed test, put them into batch and add info about test result
   static async collect(): Promise<void> {
     // TODO: find a way to get to correct path without concurrency problems
-    
     // const basePath = joinPath('./coverage');
     // const write = await OutputStream.writeIfAbsent(path, data, { dirs: true });
     // if (!write) {

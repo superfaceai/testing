@@ -79,7 +79,7 @@ export interface TestCoverageBase {
   provider: string;
   useCase: string;
   impact: string;
-  result: TestingReturn
+  result: TestingReturn;
 }
 
 // TODO: add this to testanalysis somehow
@@ -93,4 +93,4 @@ export interface TestCoverageBase {
 //       error: PerformError | string;
 //     };
 
-export type TestAnalysis = (TestCoverageBase)[];
+export type TestAnalysis = TestCoverageBase[];
