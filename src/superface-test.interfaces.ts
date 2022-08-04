@@ -73,14 +73,24 @@ export interface RecordingProcessOptions {
   fullError?: boolean;
 }
 
-export interface TestCoverage {
-  pass: boolean;
+export interface TestCoverageBase {
+  recordingErrors: string;
   profile: string;
   provider: string;
   useCase: string;
   impact: string;
-  errors: string[];
+  result: TestingReturn
 }
-export interface TestAnalysis {
-  testCoverage: TestCoverage[];
-}
+
+// TODO: add this to testanalysis somehow
+// export type TestCoverage =
+//   | {
+//       pass: true;
+//       value: unknown;
+//     }
+//   | {
+//       pass: false;
+//       error: PerformError | string;
+//     };
+
+export type TestAnalysis = (TestCoverageBase)[];

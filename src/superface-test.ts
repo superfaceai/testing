@@ -27,12 +27,12 @@ import {
 } from './common/errors';
 import { getFixtureName, matchWildCard } from './common/format';
 import { exists, mkdirQuiet, readFileQuiet, rename } from './common/io';
-import { OutputStream, writeRecordings } from './common/output-stream';
+import { writeRecordings } from './common/output-stream';
 import { IGenerator } from './generate-hash';
 import { AnalysisResult, Analyzer } from './nock/analyzer';
 import { Matcher } from './nock/matcher';
+import { Reporter } from './nock/reporter';
 import {
-  AlertFunction,
   CompleteSuperfaceTestConfig,
   InputVariables,
   NockConfig,
@@ -69,6 +69,7 @@ export class SuperfaceTest {
   private nockConfig?: NockConfig;
   private fixturesPath?: string;
   private recordingPath?: string;
+  private analysis?: AnalysisResult;
   private generator: IGenerator;
 
   constructor(sfConfig?: SuperfaceTestConfigPayload, nockConfig?: NockConfig) {
@@ -137,7 +138,6 @@ export class SuperfaceTest {
         processRecordings,
         inputVariables,
         beforeRecordingSave: options?.beforeRecordingSave,
-        alert: options?.alert,
       });
     } catch (error: unknown) {
       restoreRecordings();
@@ -145,6 +145,16 @@ export class SuperfaceTest {
       enableNetConnect();
 
       throw error;
+    }
+
+    // TODO: add some env variable to enable/disable this
+    if (this.analysis) {
+      Reporter.save({
+        result,
+        path: getFixtureName(this.sfConfig),
+        hash: this.generator.hash({ input, testName }),
+        analysis: this.analysis,
+      });
     }
 
     if (result.isErr()) {
@@ -166,77 +176,19 @@ export class SuperfaceTest {
     throw new UnexpectedError('Unexpected result object');
   }
 
-  static async collectData(
-    testResult: boolean,
-    analysis: AnalysisResult
-  ): Promise<void> {
-    let data = `TEST_PASSED:${testResult ? 'true' : 'false'}\n\n`;
-
-    data += `${analysis.profile}\n`;
-    data += `${analysis.provider}\n`;
-    data += `${analysis.useCase}\n`;
-
-    data += `${analysis.impact}\n`;
-    data += `${analysis.errors.join('\n')}\n`;
-
-    const basePath = joinPath(
-      './coverage',
-      analysis.profile,
-      analysis.provider,
-      analysis.useCase
-    );
-    let path = joinPath(basePath, 'test.txt');
-    let i = 0;
-
-    while (await exists(path)) {
-      path = joinPath(basePath, `test${i}.txt`);
-      i++;
-    }
-
-    const write = await OutputStream.writeIfAbsent(path, data, { dirs: true });
-
-    if (!write) {
-      console.warn('Writing coverage data failed');
-    }
+  static async collectData(): Promise<void> {
+    Reporter.collect();
   }
 
   static async report(
-    alert: (analysis: TestAnalysis) => void | Promise<void> | unknown | Promise<unknown>,
-    _options?: {
-      onlyFailedTests?: boolean
+    alert: (
+      analysis: TestAnalysis
+    ) => unknown | Promise<unknown>,
+    options?: {
+      onlyFailedTests?: boolean;
     }
   ): Promise<void> {
-    const basePath = joinPath(
-      './coverage',
-    );
-    // TODO: find all files written during test run
-    const paths = [joinPath(basePath, 'test.txt')];
-    const analysis: TestAnalysis = []
-
-    for(const path of paths) {
-      if (await exists(path)) {
-        const data = await readFileQuiet(path);
-
-        if (!data) {
-          console.warn('Loading coverage data failed');
-        }
-
-        // TODO
-        // parse data
-        // const parsedData: TestCoverage = {}
-        
-        // filter data based on parameters
-        
-        // store analysis
-        // analysis.push(parsedData);
-      }
-    }
-
-    // ALERT
-    await alert(analysis);
-
-    // TODO: clean up for the next test run
-
+    Reporter.report(alert, options);
   }
 
   private async replaceUnsupportedRecording(): Promise<void> {
@@ -388,13 +340,11 @@ export class SuperfaceTest {
     processRecordings,
     inputVariables,
     beforeRecordingSave,
-    alert,
   }: {
     record: boolean;
     processRecordings: boolean;
     inputVariables?: InputVariables;
     beforeRecordingSave?: ProcessingFunction;
-    alert?: AlertFunction;
   }): Promise<void> {
     if (record) {
       const definitions = recorder.play();
@@ -468,7 +418,7 @@ export class SuperfaceTest {
         // recording file does not exist -> record new traffic
         await writeRecordings(this.composeRecordingPath(), definitions);
       } else {
-        await this.matchTraffic(definitions, alert);
+        await this.matchTraffic(definitions);
       }
 
       debug('Recorded definitions written');
@@ -482,10 +432,7 @@ export class SuperfaceTest {
     }
   }
 
-  private async matchTraffic(
-    newTraffic: RecordingDefinitions,
-    alert?: AlertFunction
-  ) {
+  private async matchTraffic(newTraffic: RecordingDefinitions) {
     // recording file exist -> record and compare new traffic
     const oldRecording = await readFileQuiet(this.composeRecordingPath());
 
@@ -505,15 +452,10 @@ export class SuperfaceTest {
     if (match.valid) {
       // do not save new recording as there were no breaking changes found
     } else {
-      const analysis = Analyzer.run(
+      this.analysis = Analyzer.run(
         this.sfConfig as CompleteSuperfaceTestConfig,
         match.errors
       );
-
-      // Alert changes
-      if (alert !== undefined) {
-        await alert(analysis);
-      }
 
       // Save new recording as unsupported
       await writeRecordings(

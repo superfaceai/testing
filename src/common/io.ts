@@ -1,4 +1,5 @@
 import * as fs from 'fs';
+import { join as joinPath, resolve as resolvePath } from 'path';
 import rimrafCallback from 'rimraf';
 import { Writable } from 'stream';
 import { promisify } from 'util';
@@ -10,6 +11,7 @@ export const mkdir = promisify(fs.mkdir);
 export const readFile = promisify(fs.readFile);
 export const rimraf = promisify(rimrafCallback);
 export const rename = promisify(fs.rename);
+export const readdir = promisify(fs.readdir);
 
 export interface WritingOptions {
   append?: boolean;
@@ -87,4 +89,22 @@ export function streamEnd(stream: Writable): Promise<void> {
     stream.once('close', resolve);
     stream.end();
   });
+}
+
+export async function readFilesInDir(path: string): Promise<string[]> {
+  const resolvedPath = resolvePath(path);
+  const dirents = await readdir(path, { withFileTypes: true });
+  const files: string[] = [];
+
+  for (const dirent of dirents) {
+    if (dirent.isDirectory()) {
+      files.push(
+        ...(await readFilesInDir(joinPath(resolvedPath, dirent.name)))
+      );
+    } else {
+      files.push(joinPath(resolvedPath, dirent.name));
+    }
+  }
+
+  return files;
 }
