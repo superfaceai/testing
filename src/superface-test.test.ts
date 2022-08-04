@@ -23,11 +23,11 @@ import { generate } from './generate-hash';
 import { addBoundProfileProvider } from './superface/client';
 import { createBoundProfileProvider } from './superface/mock/profile-provider';
 import {
-  DEFAULT_SUPERJSON,
   getMockedSfConfig,
   getProfileMock,
   getProviderMock,
   getUseCaseMock,
+  mockSuperJson,
 } from './superface/mock/superface.mock';
 import { SuperfaceTest } from './superface-test';
 import {
@@ -36,6 +36,9 @@ import {
   HIDDEN_INPUT_PLACEHOLDER,
   HIDDEN_PARAMETERS_PLACEHOLDER,
 } from './superface-test.utils';
+import { mockFileSystem } from './superface/mock/file-system';
+import { mockProviderJson } from './superface/mock/provider';
+import { mockMapAST } from './superface/mock/ast';
 
 /* eslint-disable @typescript-eslint/unbound-method */
 
@@ -521,15 +524,38 @@ describe.skip('SuperfaceTest', () => {
     });
 
     describe('when performing', () => {
-      it('returns error from perform', async () => {
+      it.only('returns error from perform', async () => {
         const mockedProvider = await getProviderMock('provider');
         const mockedUseCase = getUseCaseMock('usecase');
-        const getSuperJsonMock =
-          mocked(getSuperJson).mockResolvedValue(DEFAULT_SUPERJSON);
+        const getSuperJsonMock = mocked(getSuperJson).mockResolvedValue(
+          mockSuperJson({ localMap: true })
+        );
 
+        const expectedResponse = {
+          response: {
+            status: 200,
+            statusText: 'succes',
+            headers: {},
+            body: {
+              provider: mockProviderJson(),
+              map_ast: JSON.stringify(mockMapAST),
+            },
+          },
+        };
         const addBoundProfileProviderSpy = mocked(
           addBoundProfileProvider
-        ).mockResolvedValue(await createBoundProfileProvider());
+        ).mockResolvedValue(
+          await createBoundProfileProvider({
+            fileSystemOverride: {
+              readFile: jest
+                .fn()
+                .mockResolvedValue(Promise.resolve(ok('PROVIDER'))),
+            },
+            fetchOptions: expectedResponse
+          })
+        );
+
+        const readFileSpy = mockFileSystem().readFile;
 
         superfaceTest = new SuperfaceTest({
           ...(await getMockedSfConfig()),
@@ -544,6 +570,9 @@ describe.skip('SuperfaceTest', () => {
         await expect(superfaceTest.run({ input: {} })).resolves.toEqual({
           error: new MapASTError('error').toString(),
         });
+
+        expect(readFileSpy).toBeCalledTimes(1);
+        expect(readFileSpy).toBeCalledWith([]);
 
         expect(getSuperJsonMock).toBeCalledTimes(1);
         expect(addBoundProfileProviderSpy).toBeCalledTimes(1);

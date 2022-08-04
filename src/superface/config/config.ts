@@ -2,6 +2,7 @@ import {
   BoundProfileProvider,
   Profile,
   Provider,
+  SecurityConfiguration,
   UseCase,
 } from '@superfaceai/one-sdk';
 import createDebug from 'debug';
@@ -13,6 +14,7 @@ import {
   SuperfaceTestConfigPayload,
 } from '../../superface-test.interfaces';
 import {
+  assertBoundProfileProvider,
   assertsPreparedConfig,
   getProfileId,
   getSuperJson,
@@ -46,7 +48,8 @@ export class TestConfig implements ITestConfig {
   constructor(public readonly payload: SuperfaceTestConfigPayload = {}) {}
 
   public async get(
-    testCase: SuperfaceTestConfigPayload
+    testCase: SuperfaceTestConfigPayload,
+    options?: { securityValues?: SecurityConfiguration[] }
   ): Promise<CompleteSuperfaceTestConfig> {
     this.updateConfig(testCase);
     await this.setup();
@@ -56,10 +59,23 @@ export class TestConfig implements ITestConfig {
       profile: this.profile,
       provider: this.provider,
       useCase: this.useCase,
-      boundProfileProvider: this.boundProfileProvider,
     };
 
     assertsPreparedConfig(config);
+
+    // setup bound profile provider
+    if (this.boundProfileProvider === undefined) {
+      this.boundProfileProvider = await this.client?.addBoundProfileProvider(
+        {
+          profile: config.profile,
+          provider: config.provider,
+        },
+        options?.securityValues
+      );
+    }
+
+    assertBoundProfileProvider(this.boundProfileProvider)
+    config.boundProfileProvider = this.boundProfileProvider;
 
     return config;
   }
@@ -110,7 +126,6 @@ export class TestConfig implements ITestConfig {
       debugSetup('Superface Provider transformed:', this.provider);
     } else if (this.payload.provider instanceof Provider) {
       this.provider = this.payload.provider;
-      console.warn(this.payload.provider);
     }
 
     if (typeof this.payload.useCase === 'string') {
@@ -124,8 +139,6 @@ export class TestConfig implements ITestConfig {
     } else if (this.payload.useCase instanceof UseCase) {
       this.useCase = this.payload.useCase;
     }
-
-    console.warn(this.profile, this.provider);
   }
 
   /**

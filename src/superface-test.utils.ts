@@ -63,7 +63,6 @@ export function assertsPreparedConfig(
   assertsPreparedProfile(sfConfig.profile);
   assertsPreparedProvider(sfConfig.provider);
   assertsPreparedUseCase(sfConfig.useCase);
-  assertBoundProfileProvider(sfConfig.boundProfileProvider);
 }
 
 export function assertsPreparedClient(

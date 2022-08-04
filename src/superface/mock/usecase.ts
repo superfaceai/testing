@@ -1,22 +1,20 @@
-import { SecurityValues } from '@superfaceai/ast';
 import {
   Config,
   Events,
   IBoundProfileProvider,
   NodeCrypto,
-  NodeFetch,
   PerformError,
-  ProviderConfiguration,
   registerHooks,
   Result,
   SuperCache,
   SuperJson,
   UseCase,
 } from '@superfaceai/one-sdk';
+import { mockNodeFetch } from './fetch-instance';
 
 import { mockFileSystem } from './file-system';
 import { createProfile } from './profile';
-import { createBoundProfileProvider } from './profile-provider';
+import { ProviderOptions } from './superface.mock';
 import { MockTimers } from './timers';
 
 export async function createUseCase(options?: {
@@ -25,8 +23,7 @@ export async function createUseCase(options?: {
   isOk?: boolean;
   isErr?: boolean;
   result?: Result<unknown, PerformError>;
-  securityValues?: SecurityValues[];
-  parameters?: Record<string, string>;
+  provider?: ProviderOptions
 }): Promise<UseCase> {
   const crypto = new NodeCrypto();
   const timers = new MockTimers();
@@ -40,22 +37,6 @@ export async function createUseCase(options?: {
   const config = new Config(fileSystem);
 
   const profile = createProfile();
-  const boundProfileProvider = await createBoundProfileProvider({
-    securityValues: options?.securityValues,
-  });
-
-  const mockProviderConfiguration = new ProviderConfiguration(
-    'provider',
-    options?.securityValues ?? [],
-    options?.parameters
-  );
-  cache.getCached(
-    profile.configuration.cacheKey + mockProviderConfiguration.cacheKey,
-    () => ({
-      provider: boundProfileProvider,
-      expiresAt: options?.cacheExpire ?? Infinity,
-    })
-  );
 
   return new UseCase(
     profile,
@@ -67,6 +48,6 @@ export async function createUseCase(options?: {
     fileSystem,
     crypto,
     cache,
-    new NodeFetch(timers)
+    mockNodeFetch()
   );
 }

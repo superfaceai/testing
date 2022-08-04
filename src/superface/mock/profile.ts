@@ -3,7 +3,6 @@ import {
   Events,
   IBoundProfileProvider,
   NodeCrypto,
-  NodeFetch,
   Profile,
   ProfileConfiguration,
   SuperCache,
@@ -11,6 +10,7 @@ import {
 } from '@superfaceai/one-sdk';
 
 import { mockProfileAST } from './ast';
+import { mockNodeFetch } from './fetch-instance';
 import { mockFileSystem } from './file-system';
 import { MockTimers } from './timers';
 
@@ -26,7 +26,8 @@ export function createProfile(options?: {
     provider: IBoundProfileProvider;
     expiresAt: number;
   }>();
-  const config = new Config(mockFileSystem());
+  const fileSystem = mockFileSystem();
+  const config = new Config(fileSystem);
   const ast = mockProfileAST;
   const configuration = new ProfileConfiguration(
     options?.name ?? 'profile',
@@ -40,9 +41,9 @@ export function createProfile(options?: {
     options?.superJson ?? undefined,
     config,
     timers,
-    mockFileSystem(),
+    fileSystem,
     cache,
     crypto,
-    new NodeFetch(timers)
+    mockNodeFetch()
   );
 }

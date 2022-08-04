@@ -46,7 +46,7 @@ export interface ISuperfaceClient {
   on(...args: Parameters<Events['on']>): void;
 
   addBoundProfileProvider(
-    config: CompleteSuperfaceTestConfig,
+    config: Pick<CompleteSuperfaceTestConfig, 'profile' | 'provider'>,
     securityValues?: SecurityConfiguration[]
   ): Promise<BoundProfileProvider>;
 }

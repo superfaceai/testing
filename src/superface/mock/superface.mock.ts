@@ -2,6 +2,7 @@ import {
   IntegrationParameter,
   MapDocumentNode,
   ProfileDocumentNode,
+  ProviderService,
   SecurityScheme,
   SecurityValues,
 } from '@superfaceai/ast';
@@ -9,8 +10,8 @@ import {
   BoundProfileProvider,
   Config,
   Events,
+  IServiceSelector,
   NodeCrypto,
-  NodeFetch,
   NodeLogger,
   PerformError,
   Profile,
@@ -26,6 +27,7 @@ import {
 import { CompleteSuperfaceTestConfig } from '../../superface-test.interfaces';
 import { ISuperfaceClient } from '../client';
 import { mockProfileAST } from './ast';
+import { mockNodeFetch } from './fetch-instance';
 import { mockFileSystem } from './file-system';
 import { createProfile } from './profile';
 import { createProvider } from './provider';
@@ -75,7 +77,7 @@ export const getProfileMock = jest.fn<
   fileSystem: mockFileSystem(),
   boundProfileProviderCache: {},
   crypto: new NodeCrypto(),
-  fetchInstance: NodeFetch,
+  fetchInstance: mockNodeFetch(),
 }));
 
 export const getProviderMock = jest.fn<
@@ -92,24 +94,34 @@ export const getProviderMock = jest.fn<
   },
 }));
 
-export const DEFAULT_SUPERJSON = new SuperJson({
-  profiles: {
-    profile: {
-      file: 'path/to/profile.supr',
-      providers: {
-        provider: {
-          file: 'path/to/map.suma',
+export const mockSuperJson = (options?: {
+  localMap?: boolean;
+  localProvider?: boolean;
+}) =>
+  new SuperJson({
+    profiles: {
+      profile: {
+        file: 'path/to/profile.supr',
+        providers: {
+          provider: options?.localMap
+            ? {
+                file: 'path/to/map.suma',
+              }
+            : {},
         },
       },
     },
-  },
-  providers: {
-    provider: {
-      file: 'path/to/provider.json',
-      security: [],
+    providers: {
+      provider: options?.localProvider
+        ? {
+            file: 'path/to/provider.json',
+            security: [],
+          }
+        : {
+            security: [],
+          },
     },
-  },
-});
+  });
 
 export interface SuperfaceClientOptions {
   superJson?: SuperJson;
@@ -143,7 +155,7 @@ export const BoundProfileProviderMock = jest.fn<
   }),
   events: new Events(new MockTimers(), new NodeLogger()),
   crypto: new NodeCrypto(),
-  fetchInstance: NodeFetch,
+  fetchInstance: mockNodeFetch(),
   configuration: {
     security: options?.configuration?.securityConfigurations,
     parameters: options?.configuration?.parameters,
@@ -155,7 +167,7 @@ export const SuperfaceClientMock = jest.fn<
   Parameters<(options?: SuperfaceClientOptions) => ISuperfaceClient>
 >((options?: SuperfaceClientOptions) => ({
   ...Object.create(SuperfaceClient.prototype),
-  superJson: options?.superJson ?? DEFAULT_SUPERJSON,
+  superJson: options?.superJson ?? mockSuperJson(),
   getProfile: getProfileMock,
   getProvider: getProviderMock,
   cacheBoundProfileProvider: jest
@@ -180,7 +192,7 @@ export const SuperfaceClientMock = jest.fn<
 //   client: new SuperfaceClientMock({
 //     profileAst: options?.profileAst ?? mockProfileAST,
 //     mapAst: options?.mapAst ?? mockMapAST,
-//     superJson: options?.superJson ?? DEFAULT_SUPERJSON,
+//     superJson: options?.superJson ?? mockSuperJson(),
 //     configuration: {
 //       baseUrl: options?.baseUrl ?? 'https://base.url',
 //       securityConfigurations: options?.securityConfigurations,
@@ -206,7 +218,7 @@ export const SuperfaceClientMock = jest.fn<
 //   boundProfileProvider: BoundProfileProviderMock({
 //     profileAst: options?.profileAst ?? mockProfileAST,
 //     mapAst: options?.mapAst ?? mockMapAST,
-//     superJson: options?.superJson ?? DEFAULT_SUPERJSON,
+//     superJson: options?.superJson ?? mockSuperJson(),
 //     configuration: {
 //       baseUrl: options?.baseUrl ?? 'https://base.url',
 //       securityConfigurations: options?.securityConfigurations,
@@ -229,17 +241,19 @@ export interface ProviderOptions {
   name?: string;
   baseUrl?: string;
   securitySchemes?: SecurityScheme[];
+  securityConfigs?: SecurityConfiguration[];
   securityValues?: SecurityValues[];
   parameters?: Record<string, string>;
   intParameters?: IntegrationParameter[];
   ast?: MapDocumentNode;
+  serviceSelector?: IServiceSelector;
+  providerServices?: ProviderService[];
+  defaultService?: string;
 }
-interface UseCaseOptions {
+export interface UseCaseOptions {
   isOk?: boolean;
   isErr?: boolean;
   result?: Result<unknown, PerformError>;
-  securityValues?: SecurityValues[];
-  parameters?: Record<string, string>;
 }
 
 export const getMockedSfConfig = async (options?: {
@@ -257,6 +271,7 @@ export const getMockedSfConfig = async (options?: {
   provider: createProvider(options?.provider),
   useCase: await createUseCase({
     superJson: options?.superJson,
+    provider: options?.provider,
     ...options?.useCase,
   }),
 });

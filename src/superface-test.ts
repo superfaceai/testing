@@ -78,12 +78,6 @@ export class SuperfaceTest {
     const config = await this.config.get(testCase);
     const { provider, boundProfileProvider } = config;
 
-    // setup bound profile provider
-    if (this.config.boundProfileProvider === undefined) {
-      this.config.boundProfileProvider =
-        await this.config.client?.addBoundProfileProvider(config);
-    }
-
     // Create a hash for access to recording files
     const { input, testName } = testCase;
     const hash = this.generator.hash({ input, testName });
