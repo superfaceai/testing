@@ -1,3 +1,4 @@
+import { NonPrimitive } from '@superfaceai/one-sdk/dist/internal/interpreter/variables';
 import createDebug from 'debug';
 import { join as joinPath } from 'path';
 
@@ -17,11 +18,13 @@ const debug = createDebug('superface:testing:reporter');
 export class Reporter {
   // TODO: hash this or collect this, so that `collect` function can add information about test result
   static async save({
+    input,
     result,
     path,
     hash,
     analysis,
   }: {
+    input: NonPrimitive;
     result: TestingReturn;
     path: string;
     hash: string;
@@ -36,11 +39,12 @@ export class Reporter {
     const { profile, provider, useCase, impact, errors } = analysis;
     const data: TestCoverageBase = {
       recordingErrors: errors.join('\n'),
+      input,
+      result,
       profile,
       provider,
       useCase,
       impact,
-      result,
     };
 
     debug(`Writing report on path "${coveragePath}"`);

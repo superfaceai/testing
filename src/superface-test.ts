@@ -150,12 +150,15 @@ export class SuperfaceTest {
     // TODO: add some env variable to enable/disable this
     if (this.analysis) {
       await Reporter.save({
+        input,
         result,
         path: getFixtureName(this.sfConfig),
         hash: this.generator.hash({ input, testName }),
         analysis: this.analysis,
       });
     }
+
+    this.analysis = undefined;
 
     if (result.isErr()) {
       debug('Perform failed with error:', result.error.toString());

@@ -79,6 +79,7 @@ export interface TestCoverageBase {
   provider: string;
   useCase: string;
   impact: string;
+  input: NonPrimitive;
   result: TestingReturn;
 }
 
