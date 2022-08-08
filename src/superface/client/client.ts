@@ -122,6 +122,7 @@ export class TestClient implements ISuperfaceClient {
     config: Pick<CompleteSuperfaceTestConfig, 'profile' | 'provider'>,
     securityValues?: SecurityConfiguration[]
   ): Promise<BoundProfileProvider> {
+    console.log('add bound before', this.fetchInstance);
     const boundProfileProvider = await addBoundProfileProvider(config, {
       superJson: this.superJson,
       config: this.config,
@@ -138,6 +139,7 @@ export class TestClient implements ISuperfaceClient {
         config.provider.configuration.cacheKey,
       () => ({ provider: boundProfileProvider, expiresAt: Infinity })
     );
+    console.log('add bound affter');
 
     return boundProfileProvider;
   }

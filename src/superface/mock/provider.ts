@@ -3,10 +3,7 @@ import {
   ProviderService,
   SecurityValues,
 } from '@superfaceai/ast';
-import {
-  Provider,
-  ProviderConfiguration,
-} from '@superfaceai/one-sdk';
+import { Provider, ProviderConfiguration } from '@superfaceai/one-sdk';
 
 export function createProvider(options?: {
   name?: string;

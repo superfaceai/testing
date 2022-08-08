@@ -1,4 +1,10 @@
-import { err, ok, PerformError, Result } from '@superfaceai/one-sdk';
+import {
+  BoundProfileProvider,
+  err,
+  ok,
+  PerformError,
+  Result,
+} from '@superfaceai/one-sdk';
 import createDebug from 'debug';
 import {
   activate as activateNock,
@@ -32,9 +38,8 @@ import {
 import { exists, readFileQuiet } from './common/io';
 import { writeRecordings } from './common/output-stream';
 import { IGenerator } from './generate-hash';
-import { ITestConfig, TestConfig } from './superface/config';
+import { prepareSuperface } from './superface/config';
 import {
-  CompleteSuperfaceTestConfig,
   NockConfig,
   SuperfaceTestConfigPayload,
   SuperfaceTestRun,
@@ -53,14 +58,17 @@ const debugSetup = createDebug('superface:testing:setup');
 const debugHashing = createDebug('superface:testing:hash');
 
 export class SuperfaceTest {
-  private config: ITestConfig;
+  // Not using config class at all.
+  // private config: ITestConfig;
   private nockConfig?: NockConfig;
   private fixturesPath?: string;
   private recordingPath?: string;
   private generator: IGenerator;
+  public configuration: SuperfaceTestConfigPayload | undefined;
 
   constructor(payload?: SuperfaceTestConfigPayload, nockConfig?: NockConfig) {
-    this.config = new TestConfig(payload);
+    this.configuration = payload;
+    // this.config = new TestConfig(payload);
     this.nockConfig = nockConfig;
     this.generator = getGenerator(nockConfig?.testInstance);
 
@@ -75,19 +83,37 @@ export class SuperfaceTest {
     testCase: SuperfaceTestRun,
     options?: RecordingProcessOptions
   ): Promise<TestingReturn> {
-    const config = await this.config.get(testCase);
-    const { provider, boundProfileProvider } = config;
+    const testCaseConfig: SuperfaceTestConfigPayload = {
+      profile: testCase.profile ?? this.configuration?.profile,
+      provider: testCase.provider ?? this.configuration?.provider,
+      useCase: testCase.useCase ?? this.configuration?.useCase,
+    };
+    // Sets everything connected to SDK
+    const sf = await prepareSuperface(testCaseConfig);
 
     // Create a hash for access to recording files
+    // FIX: for some reason testName is undefined
     const { input, testName } = testCase;
-    const hash = this.generator.hash({ input, testName });
+
+    const hash = this.generator.hash({
+      input,
+      testName: testName ?? expect.getState().currentTestName,
+    });
 
     debugHashing('Created hash:', hash);
 
-    this.setupRecordingPath(getFixtureName(config), hash);
+    this.setupRecordingPath(
+      getFixtureName(sf.profileId, sf.providerName, sf.usecaseName),
+      hash
+    );
 
     // Parse env variable and check if test should be recorded
-    const record = matchWildCard(config, process.env.SUPERFACE_LIVE_API);
+    const record = matchWildCard(
+      sf.profileId,
+      sf.providerName,
+      sf.usecaseName,
+      process.env.SUPERFACE_LIVE_API
+    );
     const processRecordings = options?.processRecordings ?? true;
     const inputVariables = searchValues(testCase.input, options?.hideInput);
 
@@ -95,8 +121,8 @@ export class SuperfaceTest {
       record,
       processRecordings,
       config: {
-        boundProfileProvider,
-        provider,
+        boundProfileProvider: sf.boundProfileProvider,
+        providerName: sf.providerName,
       },
       inputVariables,
       beforeRecordingLoad: options?.beforeRecordingLoad,
@@ -105,16 +131,14 @@ export class SuperfaceTest {
     let result: Result<unknown, PerformError>;
     try {
       // Run perform method on specified configuration
-      result = await config.useCase.perform(input, {
-        provider: config.provider,
-      });
+      result = await sf.boundProfileProvider.perform(sf.usecaseName, input);
 
       await this.endRecording({
         record,
         processRecordings,
         config: {
-          boundProfileProvider,
-          provider,
+          boundProfileProvider: sf.boundProfileProvider,
+          providerName: sf.providerName,
         },
         inputVariables,
         beforeRecordingSave: options?.beforeRecordingSave,
@@ -142,6 +166,7 @@ export class SuperfaceTest {
     throw new UnexpectedError('Unexpected result object');
   }
 
+  // TODO: not connected to this - move to separate file to simplify testing
   /**
    * Starts recording or loads recording fixture if exists.
    *
@@ -155,16 +180,16 @@ export class SuperfaceTest {
   private async startRecording({
     record,
     processRecordings,
-    config: { boundProfileProvider, provider },
+    config: { boundProfileProvider, providerName },
     inputVariables,
     beforeRecordingLoad,
   }: {
     record: boolean;
     processRecordings: boolean;
-    config: Pick<
-      CompleteSuperfaceTestConfig,
-      'boundProfileProvider' | 'provider'
-    >;
+    config: {
+      boundProfileProvider: BoundProfileProvider;
+      providerName: string;
+    };
     inputVariables?: InputVariables;
     beforeRecordingLoad?: ProcessingFunction;
   }): Promise<void> {
@@ -175,11 +200,10 @@ export class SuperfaceTest {
     const { parameters, security, services } =
       boundProfileProvider.configuration;
     const integrationParameters = parameters ?? {};
-    const securityValues = provider.configuration.security;
     const baseUrl = services.getUrl();
 
     if (baseUrl === undefined) {
-      throw new BaseURLNotFoundError(provider.configuration.name);
+      throw new BaseURLNotFoundError(providerName);
     }
 
     if (record) {
@@ -210,10 +234,11 @@ export class SuperfaceTest {
       const definitions = JSON.parse(definitionFile) as RecordingDefinitions;
 
       if (processRecordings) {
+        //Use security configuration only
         replaceCredentials({
           definitions,
           securitySchemes: security,
-          securityValues,
+          securityValues: security,
           integrationParameters,
           inputVariables,
           baseUrl,
@@ -240,6 +265,7 @@ export class SuperfaceTest {
       }
     }
   }
+  // TODO: not connected to this - move to separate file to simplify testing
 
   /**
    * Checks if recording started and if yes, it ends recording and
@@ -252,16 +278,16 @@ export class SuperfaceTest {
   private async endRecording({
     record,
     processRecordings,
-    config: { boundProfileProvider, provider },
+    config: { boundProfileProvider, providerName },
     inputVariables,
     beforeRecordingSave,
   }: {
     record: boolean;
     processRecordings: boolean;
-    config: Pick<
-      CompleteSuperfaceTestConfig,
-      'boundProfileProvider' | 'provider'
-    >;
+    config: {
+      boundProfileProvider: BoundProfileProvider;
+      providerName: string;
+    };
     inputVariables?: InputVariables;
     beforeRecordingSave?: ProcessingFunction;
   }): Promise<void> {
@@ -286,7 +312,7 @@ export class SuperfaceTest {
 
       assertsDefinitionsAreNotStrings(definitions);
 
-      const securityValues = provider.configuration.security;
+      // const securityValues = provider.configuration.security;
       const { security, parameters, services } =
         boundProfileProvider.configuration;
       const integrationParameters = parameters ?? {};
@@ -295,13 +321,13 @@ export class SuperfaceTest {
         const baseUrl = services.getUrl();
 
         if (baseUrl === undefined) {
-          throw new BaseURLNotFoundError(provider.configuration.name);
+          throw new BaseURLNotFoundError(providerName);
         }
 
         replaceCredentials({
           definitions,
           securitySchemes: security,
-          securityValues,
+          securityValues: security,
           integrationParameters,
           inputVariables,
           baseUrl,
@@ -319,14 +345,14 @@ export class SuperfaceTest {
 
       if (
         security.length > 0 ||
-        securityValues.length > 0 ||
+        // securityValues.length > 0 ||
         (integrationParameters &&
           Object.values(integrationParameters).length > 0)
       ) {
         checkSensitiveInformation(
           definitions,
           security,
-          securityValues,
+          security,
           integrationParameters
         );
       }
@@ -356,6 +382,7 @@ export class SuperfaceTest {
     debugSetup('Prepare path to recording fixtures:', this.fixturesPath);
   }
 
+  // TODO: not sure if fixturePath and recording path must live on instance.
   /**
    * Sets up path to recording, depends on current Superface configuration and test case input.
    */

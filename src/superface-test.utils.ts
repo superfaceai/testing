@@ -303,6 +303,7 @@ export function resolvePlaceholder({
   };
 }
 
+// TODO: we can use SecurityConfiguration type - it is combination od SecurityScheme and SecurityValue. When you have SecurityConfiguration you already have scheme with matching value.
 export function replaceCredentials({
   definitions,
   securitySchemes,

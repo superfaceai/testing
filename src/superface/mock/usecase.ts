@@ -10,8 +10,8 @@ import {
   SuperJson,
   UseCase,
 } from '@superfaceai/one-sdk';
-import { mockNodeFetch } from './fetch-instance';
 
+import { mockNodeFetch } from './fetch-instance';
 import { mockFileSystem } from './file-system';
 import { createProfile } from './profile';
 import { ProviderOptions } from './superface.mock';
@@ -23,7 +23,7 @@ export async function createUseCase(options?: {
   isOk?: boolean;
   isErr?: boolean;
   result?: Result<unknown, PerformError>;
-  provider?: ProviderOptions
+  provider?: ProviderOptions;
 }): Promise<UseCase> {
   const crypto = new NodeCrypto();
   const timers = new MockTimers();

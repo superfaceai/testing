@@ -22,7 +22,7 @@ export async function createBoundProfileProvider(options?: {
   profile?: ProfileOptions;
   provider?: ProviderOptions;
   fileSystemOverride?: Partial<IFileSystem>;
-  fetchOptions?:MockFetchOptions
+  fetchOptions?: MockFetchOptions;
 }): Promise<BoundProfileProvider> {
   const crypto = new NodeCrypto();
   const timers = new MockTimers();

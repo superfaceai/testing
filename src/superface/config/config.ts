@@ -74,7 +74,7 @@ export class TestConfig implements ITestConfig {
       );
     }
 
-    assertBoundProfileProvider(this.boundProfileProvider)
+    assertBoundProfileProvider(this.boundProfileProvider);
     config.boundProfileProvider = this.boundProfileProvider;
 
     return config;

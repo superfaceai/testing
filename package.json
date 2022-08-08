@@ -43,6 +43,7 @@
   },
   "dependencies": {
     "@superfaceai/ast": "^1.2.0",
+    "@superfaceai/parser": "1.2.0",
     "debug": "^4.3.2",
     "nock": "^13.1.3"
   },

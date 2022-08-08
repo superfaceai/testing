@@ -524,7 +524,7 @@ describe.skip('SuperfaceTest', () => {
     });
 
     describe('when performing', () => {
-      it.only('returns error from perform', async () => {
+      it('returns error from perform', async () => {
         const mockedProvider = await getProviderMock('provider');
         const mockedUseCase = getUseCaseMock('usecase');
         const getSuperJsonMock = mocked(getSuperJson).mockResolvedValue(
@@ -551,7 +551,7 @@ describe.skip('SuperfaceTest', () => {
                 .fn()
                 .mockResolvedValue(Promise.resolve(ok('PROVIDER'))),
             },
-            fetchOptions: expectedResponse
+            fetchOptions: expectedResponse,
           })
         );
 
