@@ -1,70 +1,42 @@
 import createDebug from 'debug';
 
-import {
-  IErrorCollector,
-  MatchError,
-  MatchErrorKind,
-} from './error-collector.interfaces';
-import { errorMessages } from './matcher.utils';
+import { UnexpectedError } from '../common/errors';
+import { ErrorCollection, ErrorType, MatchError } from './matcher.errors';
 
 const debugMatching = createDebug('superface:testing:matching');
 
-export class ErrorCollector implements IErrorCollector {
-  private errors: (MatchError & { message: string })[] = [];
+export class ErrorCollector {
+  private readonly added: MatchError[] = [];
+  private readonly removed: MatchError[] = [];
+  private readonly changed: MatchError[] = [];
 
-  constructor(public readonly recordingPath: string) {}
-
-  add(error: MatchError): void {
-    const message = this.getErrorMessage(error);
-
-    debugMatching(message);
-
-    this.errors.push({
-      ...error,
-      message,
-    });
+  get count() {
+    return [...this.added, ...this.removed, ...this.changed].length;
   }
 
-  get(kind?: MatchErrorKind): (MatchError & { message: string })[] {
-    if (kind === undefined) {
-      return this.errors;
-    }
+  add(type: ErrorType, error: MatchError): void {
+    debugMatching(error.toString());
 
-    return this.errors.filter(error => error.kind === kind);
+    switch (type) {
+      case ErrorType.ADD:
+        this.added.push(error);
+        break;
+      case ErrorType.REMOVE:
+        this.removed.push(error);
+        break;
+      case ErrorType.CHANGE:
+        this.changed.push(error);
+        break;
+      default:
+        throw new UnexpectedError('Invalid error type');
+    }
   }
 
-  private getErrorMessage(error: MatchError): string {
-    switch (error.kind) {
-      case MatchErrorKind.LENGTH:
-        return errorMessages.incorrectRecordingsCount(error.old, error.new);
-      case MatchErrorKind.METHOD:
-        return errorMessages.incorrectMethod(error.old, error.new);
-      case MatchErrorKind.STATUS:
-        return errorMessages.incorrectStatusCode(error.old, error.new);
-      case MatchErrorKind.BASE_URL:
-        return errorMessages.incorrectBaseUrl(error.old, error.new);
-      case MatchErrorKind.PATH:
-        return errorMessages.incorrectPath(error.old, error.new);
-      case MatchErrorKind.REQUEST_HEADERS:
-        return errorMessages.incorrectRequestHeader(
-          error.headerName,
-          error.old,
-          error.new
-        );
-      case MatchErrorKind.RESPONSE_HEADERS:
-        return errorMessages.incorrectResponseHeader(
-          error.headerName,
-          error.old,
-          error.new
-        );
-      case MatchErrorKind.REQUEST_BODY:
-        return errorMessages.incorrectRequestBody(
-          error.schemeValidation ?? { old: error.old, new: error.new }
-        );
-      case MatchErrorKind.RESPONSE:
-        return errorMessages.incorrectResponse(
-          error.schemeValidation ?? { old: error.old, new: error.new }
-        );
-    }
+  get(): ErrorCollection {
+    return {
+      added: this.added,
+      removed: this.removed,
+      changed: this.changed,
+    };
   }
 }
