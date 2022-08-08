@@ -29,7 +29,7 @@ import { getFixtureName, matchWildCard } from './common/format';
 import { exists, mkdirQuiet, readFileQuiet, rename } from './common/io';
 import { writeRecordings } from './common/output-stream';
 import { IGenerator } from './generate-hash';
-import { Analyzer } from './nock/analyzer';
+import { analyzeErrors } from './nock/analyzer';
 import { Matcher } from './nock/matcher';
 import {
   AlertFunction,
@@ -422,18 +422,15 @@ export class SuperfaceTest {
     const oldRecordingDefs = JSON.parse(oldRecording) as RecordingDefinitions;
 
     // Match new HTTP traffic to saved for breaking changes
-    const match = await Matcher.match(
-      this.recordingPath ?? '',
-      oldRecordingDefs,
-      newTraffic
-    );
+    const match = await Matcher.match(oldRecordingDefs, newTraffic);
 
     if (match.valid) {
       // do not save new recording as there were no breaking changes found
     } else {
-      const analysis = Analyzer.run(
+      const analysis = analyzeErrors(
         this.sfConfig as CompleteSuperfaceTestConfig,
-        match.errors
+        match.errors,
+        this.recordingPath ?? ''
       );
 
       // Alert changes
