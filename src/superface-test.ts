@@ -33,6 +33,7 @@ import { AnalysisResult, analyzeErrors } from './nock/analyzer';
 import { Matcher } from './nock/matcher';
 import { report, saveReport } from './reporter';
 import {
+  AlertFunction,
   CompleteSuperfaceTestConfig,
   InputVariables,
   NockConfig,
@@ -42,7 +43,6 @@ import {
   SuperfaceTestConfigPayload,
   SuperfaceTestRun,
   TestingReturn,
-  AlertFunction,
 } from './superface-test.interfaces';
 import {
   assertBoundProfileProvider,

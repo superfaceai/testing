@@ -4,12 +4,12 @@ import { join as joinPath } from 'path';
 
 import { exists, readFileQuiet, readFilesInDir, rimraf } from './common/io';
 import { OutputStream } from './common/output-stream';
+import { AnalysisResult } from './nock/analyzer';
 import {
-  TestReport,
   TestCoverageBase,
   TestingReturn,
+  TestReport,
 } from './superface-test.interfaces';
-import { AnalysisResult } from './nock/analyzer';
 
 const DEFAULT_COVERAGE_PATH = 'superface-test-coverage';
 
