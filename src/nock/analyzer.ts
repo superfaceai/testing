@@ -8,15 +8,12 @@ import {
 
 export type MatchImpact = 'major' | 'minor' | 'patch';
 export interface AnalysisResult {
+  impact: MatchImpact;
   profile: string;
   provider: string;
   useCase: string;
-
-  recordingPath: string;
-
-  impact: MatchImpact;
-
   errors: ErrorCollection;
+  recordingPath: string;
 }
 
 export function analyzeErrors(

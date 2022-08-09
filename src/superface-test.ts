@@ -31,7 +31,7 @@ import { writeRecordings } from './common/output-stream';
 import { IGenerator } from './generate-hash';
 import { AnalysisResult, analyzeErrors } from './nock/analyzer';
 import { Matcher } from './nock/matcher';
-import { Reporter } from './nock/reporter';
+import { report, saveReport } from './reporter';
 import {
   CompleteSuperfaceTestConfig,
   InputVariables,
@@ -41,8 +41,8 @@ import {
   RecordingProcessOptions,
   SuperfaceTestConfigPayload,
   SuperfaceTestRun,
-  TestAnalysis,
   TestingReturn,
+  AlertFunction,
 } from './superface-test.interfaces';
 import {
   assertBoundProfileProvider,
@@ -149,7 +149,7 @@ export class SuperfaceTest {
 
     // TODO: add some env variable to enable/disable this
     if (this.analysis) {
-      await Reporter.save({
+      await saveReport({
         input,
         result,
         path: getFixtureName(this.sfConfig),
@@ -179,17 +179,17 @@ export class SuperfaceTest {
     throw new UnexpectedError('Unexpected result object');
   }
 
-  static async collectData(): Promise<void> {
-    await Reporter.collect();
-  }
+  // static async collectData(): Promise<void> {
+  //   await collect();
+  // }
 
   static async report(
-    alert: (analysis: TestAnalysis) => unknown | Promise<unknown>,
+    alert: AlertFunction,
     options?: {
       onlyFailedTests?: boolean;
     }
   ): Promise<void> {
-    await Reporter.report(alert, options);
+    await report(alert, options);
   }
 
   private async replaceUnsupportedRecording(): Promise<void> {
