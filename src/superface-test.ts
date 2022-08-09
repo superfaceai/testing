@@ -8,7 +8,7 @@ import {
 import createDebug from 'debug';
 import {
   activate as activateNock,
-  define,
+  define as loadRecordingDefinitions,
   disableNetConnect,
   enableNetConnect,
   isActive as isNockActive,
@@ -106,7 +106,7 @@ export class SuperfaceTest {
 
     this.setupRecordingPath(getFixtureName(this.sfConfig), hash);
 
-    // Replace unsupported recordings with currently supported
+    // Replace currently supported recordings with unsupported (new recordings with changes)
     if (await this.canReplaceRecording()) {
       await this.replaceUnsupportedRecording();
     }
@@ -181,11 +181,10 @@ export class SuperfaceTest {
       process.env.PUBLISH_UNSUPPORTED_RECORDINGS
     );
 
-    if (replaceRecording) {
-      if (!(await exists(this.composeRecordingPath('unsupported')))) {
-        return false;
-      }
-
+    if (
+      replaceRecording &&
+      (await exists(this.composeRecordingPath('unsupported')))
+    ) {
       return true;
     }
 
@@ -273,7 +272,7 @@ export class SuperfaceTest {
       await beforeRecordingLoad(definitions);
     }
 
-    define(definitions);
+    loadRecordingDefinitions(definitions);
 
     debug('Loaded and mocked recorded traffic based on recording fixture');
 
@@ -390,11 +389,11 @@ export class SuperfaceTest {
 
       const recordingExists = await exists(this.composeRecordingPath());
 
-      if (!recordingExists) {
+      if (recordingExists) {
+        await this.matchTraffic(definitions, alert);
+      } else {
         // recording file does not exist -> record new traffic
         await writeRecordings(this.composeRecordingPath(), definitions);
-      } else {
-        await this.matchTraffic(definitions, alert);
       }
 
       debug('Recorded definitions written');
