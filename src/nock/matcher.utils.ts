@@ -1,7 +1,6 @@
 import { decodeBuffer } from 'http-encoding';
 import { ReplyBody } from 'nock/types';
 import { URLSearchParams } from 'url';
-import { inspect } from 'util';
 
 import { MatchHeaders } from './matcher';
 
@@ -66,7 +65,10 @@ export async function decodeResponse(
  *  since URLSearchParams always transform params to string we can't
  *  generate correct schema for this if it contains numbers or booleans
  */
-export function parseBody(body: string, _accept?: string): unknown {
+export function parseBody(
+  body: string,
+  _accept?: string
+): Record<string, unknown> | undefined {
   if (body === '') {
     return undefined;
   }
@@ -89,58 +91,3 @@ export function parseBody(body: string, _accept?: string): unknown {
 
   return result;
 }
-
-export const errorMessages = {
-  incorrectRecordingsCount: (oldCount: number, newCount: number): string =>
-    `Number of recorded HTTP calls do not match: ${oldCount} : ${newCount}`,
-  incorrectMethod: (oldMethod?: string, newMethod?: string): string =>
-    `Request method does not match: "${oldMethod ?? 'not-existing'}" : "${
-      newMethod ?? 'not-existing'
-    }"`,
-  incorrectStatusCode: (oldStatus?: number, newStatus?: number): string =>
-    `Status codes do not match: "${oldStatus ?? 'not-existing'}" : "${
-      newStatus ?? 'not-existing'
-    }"`,
-  incorrectBaseUrl: (oldUrl: string, newUrl: string): string =>
-    `Request Base URL does not match: "${oldUrl}" : "${newUrl}"`,
-  incorrectPath: (oldPath: string, newPath: string): string =>
-    `Paths do not match: "${oldPath}" : "${newPath}"`,
-  incorrectRequestHeader: (
-    headerName: string,
-    oldRequestHeader?: string,
-    newRequestHeader?: string
-  ): string =>
-    `Request header "${headerName}" does not match: "${
-      oldRequestHeader ?? 'not-existing'
-    }" : "${newRequestHeader ?? 'not-existing'}"`,
-  incorrectResponseHeader: (
-    headerName: string,
-    oldResponseHeader?: string,
-    newResponseHeader?: string
-  ): string =>
-    `Response header "${headerName}" does not match: "${
-      oldResponseHeader ?? 'not-existing'
-    }" - "${newResponseHeader ?? 'not-existing'}"`,
-  incorrectRequestBody: (
-    payload: string | { old?: unknown; new?: unknown }
-  ): string => {
-    if (typeof payload === 'string') {
-      return `Request body does not match: ${payload}`;
-    }
-
-    return `Request body does not match: "${
-      inspect(payload.old) ?? 'not-existing'
-    }" : "${inspect(payload.new) ?? 'not-existing'}"`;
-  },
-  incorrectResponse: (
-    payload: string | { old?: unknown; new?: unknown }
-  ): string => {
-    if (typeof payload === 'string') {
-      return `Response does not match: ${payload}`;
-    }
-
-    return `Response does not match: "${
-      inspect(payload.old) ?? 'not-existing'
-    }" : "${inspect(payload.new) ?? 'not-existing'}"`;
-  },
-};

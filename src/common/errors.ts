@@ -1,20 +1,25 @@
 import { SDKExecutionError } from '@superfaceai/one-sdk';
 import { inspect } from 'util';
 
-class ErrorBase extends Error {
-  constructor(public kind: string, public override message: string) {
+export class ErrorBase extends Error {
+  constructor(kind: string, message: string) {
     super(message);
-    this.name = kind;
 
     Object.setPrototypeOf(this, ErrorBase.prototype);
+
+    this.name = kind;
   }
 
-  get [Symbol.toStringTag](): string {
-    return this.kind;
+  public get [Symbol.toStringTag](): string {
+    return this.name;
   }
 
-  override toString(): string {
-    return `${this.kind}: ${this.message}`;
+  public get kind(): string {
+    return this.name;
+  }
+
+  public override toString(): string {
+    return `${this.name}: ${this.message}`;
   }
 }
 

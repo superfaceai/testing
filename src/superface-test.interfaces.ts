@@ -13,6 +13,7 @@ import {
 import { Definition } from 'nock/types';
 
 import { AnalysisResult } from './nock/analyzer';
+import { ErrorCollection } from './nock/matcher.errors';
 
 export interface SuperfaceTestConfigPayload {
   client?: SuperfaceClient;
@@ -74,7 +75,7 @@ export interface RecordingProcessOptions {
 }
 
 export interface TestCoverageBase {
-  recordingErrors: string;
+  recordingErrors: ErrorCollection;
   profile: string;
   provider: string;
   useCase: string;

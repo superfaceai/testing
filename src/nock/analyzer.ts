@@ -1,6 +1,12 @@
 import { CompleteSuperfaceTestConfig } from '../superface-test.interfaces';
-import { IErrorCollector } from './error-collector.interfaces';
+import {
+  ErrorCollection,
+  MatchErrorLength,
+  MatchErrorResponse,
+  MatchErrorStatus,
+} from './matcher.errors';
 
+export type MatchImpact = 'major' | 'minor' | 'patch';
 export interface AnalysisResult {
   profile: string;
   provider: string;
@@ -8,35 +14,61 @@ export interface AnalysisResult {
 
   recordingPath: string;
 
-  // TODO: better naming - major/minor/patch
-  impact: string;
+  impact: MatchImpact;
 
-  errors: string[];
+  errors: ErrorCollection;
 }
 
-export class Analyzer {
-  static run(
-    sfConfig: CompleteSuperfaceTestConfig,
-    errors: IErrorCollector
-  ): AnalysisResult {
-    const formattedErrors: string[] = [];
+export function analyzeErrors(
+  sfConfig: CompleteSuperfaceTestConfig,
+  errors: ErrorCollection,
+  recordingPath: string
+): AnalysisResult {
+  return {
+    profile: sfConfig.profile.configuration.id,
+    provider: sfConfig.provider.configuration.name,
+    useCase: sfConfig.useCase.name,
+    recordingPath,
+    impact: determineImpact(errors),
+    errors,
+  };
+}
 
-    for (const error of errors.get()) {
-      formattedErrors.push(error.message);
-    }
+function determineImpact(errors: ErrorCollection): MatchImpact {
+  // check for breaking changes
+  const responseDoesNotMatch = errors.changed.some(
+    error => error instanceof MatchErrorResponse
+  );
+  const statusCodeDoesNotMatch = errors.changed.some(
+    error => error instanceof MatchErrorStatus
+  );
+  const responseHeadersDoesNotMatch = [
+    ...errors.removed,
+    ...errors.changed,
+  ].some(error => error instanceof MatchErrorResponse);
+  const recordingsCountMatch = [...errors.added, ...errors.removed].some(
+    error => error instanceof MatchErrorLength
+  );
 
-    return {
-      profile: sfConfig.profile.configuration.id,
-      provider: sfConfig.provider.configuration.name,
-      useCase: sfConfig.useCase.name,
-      recordingPath: errors.recordingPath,
-
-      impact: 'major',
-
-      errors: formattedErrors,
-    };
+  if (
+    responseDoesNotMatch ||
+    responseHeadersDoesNotMatch ||
+    statusCodeDoesNotMatch ||
+    recordingsCountMatch
+  ) {
+    return 'major';
   }
 
-  // implement rules for determining impact of change
-  // consider different situations where request or/and response changes
+  // check for minor changes
+  // TODO: determine minor change based on added data in response
+  // - needs different solution than JSON schema validation
+
+  const responseHeadersAdded = errors.added.some(
+    error => error instanceof MatchErrorResponse
+  );
+  if (responseHeadersAdded) {
+    return 'minor';
+  }
+
+  return 'patch';
 }

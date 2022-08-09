@@ -38,7 +38,7 @@ export class Reporter {
     );
     const { profile, provider, useCase, impact, errors } = analysis;
     const data: TestCoverageBase = {
-      recordingErrors: errors.join('\n'),
+      recordingErrors: errors,
       input,
       result,
       profile,

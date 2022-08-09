@@ -8,7 +8,7 @@ import {
 import createDebug from 'debug';
 import {
   activate as activateNock,
-  define,
+  define as loadRecordingDefinitions,
   disableNetConnect,
   enableNetConnect,
   isActive as isNockActive,
@@ -29,7 +29,7 @@ import { getFixtureName, matchWildCard } from './common/format';
 import { exists, mkdirQuiet, readFileQuiet, rename } from './common/io';
 import { writeRecordings } from './common/output-stream';
 import { IGenerator } from './generate-hash';
-import { AnalysisResult, Analyzer } from './nock/analyzer';
+import { AnalysisResult, analyzeErrors } from './nock/analyzer';
 import { Matcher } from './nock/matcher';
 import { Reporter } from './nock/reporter';
 import {
@@ -108,7 +108,7 @@ export class SuperfaceTest {
 
     this.setupRecordingPath(getFixtureName(this.sfConfig), hash);
 
-    // Replace unsupported recordings with currently supported
+    // Replace currently supported recordings with unsupported (new recordings with changes)
     if (await this.canReplaceRecording()) {
       await this.replaceUnsupportedRecording();
     }
@@ -208,11 +208,10 @@ export class SuperfaceTest {
       process.env.PUBLISH_UNSUPPORTED_RECORDINGS
     );
 
-    if (replaceRecording) {
-      if (!(await exists(this.composeRecordingPath('unsupported')))) {
-        return false;
-      }
-
+    if (
+      replaceRecording &&
+      (await exists(this.composeRecordingPath('unsupported')))
+    ) {
       return true;
     }
 
@@ -300,7 +299,7 @@ export class SuperfaceTest {
       await beforeRecordingLoad(definitions);
     }
 
-    define(definitions);
+    loadRecordingDefinitions(definitions);
 
     debug('Loaded and mocked recorded traffic based on recording fixture');
 
@@ -415,11 +414,11 @@ export class SuperfaceTest {
 
       const recordingExists = await exists(this.composeRecordingPath());
 
-      if (!recordingExists) {
+      if (recordingExists) {
+        await this.matchTraffic(definitions);
+      } else {
         // recording file does not exist -> record new traffic
         await writeRecordings(this.composeRecordingPath(), definitions);
-      } else {
-        await this.matchTraffic(definitions);
       }
 
       debug('Recorded definitions written');
@@ -444,18 +443,15 @@ export class SuperfaceTest {
     const oldRecordingDefs = JSON.parse(oldRecording) as RecordingDefinitions;
 
     // Match new HTTP traffic to saved for breaking changes
-    const match = await Matcher.match(
-      this.recordingPath ?? '',
-      oldRecordingDefs,
-      newTraffic
-    );
+    const match = await Matcher.match(oldRecordingDefs, newTraffic);
 
     if (match.valid) {
       // do not save new recording as there were no breaking changes found
     } else {
-      this.analysis = Analyzer.run(
+      this.analysis = analyzeErrors(
         this.sfConfig as CompleteSuperfaceTestConfig,
-        match.errors
+        match.errors,
+        this.recordingPath ?? ''
       );
 
       // Save new recording as unsupported

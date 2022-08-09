@@ -8,7 +8,20 @@ import {
   RecordingDefinitions,
 } from '../superface-test.interfaces';
 import { ErrorCollector } from './error-collector';
-import { IErrorCollector, MatchErrorKind } from './error-collector.interfaces';
+import {
+  ErrorCollection,
+  ErrorType,
+  MatchError,
+  MatchErrorBaseURL,
+  MatchErrorLength,
+  MatchErrorMethod,
+  MatchErrorPath,
+  MatchErrorRequestBody,
+  MatchErrorRequestHeaders,
+  MatchErrorResponse,
+  MatchErrorResponseHeaders,
+  MatchErrorStatus,
+} from './matcher.errors';
 import { decodeResponse, getHeaderValue, parseBody } from './matcher.utils';
 
 export interface MatchHeaders {
@@ -44,10 +57,10 @@ CONSIDER DISABLING SENSITIVE INFORMATION LOGGING BY APPENDING THE DEBUG ENVIRONM
 
 export type MatchResult =
   | { valid: true }
-  | { valid: false; errors: IErrorCollector };
+  | { valid: false; errors: ErrorCollection };
 
 export class Matcher {
-  private static errorCollector: IErrorCollector;
+  private static errorCollector: ErrorCollector;
 
   /**
    * Matches old recording file to new recorded traffic.
@@ -56,21 +69,24 @@ export class Matcher {
    * @param recordingPath - path to old recording
    * @param oldTrafficDefs - old traffic loaded from recording file
    * @param newTrafficDefs - new recorded traffic
-   * @returns boolean representing whether recordings match or not
+   * @returns object representing whether recordings match or not
    */
   static async match(
-    recordingPath: string,
     oldTrafficDefs: RecordingDefinitions,
     newTrafficDefs: RecordingDefinitions
   ): Promise<MatchResult> {
-    this.errorCollector = new ErrorCollector(recordingPath);
+    this.errorCollector = new ErrorCollector();
 
-    if (oldTrafficDefs.length !== newTrafficDefs.length) {
-      this.errorCollector.add({
-        kind: MatchErrorKind.LENGTH,
-        old: oldTrafficDefs.length,
-        new: newTrafficDefs.length,
-      });
+    if (oldTrafficDefs.length < newTrafficDefs.length) {
+      this.errorCollector.add(
+        ErrorType.ADD,
+        new MatchErrorLength(oldTrafficDefs.length, newTrafficDefs.length)
+      );
+    } else if (oldTrafficDefs.length > newTrafficDefs.length) {
+      this.errorCollector.add(
+        ErrorType.REMOVE,
+        new MatchErrorLength(oldTrafficDefs.length, newTrafficDefs.length)
+      );
     }
 
     for (let i = 0; i < oldTrafficDefs.length; i++) {
@@ -81,22 +97,27 @@ export class Matcher {
       await this.matchTraffic(oldTraffic, newTraffic);
     }
 
-    const errorsCount = this.errorCollector.get().length;
-    if (errorsCount === 0) {
+    const { errors, count } = this.errorCollector;
+
+    if (count === 0) {
       debugMatching('No changes found');
 
       return { valid: true };
     } else {
-      debugMatching(`Found ${errorsCount} errors`);
+      debugMatching(`Found ${count} ${count > 1 ? 'errors' : 'error'}`);
 
-      return { valid: false, errors: this.errorCollector };
+      return { valid: false, errors };
     }
   }
 
   private static async matchTraffic(
-    oldTraffic: RecordingDefinition,
-    newTraffic: RecordingDefinition
+    oldTraffic?: RecordingDefinition,
+    newTraffic?: RecordingDefinition
   ): Promise<void> {
+    if (!oldTraffic || !newTraffic) {
+      return;
+    }
+
     debugMatching(
       `Matching HTTP calls ${oldTraffic.scope + oldTraffic.path} : ${
         newTraffic.scope + newTraffic.path
@@ -106,41 +127,37 @@ export class Matcher {
     // method
     debugMatching('\trequest method');
     if (oldTraffic.method !== newTraffic.method) {
-      this.errorCollector.add({
-        kind: MatchErrorKind.METHOD,
-        old: oldTraffic.method,
-        new: newTraffic.method,
-      });
+      this.errorCollector.add(
+        ErrorType.CHANGE,
+        new MatchErrorMethod(oldTraffic.method, newTraffic.method)
+      );
     }
 
     // status
     debugMatching('\tresponse status');
     if (oldTraffic.status !== newTraffic.status) {
-      this.errorCollector.add({
-        kind: MatchErrorKind.STATUS,
-        old: oldTraffic.status,
-        new: newTraffic.status,
-      });
+      this.errorCollector.add(
+        ErrorType.CHANGE,
+        new MatchErrorStatus(oldTraffic.status, newTraffic.status)
+      );
     }
 
     // base URL
     debugMatching('\trequest base URL');
     if (oldTraffic.scope !== newTraffic.scope) {
-      this.errorCollector.add({
-        kind: MatchErrorKind.BASE_URL,
-        old: oldTraffic.scope,
-        new: newTraffic.scope,
-      });
+      this.errorCollector.add(
+        ErrorType.CHANGE,
+        new MatchErrorBaseURL(oldTraffic.scope, newTraffic.scope)
+      );
     }
 
     // path
     debugMatching('\trequest path');
     if (oldTraffic.path !== newTraffic.path) {
-      this.errorCollector.add({
-        kind: MatchErrorKind.PATH,
-        old: oldTraffic.path,
-        new: newTraffic.path,
-      });
+      this.errorCollector.add(
+        ErrorType.CHANGE,
+        new MatchErrorPath(oldTraffic.path, newTraffic.path)
+      );
     }
 
     // TODO: research nock types of request headers and parse them correctly
@@ -179,14 +196,11 @@ export class Matcher {
 
     const accept = getHeaderValue(oldHeaders, newHeaders, 'accept');
 
-    if (accept.old !== accept.new) {
-      this.errorCollector.add({
-        kind: MatchErrorKind.REQUEST_HEADERS,
-        old: accept.old,
-        new: accept.new,
-        headerName: 'Accept',
-      });
-    }
+    this.addError(
+      accept.old,
+      accept.new,
+      new MatchErrorRequestHeaders('Accept', accept.old, accept.new)
+    );
 
     // list of other headers to add support for:
     // ...
@@ -206,12 +220,15 @@ export class Matcher {
     const contentType = getHeaderValue(oldHeaders, newHeaders, 'content-type');
 
     if (contentType.old !== contentType.new) {
-      this.errorCollector.add({
-        kind: MatchErrorKind.RESPONSE_HEADERS,
-        old: contentType.old,
-        new: contentType.new,
-        headerName: 'Content-Type',
-      });
+      this.addError(
+        contentType.old,
+        contentType.new,
+        new MatchErrorResponseHeaders(
+          'Content-Type',
+          contentType.old,
+          contentType.new
+        )
+      );
     }
 
     // match content Encoding
@@ -222,12 +239,15 @@ export class Matcher {
     );
 
     if (contentEncoding.old !== contentEncoding.new) {
-      this.errorCollector.add({
-        kind: MatchErrorKind.RESPONSE_HEADERS,
-        old: contentEncoding.old,
-        new: contentEncoding.new,
-        headerName: 'Content-Encoding',
-      });
+      this.addError(
+        contentEncoding.old,
+        contentEncoding.new,
+        new MatchErrorResponseHeaders(
+          'Content-Encoding',
+          contentEncoding.old,
+          contentEncoding.new
+        )
+      );
     }
 
     const contentLength = getHeaderValue(
@@ -249,52 +269,59 @@ export class Matcher {
   }
 
   private static matchRequestBody(
-    oldRequestBody: unknown,
-    newRequestBody: unknown,
+    oldBody: unknown,
+    newBody: unknown,
     accept?: MatchHeaders
   ): void {
     debugMatching('\trequest body');
 
     // TODO: try to parse string body or rather compare it plainly?
     // if body is not string and is defined - expect valid JSON
-    let oldBody = oldRequestBody,
-      newBody = newRequestBody;
+    let oldRequestBody = oldBody,
+      newRequestBody = newBody;
 
-    if (typeof oldRequestBody === 'string') {
-      oldBody = parseBody(oldRequestBody, accept?.old);
+    if (typeof oldBody === 'string') {
+      oldRequestBody = parseBody(oldBody, accept?.old);
     }
 
-    if (typeof newRequestBody === 'string') {
-      newBody = parseBody(newRequestBody, accept?.new);
+    if (typeof newBody === 'string') {
+      newRequestBody = parseBody(newBody, accept?.new);
+    }
+
+    if (oldRequestBody === undefined && newRequestBody === undefined) {
+      return;
     }
 
     // if old body is empty string or undefined - we dont create JSON scheme
-    if (oldBody === undefined) {
-      if (newBody !== undefined) {
-        this.errorCollector.add({
-          kind: MatchErrorKind.REQUEST_BODY,
-          old: oldBody,
-          new: newBody,
-        });
-      }
+    if (oldRequestBody === undefined && newRequestBody !== undefined) {
+      this.errorCollector.add(
+        ErrorType.ADD,
+        new MatchErrorRequestBody({ oldRequestBody, newRequestBody })
+      );
 
       return;
     }
 
-    const valid = this.createAndValidateSchema(oldBody, newBody);
+    if (oldRequestBody !== undefined && newRequestBody === undefined) {
+      this.errorCollector.add(
+        ErrorType.REMOVE,
+        new MatchErrorRequestBody({ oldRequestBody, newRequestBody })
+      );
+
+      return;
+    }
+
+    // TODO: create own algorithm for parsing this
+    const valid = this.createAndValidateSchema(oldRequestBody, newRequestBody);
 
     if (!valid) {
       debugMatchingSensitive(schemaValidator.errors);
 
-      this.errorCollector.add({
-        kind: MatchErrorKind.REQUEST_BODY,
-        old: oldBody,
-        new: newBody,
-        schemeValidation: schemaValidator.errorsText(),
-      });
+      this.errorCollector.add(
+        ErrorType.CHANGE,
+        new MatchErrorRequestBody(schemaValidator.errorsText())
+      );
     }
-
-    return;
   }
 
   private static async matchResponse(
@@ -329,12 +356,13 @@ export class Matcher {
     if (!valid) {
       debugMatching(schemaValidator.errors);
 
-      this.errorCollector.add({
-        kind: MatchErrorKind.RESPONSE,
-        old: oldResponse,
-        new: newResponse,
-        schemeValidation: schemaValidator.errorsText(),
-      });
+      this.errorCollector.add(
+        ErrorType.CHANGE,
+        new MatchErrorResponse(
+          { oldResponse, newResponse },
+          schemaValidator.errorsText()
+        )
+      );
     }
   }
 
@@ -350,5 +378,19 @@ export class Matcher {
     );
 
     return schemaValidator.validate(oldJsonSchema, payload);
+  }
+
+  private static addError(
+    oldPayload: undefined | unknown,
+    newPayload: undefined | unknown,
+    error: MatchError
+  ) {
+    if (oldPayload === undefined && newPayload !== undefined) {
+      this.errorCollector.add(ErrorType.ADD, error);
+    } else if (oldPayload !== undefined && newPayload === undefined) {
+      this.errorCollector.add(ErrorType.REMOVE, error);
+    } else if (oldPayload !== newPayload) {
+      this.errorCollector.add(ErrorType.CHANGE, error);
+    }
   }
 }
