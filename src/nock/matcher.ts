@@ -82,7 +82,7 @@ export class Matcher {
         ErrorType.ADD,
         new MatchErrorLength(oldTrafficDefs.length, newTrafficDefs.length)
       );
-    } else {
+    } else if (oldTrafficDefs.length > newTrafficDefs.length) {
       this.errorCollector.add(
         ErrorType.REMOVE,
         new MatchErrorLength(oldTrafficDefs.length, newTrafficDefs.length)
@@ -97,15 +97,14 @@ export class Matcher {
       await this.matchTraffic(oldTraffic, newTraffic);
     }
 
-    const errors = this.errorCollector.get();
-    const errorsCount = this.errorCollector.count;
+    const { errors, count } = this.errorCollector;
 
-    if (errorsCount === 0) {
+    if (count === 0) {
       debugMatching('No changes found');
 
       return { valid: true };
     } else {
-      debugMatching(`Found ${errorsCount} errors`);
+      debugMatching(`Found ${count} ${count > 1 ? 'errors' : 'error'}`);
 
       return { valid: false, errors };
     }
@@ -281,12 +280,16 @@ export class Matcher {
     let oldRequestBody = oldBody,
       newRequestBody = newBody;
 
-    if (typeof oldRequestBody === 'string') {
-      oldRequestBody = parseBody(oldRequestBody, accept?.old);
+    if (typeof oldBody === 'string') {
+      oldRequestBody = parseBody(oldBody, accept?.old);
     }
 
-    if (typeof newRequestBody === 'string') {
-      newRequestBody = parseBody(newRequestBody, accept?.new);
+    if (typeof newBody === 'string') {
+      newRequestBody = parseBody(newBody, accept?.new);
+    }
+
+    if (oldRequestBody === undefined && newRequestBody === undefined) {
+      return;
     }
 
     // if old body is empty string or undefined - we dont create JSON scheme
@@ -319,8 +322,6 @@ export class Matcher {
         new MatchErrorRequestBody(schemaValidator.errorsText())
       );
     }
-
-    return;
   }
 
   private static async matchResponse(

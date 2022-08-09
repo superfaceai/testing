@@ -10,8 +10,16 @@ export class ErrorCollector {
   private readonly removed: MatchError[] = [];
   private readonly changed: MatchError[] = [];
 
-  get count() {
+  get count(): number {
     return [...this.added, ...this.removed, ...this.changed].length;
+  }
+
+  get errors(): ErrorCollection {
+    return {
+      added: this.added,
+      removed: this.removed,
+      changed: this.changed,
+    };
   }
 
   add(type: ErrorType, error: MatchError): void {
@@ -30,13 +38,5 @@ export class ErrorCollector {
       default:
         throw new UnexpectedError('Invalid error type');
     }
-  }
-
-  get(): ErrorCollection {
-    return {
-      added: this.added,
-      removed: this.removed,
-      changed: this.changed,
-    };
   }
 }
