@@ -1,33 +1,10 @@
-import {
-  BoundProfileProvider,
-  err,
-  ok,
-  PerformError,
-  Result,
-} from '@superfaceai/one-sdk';
+import { err, ok, PerformError, Result } from '@superfaceai/one-sdk';
 import createDebug from 'debug';
-import {
-  activate as activateNock,
-  define,
-  disableNetConnect,
-  enableNetConnect,
-  isActive as isNockActive,
-  recorder,
-  restore as restoreRecordings,
-} from 'nock';
+import { enableNetConnect, recorder, restore as restoreRecordings } from 'nock';
 import { join as joinPath } from 'path';
 
+import { RecordingProcessOptions } from '.';
 import {
-  InputVariables,
-  ProcessingFunction,
-  RecordingDefinitions,
-  RecordingProcessOptions,
-} from '.';
-import {
-  BaseURLNotFoundError,
-  FixturesPathUndefinedError,
-  RecordingPathUndefinedError,
-  RecordingsNotFoundError,
   UnexpectedError,
 } from './common/errors';
 import {
@@ -35,9 +12,8 @@ import {
   matchWildCard,
   removeTimestamp,
 } from './common/format';
-import { exists, readFileQuiet } from './common/io';
-import { writeRecordings } from './common/output-stream';
 import { IGenerator } from './generate-hash';
+import { endRecording, loadRecording, startRecording } from './nock/recorder';
 import { prepareSuperface } from './superface/config';
 import {
   NockConfig,
@@ -45,24 +21,14 @@ import {
   SuperfaceTestRun,
   TestingReturn,
 } from './superface-test.interfaces';
-import {
-  assertsDefinitionsAreNotStrings,
-  checkSensitiveInformation,
-  getGenerator,
-  replaceCredentials,
-  searchValues,
-} from './superface-test.utils';
+import { getGenerator, searchValues } from './superface-test.utils';
 
 const debug = createDebug('superface:testing');
 const debugSetup = createDebug('superface:testing:setup');
 const debugHashing = createDebug('superface:testing:hash');
 
 export class SuperfaceTest {
-  // Not using config class at all.
-  // private config: ITestConfig;
   private nockConfig?: NockConfig;
-  private fixturesPath?: string;
-  private recordingPath?: string;
   private generator: IGenerator;
   public configuration: SuperfaceTestConfigPayload | undefined;
 
@@ -71,8 +37,6 @@ export class SuperfaceTest {
     // this.config = new TestConfig(payload);
     this.nockConfig = nockConfig;
     this.generator = getGenerator(nockConfig?.testInstance);
-
-    this.setupFixturesPath();
   }
 
   /**
@@ -102,10 +66,12 @@ export class SuperfaceTest {
 
     debugHashing('Created hash:', hash);
 
-    this.setupRecordingPath(
+    const recordingPath = this.setupRecordingPath(
       getFixtureName(sf.profileId, sf.providerName, sf.usecaseName),
       hash
     );
+
+    debugSetup('Prepared path to recording:', recordingPath);
 
     // Parse env variable and check if test should be recorded
     const record = matchWildCard(
@@ -117,32 +83,45 @@ export class SuperfaceTest {
     const processRecordings = options?.processRecordings ?? true;
     const inputVariables = searchValues(testCase.input, options?.hideInput);
 
-    await this.startRecording({
-      record,
-      processRecordings,
-      config: {
-        boundProfileProvider: sf.boundProfileProvider,
-        providerName: sf.providerName,
-      },
-      inputVariables,
-      beforeRecordingLoad: options?.beforeRecordingLoad,
-    });
+    if (record) {
+      await startRecording(this.nockConfig?.enableReqheadersRecording);
+    } else {
+      await loadRecording({
+        recordingPath,
+        config: {
+          boundProfileProvider: sf.boundProfileProvider,
+          providerName: sf.providerName,
+        },
+        inputVariables,
+        options: {
+          processRecordings,
+          beforeRecordingLoad: options?.beforeRecordingLoad,
+        },
+      });
+    }
 
     let result: Result<unknown, PerformError>;
     try {
       // Run perform method on specified configuration
       result = await sf.boundProfileProvider.perform(sf.usecaseName, input);
 
-      await this.endRecording({
-        record,
-        processRecordings,
-        config: {
-          boundProfileProvider: sf.boundProfileProvider,
-          providerName: sf.providerName,
-        },
-        inputVariables,
-        beforeRecordingSave: options?.beforeRecordingSave,
-      });
+      if (record) {
+        await endRecording({
+          recordingPath,
+          processRecordings,
+          config: {
+            boundProfileProvider: sf.boundProfileProvider,
+            providerName: sf.providerName,
+          },
+          inputVariables,
+          beforeRecordingSave: options?.beforeRecordingSave,
+        });
+      } else {
+        restoreRecordings();
+        enableNetConnect();
+
+        debug('Restored HTTP requests and enabled outgoing requests');
+      }
     } catch (error: unknown) {
       restoreRecordings();
       recorder.clear();
@@ -166,230 +145,16 @@ export class SuperfaceTest {
     throw new UnexpectedError('Unexpected result object');
   }
 
-  // TODO: not connected to this - move to separate file to simplify testing
-  /**
-   * Starts recording or loads recording fixture if exists.
-   *
-   * It will also process recording definitions before creating mocked requests
-   * to match against constructed request and enable mocking them. This is needed
-   * because stored recording fixture is possibly processed and contains placeholders
-   * instead of original secrets.
-   *
-   * Recordings do not get processed if user specifies parameter `processRecordings` as false.
-   */
-  private async startRecording({
-    record,
-    processRecordings,
-    config: { boundProfileProvider, providerName },
-    inputVariables,
-    beforeRecordingLoad,
-  }: {
-    record: boolean;
-    processRecordings: boolean;
-    config: {
-      boundProfileProvider: BoundProfileProvider;
-      providerName: string;
-    };
-    inputVariables?: InputVariables;
-    beforeRecordingLoad?: ProcessingFunction;
-  }): Promise<void> {
-    if (!this.recordingPath) {
-      throw new RecordingPathUndefinedError();
-    }
-
-    const { parameters, security, services } =
-      boundProfileProvider.configuration;
-    const integrationParameters = parameters ?? {};
-    const baseUrl = services.getUrl();
-
-    if (baseUrl === undefined) {
-      throw new BaseURLNotFoundError(providerName);
-    }
-
-    if (record) {
-      const enable_reqheaders_recording =
-        this.nockConfig?.enableReqheadersRecording ?? false;
-
-      recorder.rec({
-        dont_print: true,
-        output_objects: true,
-        use_separator: false,
-        enable_reqheaders_recording,
-      });
-
-      debug('Recording HTTP traffic started');
-    } else {
-      const recordingExists = await exists(this.recordingPath);
-
-      if (!recordingExists) {
-        throw new RecordingsNotFoundError();
-      }
-
-      const definitionFile = await readFileQuiet(this.recordingPath);
-
-      if (definitionFile === undefined) {
-        throw new UnexpectedError('Reading recording file failed');
-      }
-
-      const definitions = JSON.parse(definitionFile) as RecordingDefinitions;
-
-      if (processRecordings) {
-        //Use security configuration only
-        replaceCredentials({
-          definitions,
-          security,
-          integrationParameters,
-          inputVariables,
-          baseUrl,
-          beforeSave: false,
-        });
-      }
-
-      if (beforeRecordingLoad) {
-        debug(
-          "Calling custom 'beforeRecordingLoad' hook on loaded recording definitions"
-        );
-
-        await beforeRecordingLoad(definitions);
-      }
-
-      define(definitions);
-
-      debug('Loaded and mocked recorded traffic based on recording fixture');
-
-      disableNetConnect();
-
-      if (!isNockActive()) {
-        activateNock();
-      }
-    }
-  }
-  // TODO: not connected to this - move to separate file to simplify testing
-
-  /**
-   * Checks if recording started and if yes, it ends recording and
-   * saves recording to file configured based on nock configuration from constructor.
-   *
-   * It will also process the recording definitions and hide sensitive information
-   * based on security schemes and integration parameters defined in provider.json,
-   * unless user pass in false for parameter `processRecordings`.
-   */
-  private async endRecording({
-    record,
-    processRecordings,
-    config: { boundProfileProvider, providerName },
-    inputVariables,
-    beforeRecordingSave,
-  }: {
-    record: boolean;
-    processRecordings: boolean;
-    config: {
-      boundProfileProvider: BoundProfileProvider;
-      providerName: string;
-    };
-    inputVariables?: InputVariables;
-    beforeRecordingSave?: ProcessingFunction;
-  }): Promise<void> {
-    if (!this.recordingPath) {
-      throw new RecordingPathUndefinedError();
-    }
-
-    if (record) {
-      const definitions = recorder.play();
-      recorder.clear();
-      restoreRecordings();
-
-      debug(
-        'Recording ended - Restored HTTP requests and cleared recorded traffic'
-      );
-
-      if (definitions === undefined || definitions.length === 0) {
-        await writeRecordings(this.recordingPath, []);
-
-        return;
-      }
-
-      assertsDefinitionsAreNotStrings(definitions);
-
-      // const securityValues = provider.configuration.security;
-      const { security, parameters, services } =
-        boundProfileProvider.configuration;
-      const integrationParameters = parameters ?? {};
-
-      if (processRecordings) {
-        const baseUrl = services.getUrl();
-
-        if (baseUrl === undefined) {
-          throw new BaseURLNotFoundError(providerName);
-        }
-
-        replaceCredentials({
-          definitions,
-          security,
-          integrationParameters,
-          inputVariables,
-          baseUrl,
-          beforeSave: true,
-        });
-      }
-
-      if (beforeRecordingSave) {
-        debug(
-          "Calling custom 'beforeRecordingSave' hook on recorded definitions"
-        );
-
-        await beforeRecordingSave(definitions);
-      }
-
-      if (
-        security.length > 0 ||
-        // securityValues.length > 0 ||
-        (integrationParameters &&
-          Object.values(integrationParameters).length > 0)
-      ) {
-        checkSensitiveInformation(definitions, security, integrationParameters);
-      }
-
-      await writeRecordings(this.recordingPath, definitions);
-      debug('Recorded definitions written');
-    } else {
-      restoreRecordings();
-      enableNetConnect();
-
-      debug('Restored HTTP requests and enabled outgoing requests');
-
-      return;
-    }
-  }
-
-  /**
-   * Sets up path to all fixtures.
-   */
-  private setupFixturesPath(): void {
-    const { path } = this.nockConfig ?? {};
-
-    if (this.fixturesPath === undefined) {
-      this.fixturesPath = path ?? joinPath(process.cwd(), 'nock');
-    }
-
-    debugSetup('Prepare path to recording fixtures:', this.fixturesPath);
-  }
-
-  // TODO: not sure if fixturePath and recording path must live on instance.
   /**
    * Sets up path to recording, depends on current Superface configuration and test case input.
    */
-  private setupRecordingPath(fixtureName: string, inputHash: string) {
-    if (!this.fixturesPath) {
-      throw new FixturesPathUndefinedError();
-    }
+  private setupRecordingPath(fixtureName: string, inputHash: string): string {
+    const { path, fixture } = this.nockConfig ?? {};
 
-    this.recordingPath = joinPath(
-      this.fixturesPath,
+    return joinPath(
+      path ?? joinPath(process.cwd(), 'nock'),
       fixtureName,
-      `${this.nockConfig?.fixture ?? 'recording'}-${inputHash}.json`
+      `${fixture ?? 'recording'}-${inputHash}.json`
     );
-
-    debugSetup('Prepare path to recording:', this.recordingPath);
   }
 }
