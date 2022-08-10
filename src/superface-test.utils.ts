@@ -3,7 +3,6 @@ import {
   isBasicAuthSecurityValues,
   isBearerTokenSecurityValues,
   NormalizedSuperJsonDocument,
-  SecurityScheme,
   SecurityValues,
 } from '@superfaceai/ast';
 import {
@@ -303,19 +302,16 @@ export function resolvePlaceholder({
   };
 }
 
-// TODO: we can use SecurityConfiguration type - it is combination od SecurityScheme and SecurityValue. When you have SecurityConfiguration you already have scheme with matching value.
 export function replaceCredentials({
   definitions,
-  securitySchemes,
-  securityValues,
+  security,
   integrationParameters,
   inputVariables,
   beforeSave,
   baseUrl,
 }: {
   definitions: RecordingDefinition[];
-  securitySchemes: SecurityConfiguration[];
-  securityValues: SecurityValues[];
+  security: SecurityConfiguration[];
   integrationParameters: Record<string, string>;
   inputVariables?: Record<string, Primitive>;
   beforeSave: boolean;
@@ -324,26 +320,22 @@ export function replaceCredentials({
   debug('Replacing credentials from recording definitions');
 
   for (const definition of definitions) {
-    for (const scheme of securitySchemes) {
+    for (const securityConfig of security) {
       debug(
-        `Going through scheme with id: '${scheme.id}' and type: '${scheme.type}'`
+        `Going through scheme with id: '${securityConfig.id}' and type: '${securityConfig.type}'`
       );
 
-      const securityValue = securityValues.find(val => val.id === scheme.id);
-
-      if (securityValue) {
-        replaceCredentialInDefinition({
-          definition,
-          scheme,
-          baseUrl,
-          ...resolvePlaceholder({
-            kind: 'credential',
-            name: scheme.id,
-            value: resolveCredential(securityValue),
-            beforeSave,
-          }),
-        });
-      }
+      replaceCredentialInDefinition({
+        definition,
+        security: securityConfig,
+        baseUrl,
+        ...resolvePlaceholder({
+          kind: 'credential',
+          name: securityConfig.id,
+          value: resolveCredential(securityConfig),
+          beforeSave,
+        }),
+      });
     }
 
     for (const [name, value] of Object.entries(integrationParameters)) {
@@ -377,22 +369,16 @@ export function replaceCredentials({
 
 export function checkSensitiveInformation(
   definitions: RecordingDefinitions,
-  schemes: SecurityScheme[],
-  securityValues: SecurityValues[],
+  security: SecurityConfiguration[],
   params: Record<string, string>
 ): void {
   for (const definition of definitions) {
     const stringifiedDef = JSON.stringify(definition);
 
-    for (const scheme of schemes) {
-      const securityValue = securityValues.find(val => val.id === scheme.id);
-
-      if (
-        securityValue &&
-        stringifiedDef.includes(resolveCredential(securityValue))
-      ) {
+    for (const securityConfig of security) {
+      if (stringifiedDef.includes(resolveCredential(securityConfig))) {
         console.warn(
-          `Value for security scheme '${scheme.id}' of type '${scheme.type}' was found in recorded HTTP traffic.`
+          `Value for security scheme '${securityConfig.id}' of type '${securityConfig.type}' was found in recorded HTTP traffic.`
         );
       }
     }

@@ -237,8 +237,7 @@ export class SuperfaceTest {
         //Use security configuration only
         replaceCredentials({
           definitions,
-          securitySchemes: security,
-          securityValues: security,
+          security,
           integrationParameters,
           inputVariables,
           baseUrl,
@@ -326,8 +325,7 @@ export class SuperfaceTest {
 
         replaceCredentials({
           definitions,
-          securitySchemes: security,
-          securityValues: security,
+          security,
           integrationParameters,
           inputVariables,
           baseUrl,
@@ -349,12 +347,7 @@ export class SuperfaceTest {
         (integrationParameters &&
           Object.values(integrationParameters).length > 0)
       ) {
-        checkSensitiveInformation(
-          definitions,
-          security,
-          security,
-          integrationParameters
-        );
+        checkSensitiveInformation(definitions, security, integrationParameters);
       }
 
       await writeRecordings(this.recordingPath, definitions);
