@@ -89,27 +89,46 @@ export const getProviderMock = jest.fn<
   ...Object.create(Provider.prototype),
   configuration: {
     name: providerName,
-    security: options?.securityValues ?? [],
+    security: options?.securityConfigs ?? [],
     parameters: options?.parameters,
   },
 }));
 
 export const mockSuperJson = (options?: {
+  localProfile?: boolean;
   localMap?: boolean;
   localProvider?: boolean;
+  pointsToAst?: boolean;
 }) =>
   new SuperJson({
     profiles: {
-      profile: {
-        file: 'path/to/profile.supr',
-        providers: {
-          provider: options?.localMap
-            ? {
-                file: 'path/to/map.suma',
-              }
-            : {},
-        },
-      },
+      profile: options?.localProfile
+        ? {
+            file: options?.pointsToAst
+              ? 'path/to/profile.ast.json'
+              : 'path/to/profile.supr',
+            providers: {
+              provider: options?.localMap
+                ? {
+                    file: options?.pointsToAst
+                      ? 'path/to/map.ast.json'
+                      : 'path/to/map.suma',
+                  }
+                : {},
+            },
+          }
+        : {
+            version: '1.0.0',
+            providers: {
+              provider: options?.localMap
+                ? {
+                    file: options?.pointsToAst
+                      ? 'path/to/map.ast.json'
+                      : 'path/to/map.suma',
+                  }
+                : {},
+            },
+          },
     },
     providers: {
       provider: options?.localProvider
@@ -240,9 +259,7 @@ export interface ProfileOptions {
 export interface ProviderOptions {
   name?: string;
   baseUrl?: string;
-  securitySchemes?: SecurityScheme[];
   securityConfigs?: SecurityConfiguration[];
-  securityValues?: SecurityValues[];
   parameters?: Record<string, string>;
   intParameters?: IntegrationParameter[];
   ast?: MapDocumentNode;

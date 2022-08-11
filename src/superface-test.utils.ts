@@ -2,40 +2,23 @@ import {
   isApiKeySecurityValues,
   isBasicAuthSecurityValues,
   isBearerTokenSecurityValues,
-  NormalizedSuperJsonDocument,
   SecurityValues,
 } from '@superfaceai/ast';
 import {
-  BoundProfileProvider,
   getValue,
   isPrimitive,
   NonPrimitive,
   Primitive,
-  Profile,
-  Provider,
   SecurityConfiguration,
   SuperJson,
   UnexpectedError,
-  UseCase,
   Variables,
 } from '@superfaceai/one-sdk';
 import createDebug from 'debug';
 import { join as joinPath } from 'path';
 
-import {
-  CompleteSuperfaceTestConfig,
-  InputVariables,
-  RecordingDefinition,
-  RecordingDefinitions,
-  SuperfaceTestConfig,
-} from '.';
-import {
-  ComponentUndefinedError,
-  InstanceMissingError,
-  MapUndefinedError,
-  ProfileUndefinedError,
-  SuperJsonLoadingFailedError,
-} from './common/errors';
+import { InputVariables, RecordingDefinition, RecordingDefinitions } from '.';
+import { SuperJsonLoadingFailedError } from './common/errors';
 import {
   IGenerator,
   InputGenerateHash,
@@ -47,140 +30,8 @@ import {
   replaceInputInDefinition,
   replaceParameterInDefinition,
 } from './nock';
-import { ISuperfaceClient } from './superface/client';
 
 const debug = createDebug('superface:testing');
-
-/**
- * Asserts that entered sfConfig contains every component and
- * that every component is instance of corresponding class not string.
- */
-export function assertsPreparedConfig(
-  sfConfig: SuperfaceTestConfig
-): asserts sfConfig is CompleteSuperfaceTestConfig {
-  assertsPreparedClient(sfConfig.client);
-  assertsPreparedProfile(sfConfig.profile);
-  assertsPreparedProvider(sfConfig.provider);
-  assertsPreparedUseCase(sfConfig.useCase);
-}
-
-export function assertsPreparedClient(
-  client: ISuperfaceClient | undefined
-): asserts client is ISuperfaceClient {
-  if (client === undefined) {
-    throw new ComponentUndefinedError('Client');
-  }
-}
-
-export function assertsPreparedProfile(
-  profile: Profile | string | undefined
-): asserts profile is Profile {
-  if (profile === undefined) {
-    throw new ComponentUndefinedError('Profile');
-  }
-
-  if (typeof profile === 'string') {
-    throw new InstanceMissingError('Profile');
-  }
-}
-
-export function assertsPreparedProvider(
-  provider: Provider | string | undefined
-): asserts provider is Provider {
-  if (provider === undefined) {
-    throw new ComponentUndefinedError('Provider');
-  }
-
-  if (typeof provider === 'string') {
-    throw new InstanceMissingError('Provider');
-  }
-}
-
-export function assertsPreparedUseCase(
-  useCase: UseCase | string | undefined
-): asserts useCase is UseCase {
-  if (useCase === undefined) {
-    throw new ComponentUndefinedError('UseCase');
-  }
-
-  if (typeof useCase === 'string') {
-    throw new InstanceMissingError('UseCase');
-  }
-}
-
-export function assertBoundProfileProvider(
-  configuration: BoundProfileProvider | undefined
-): asserts configuration is BoundProfileProvider {
-  if (configuration === undefined) {
-    throw new ComponentUndefinedError('BoundProfileProvider');
-  }
-}
-
-/**
- * Checks whether provider is local and contains some file path.
- */
-export function isProfileProviderLocal(
-  provider: Provider | string,
-  profileId: string,
-  superJsonNormalized: NormalizedSuperJsonDocument
-): void {
-  debug(
-    'Checking for local profile provider in super.json for given profile:',
-    profileId
-  );
-
-  const providerId = getProviderName(provider);
-  const targetedProfile = superJsonNormalized.profiles[profileId];
-
-  if (targetedProfile === undefined) {
-    throw new ProfileUndefinedError(profileId);
-  }
-
-  const targetedProfileProvider = targetedProfile.providers[providerId];
-
-  if (targetedProfileProvider === undefined) {
-    throw new MapUndefinedError(profileId, providerId);
-  }
-
-  debug('Found profile provider:', targetedProfileProvider);
-
-  if (!('file' in targetedProfileProvider)) {
-    throw new MapUndefinedError(profileId, providerId);
-  }
-}
-
-/**
- * Returns profile id if entered profile is either instance of Profile or string
- */
-export function getProfileId(profile: Profile | string): string {
-  if (typeof profile === 'string') {
-    return profile;
-  } else {
-    return profile.configuration.id;
-  }
-}
-
-/**
- * Returns provider id if entered provider is either instance of Provider or string
- */
-export function getProviderName(provider: Provider | string): string {
-  if (typeof provider === 'string') {
-    return provider;
-  } else {
-    return provider.configuration.name;
-  }
-}
-
-/**
- * Returns usecase name if entered usecase is either instance of UseCase or string
- */
-export function getUseCaseName(useCase: UseCase | string): string {
-  if (typeof useCase === 'string') {
-    return useCase;
-  } else {
-    return useCase.name;
-  }
-}
 
 /**
  * Returns SuperJson based on path detected with its abstract method.

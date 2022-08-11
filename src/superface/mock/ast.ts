@@ -1,5 +1,15 @@
 import { MapDocumentNode, ProfileDocumentNode } from '@superfaceai/ast';
 
+export const mockProfileRaw = `name = "profile"
+version = "1.0.0"
+
+usecase test {}`;
+
+export const mockMapRaw = `profile = "profile@1.0"
+provider = "provider"
+
+map test {}`;
+
 export const mockProfileAST: ProfileDocumentNode = {
   kind: 'ProfileDocument',
   header: {
@@ -11,7 +21,12 @@ export const mockProfileAST: ProfileDocumentNode = {
       patch: 0,
     },
   },
-  definitions: [],
+  definitions: [
+    {
+      kind: 'UseCaseDefinition',
+      useCaseName: 'test',
+    },
+  ],
   astMetadata: {
     astVersion: {
       major: 1,
@@ -40,7 +55,14 @@ export const mockMapAST: MapDocumentNode = {
     },
     provider: 'provider',
   },
-  definitions: [],
+  definitions: [
+    {
+      kind: 'MapDefinition',
+      name: 'test',
+      usecaseName: 'test',
+      statements: [],
+    },
+  ],
   astMetadata: {
     astVersion: {
       major: 1,
