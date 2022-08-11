@@ -1,2 +1,1 @@
-export * from './config';
-export * from './prepareSuperface';
+export * from './prepare-superface';

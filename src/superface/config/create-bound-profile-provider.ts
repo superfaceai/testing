@@ -33,6 +33,7 @@ export function createBoundProfileProvider({
   mapAst,
   providerJson,
   options,
+  configOptions,
 }: {
   superJson: SuperJson;
   profileAst: ProfileDocumentNode;
@@ -44,8 +45,20 @@ export function createBoundProfileProvider({
     logger?: ILogger;
     fetchInstance?: IFetch & Interceptable & AuthCache;
   };
+  configOptions?: {
+    cachePath?: string;
+    disableReporting?: boolean;
+    metricDebounceTimeMax?: number;
+    metricDebounceTimeMin?: number;
+    sandboxTimeout?: number;
+    sdkAuthToken?: string;
+    superfaceApiUrl?: string;
+    superfaceCacheTimeout?: number;
+    superfacePath?: string;
+    debug?: boolean;
+    cache?: boolean;
+  };
 }): BoundProfileProvider {
-  // TODO: pass as params
   const crypto = options?.crypto ?? new NodeCrypto();
   const timers = options?.timers ?? new NodeTimers();
   const logger = options?.logger ?? new NodeLogger();
@@ -58,7 +71,7 @@ export function createBoundProfileProvider({
     providerJson,
     new Config(NodeFileSystem, {
       disableReporting: true,
-      //More params from parameters
+      ...configOptions,
     }),
     {
       services: new ServiceSelector(

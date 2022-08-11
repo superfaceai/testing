@@ -15,6 +15,7 @@ import {
   SuperJson,
 } from '@superfaceai/one-sdk';
 import { parseMap, parseProfile, Source } from '@superfaceai/parser';
+
 import {
   ComponentUndefinedError,
   MapUndefinedError,
@@ -22,12 +23,11 @@ import {
   ProviderJsonUndefinedError,
   SuperJsonNotFoundError,
 } from '../../common/errors';
-
 import { SuperfaceTestConfigPayload } from '../../superface-test.interfaces';
 import { getSuperJson } from '../../superface-test.utils';
 
 // This deals only with files resolution, it should NOT be exported from directory.
-export async function resolveSuperfaceFiles(
+export async function prepareFiles(
   payload: SuperfaceTestConfigPayload,
   options?: {
     fileSystem?: IFileSystem;

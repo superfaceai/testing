@@ -17,11 +17,12 @@ import {
   UseCase,
 } from '@superfaceai/one-sdk';
 
+import { ComponentUndefinedError } from '../../common/errors';
 import { SuperfaceTestConfigPayload } from '../../superface-test.interfaces';
 import { createBoundProfileProvider } from './create-bound-profile-provider';
-import { resolveSuperfaceFiles } from './resolve-superface-files';
+import { prepareFiles } from './prepare-files';
 
-//Prepares runnable bound profile provider
+// Prepares runnable bound profile provider
 export async function prepareSuperface(
   payload: SuperfaceTestConfigPayload,
   options?: {
@@ -44,28 +45,24 @@ export async function prepareSuperface(
   };
 }> {
   if (!payload.useCase) {
-    throw new Error('UseCase must be dofined');
+    throw new ComponentUndefinedError('UseCase');
   }
-  const usecaseName =
-    payload.useCase instanceof UseCase ? payload.useCase.name : payload.useCase;
 
-  const files = await resolveSuperfaceFiles(payload ?? {}, {
+  const files = await prepareFiles(payload ?? {}, {
     fileSystem: options?.fileSystem,
   });
 
+  const usecaseName =
+    payload.useCase instanceof UseCase ? payload.useCase.name : payload.useCase;
+
   return {
-    boundProfileProvider: createBoundProfileProvider({
-      ...files,
-      options: {
-        crypto: options?.crypto,
-        timers: options?.timers,
-        logger: options?.logger,
-        fetchInstance: options?.fetchInstance,
-      },
-    }),
     profileId: profileAstId(files.profileAst),
     providerName: files.providerJson.name,
-    files,
     usecaseName,
+    files,
+    boundProfileProvider: createBoundProfileProvider({
+      ...files,
+      options,
+    }),
   };
 }

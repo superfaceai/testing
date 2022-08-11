@@ -4,9 +4,7 @@ import { enableNetConnect, recorder, restore as restoreRecordings } from 'nock';
 import { join as joinPath } from 'path';
 
 import { RecordingProcessOptions } from '.';
-import {
-  UnexpectedError,
-} from './common/errors';
+import { UnexpectedError } from './common/errors';
 import {
   getFixtureName,
   matchWildCard,
@@ -34,7 +32,6 @@ export class SuperfaceTest {
 
   constructor(payload?: SuperfaceTestConfigPayload, nockConfig?: NockConfig) {
     this.configuration = payload;
-    // this.config = new TestConfig(payload);
     this.nockConfig = nockConfig;
     this.generator = getGenerator(nockConfig?.testInstance);
   }
@@ -47,22 +44,19 @@ export class SuperfaceTest {
     testCase: SuperfaceTestRun,
     options?: RecordingProcessOptions
   ): Promise<TestingReturn> {
+    const { profile, provider, useCase } = testCase;
     const testCaseConfig: SuperfaceTestConfigPayload = {
-      profile: testCase.profile ?? this.configuration?.profile,
-      provider: testCase.provider ?? this.configuration?.provider,
-      useCase: testCase.useCase ?? this.configuration?.useCase,
+      profile: profile ?? this.configuration?.profile,
+      provider: provider ?? this.configuration?.provider,
+      useCase: useCase ?? this.configuration?.useCase,
     };
+
     // Sets everything connected to SDK
     const sf = await prepareSuperface(testCaseConfig);
 
     // Create a hash for access to recording files
-    // FIX: for some reason testName is undefined
     const { input, testName } = testCase;
-
-    const hash = this.generator.hash({
-      input,
-      testName: testName ?? expect.getState().currentTestName,
-    });
+    const hash = this.generator.hash({ input, testName });
 
     debugHashing('Created hash:', hash);
 
@@ -88,11 +82,11 @@ export class SuperfaceTest {
     } else {
       await loadRecording({
         recordingPath,
+        inputVariables,
         config: {
           boundProfileProvider: sf.boundProfileProvider,
           providerName: sf.providerName,
         },
-        inputVariables,
         options: {
           processRecordings,
           beforeRecordingLoad: options?.beforeRecordingLoad,
@@ -109,11 +103,11 @@ export class SuperfaceTest {
         await endRecording({
           recordingPath,
           processRecordings,
+          inputVariables,
           config: {
             boundProfileProvider: sf.boundProfileProvider,
             providerName: sf.providerName,
           },
-          inputVariables,
           beforeRecordingSave: options?.beforeRecordingSave,
         });
       } else {
