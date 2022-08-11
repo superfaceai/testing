@@ -1,4 +1,3 @@
-import { getMockedSfConfig } from '../superface/mock/superface.mock';
 import { matchWildCard } from './format';
 
 describe.skip('format', () => {
@@ -25,7 +24,7 @@ describe.skip('format', () => {
       'profile:provider:usecase',
       'profile:provider:usecase*',
     ])('returns true', async (env: string) => {
-      expect(matchWildCard(await getMockedSfConfig(), env)).toBeTruthy();
+      expect(matchWildCard('profile', 'provider', 'usecase', env)).toBeTruthy();
     });
 
     it.each([
@@ -45,7 +44,7 @@ describe.skip('format', () => {
       'profile:provider:wrongUsecase',
       '::wrongUsecase',
     ])('returns false', async (env: string) => {
-      expect(matchWildCard(await getMockedSfConfig(), env)).toBeFalsy();
+      expect(matchWildCard('profile', 'provider', 'usecase', env)).toBeFalsy();
     });
   });
 });

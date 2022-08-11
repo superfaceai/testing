@@ -38,10 +38,10 @@ export const mockBoundProfileProvider = jest.fn<
   ) => ({
     ...Object.create(BoundProfileProvider.prototype),
     configuration: {
-      parameters: configuration?.parameters,
-      security: configuration?.security ?? [],
-      profileProviderSettings: configuration?.profileProviderSettings,
       services: configuration?.services ?? new ServiceSelector([]),
+      profileProviderSettings: configuration?.profileProviderSettings,
+      security: configuration?.security ?? [],
+      parameters: configuration?.parameters,
     },
     perform: jest.fn().mockResolvedValue(performResult),
   })

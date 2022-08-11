@@ -1,16 +1,13 @@
+import { ApiKeyPlacement, SecurityType } from '@superfaceai/ast';
 import {
-  ApiKeyPlacement,
-  SecurityScheme,
-  SecurityType,
-  SecurityValues,
-} from '@superfaceai/ast';
-import { err, SDKExecutionError, SuperJson } from '@superfaceai/one-sdk';
+  err,
+  SDKExecutionError,
+  SecurityConfiguration,
+  SuperJson,
+} from '@superfaceai/one-sdk';
 
 import { RecordingDefinitions } from '.';
 import {
-  ComponentUndefinedError,
-  MapUndefinedError,
-  ProfileUndefinedError,
   SuperJsonLoadingFailedError,
   SuperJsonNotFoundError,
   UnexpectedError,
@@ -21,192 +18,15 @@ import {
   MochaGenerateHash,
 } from './generate-hash';
 import {
-  getMockedSfConfig,
-  getProfileMock,
-  getProviderMock,
-  getUseCaseMock,
-  SuperfaceClientMock,
-} from './superface/mock/superface.mock';
-import {
   assertsDefinitionsAreNotStrings,
-  assertsPreparedConfig,
   checkSensitiveInformation,
   getGenerator,
-  getProfileId,
-  getProviderName,
   getSuperJson,
-  getUseCaseName,
-  isProfileProviderLocal,
 } from './superface-test.utils';
 
-describe.skip('SuperfaceTest Utils', () => {
+describe('SuperfaceTest Utils', () => {
   afterEach(() => {
     jest.restoreAllMocks();
-  });
-
-  describe('assertsPreparedConfig', () => {
-    describe('throws if configuration has some undefined components', () => {
-      it('profile missing', () => {
-        const superface = {};
-
-        expect(() => {
-          assertsPreparedConfig(superface);
-        }).toThrowError(new ComponentUndefinedError('Profile'));
-      });
-
-      it('provider missing', async () => {
-        const superface = {
-          client: new SuperfaceClientMock(),
-          profile: await getProfileMock('profile'),
-        };
-
-        expect(() => {
-          assertsPreparedConfig(superface);
-        }).toThrow(new ComponentUndefinedError('Provider'));
-      });
-
-      it('usecase missing', async () => {
-        const superface = {
-          client: new SuperfaceClientMock(),
-          profile: await getProfileMock('profile'),
-          provider: await getProviderMock('provider'),
-        };
-
-        expect(() => {
-          assertsPreparedConfig(superface);
-        }).toThrow(new ComponentUndefinedError('UseCase'));
-      });
-    });
-
-    it('does nothing when every instance is present', async () => {
-      const sfConfig = await getMockedSfConfig();
-
-      expect(() => {
-        assertsPreparedConfig(sfConfig);
-      }).not.toThrow();
-    });
-  });
-
-  describe('isProfileProviderLocal', () => {
-    it('throws profile undefined error when given profile is not defined', () => {
-      const mockSuperJson = new SuperJson({
-        profiles: {
-          profile: {
-            version: '0.0.1',
-            providers: {
-              provider: {},
-            },
-          },
-        },
-        providers: {
-          provider: {
-            security: [],
-          },
-        },
-      });
-
-      expect(() => {
-        isProfileProviderLocal(
-          'provider',
-          'non-existing-profile',
-          mockSuperJson.normalized
-        );
-      }).toThrowError(new ProfileUndefinedError('non-existing-profile'));
-    });
-
-    it('throws map undefined error when provider is not defined', () => {
-      const mockSuperJson = new SuperJson({
-        profiles: {
-          profile: {
-            version: '0.0.1',
-            providers: {
-              provider: {},
-            },
-          },
-        },
-        providers: {
-          provider: {
-            security: [],
-          },
-        },
-      });
-
-      expect(() => {
-        isProfileProviderLocal(
-          'not-existing-provider',
-          'profile',
-          mockSuperJson.normalized
-        );
-      }).toThrowError(
-        new MapUndefinedError('profile', 'not-existing-provider')
-      );
-    });
-
-    it('throws map undefined error when provider is not local', () => {
-      const mockSuperJson = new SuperJson({
-        profiles: {
-          profile: {
-            version: '0.0.1',
-            providers: {
-              provider: {},
-            },
-          },
-        },
-        providers: {
-          provider: {
-            security: [],
-          },
-        },
-      });
-
-      expect(() => {
-        isProfileProviderLocal('provider', 'profile', mockSuperJson.normalized);
-      }).toThrowError(new MapUndefinedError('profile', 'provider'));
-    });
-
-    it('does not throw when profile provider is local', () => {
-      const mockSuperJson = new SuperJson({
-        profiles: {
-          profile: {
-            file: 'some/path/to/profile.supr',
-            providers: {
-              provider: {
-                file: 'some/path/to/map.suma',
-              },
-            },
-          },
-        },
-        providers: {
-          provider: {
-            security: [],
-          },
-        },
-      });
-
-      expect(() => {
-        isProfileProviderLocal('provider', 'profile', mockSuperJson.normalized);
-      }).not.toThrow();
-    });
-  });
-
-  describe("get component's name", () => {
-    it('returns id when Profile instance is given', async () => {
-      const profile = await getProfileMock('profile');
-
-      expect(getProfileId(profile)).toEqual('profile');
-    });
-
-    it('returns id when Provider instance is given', async () => {
-      const provider = await getProviderMock('provider');
-
-      expect(getProviderName(provider)).toEqual('provider');
-    });
-
-    it('returns id when UseCase instance is given', () => {
-      const useCase = getUseCaseMock('useCase');
-
-      expect(getUseCaseName(useCase)).toEqual('useCase');
-    });
   });
 
   describe('getSuperJson', () => {
@@ -264,16 +84,11 @@ describe.skip('SuperfaceTest Utils', () => {
     const originalWarn = console.warn;
     const mockedWarn = (output: string) => consoleOutput.push(output);
 
-    const schemes: SecurityScheme[] = [
+    const configurations: SecurityConfiguration[] = [
       {
         id: 'api_key',
         type: SecurityType.APIKEY,
         in: ApiKeyPlacement.PATH,
-      },
-    ];
-    const values: SecurityValues[] = [
-      {
-        id: 'api_key',
         apikey: 'SECRET',
       },
     ];
@@ -299,7 +114,7 @@ describe.skip('SuperfaceTest Utils', () => {
         },
       ];
 
-      checkSensitiveInformation(definitions, schemes, values, params);
+      checkSensitiveInformation(definitions, configurations, params);
 
       expect(consoleOutput).toEqual([
         "Value for security scheme 'api_key' of type 'apiKey' was found in recorded HTTP traffic.",
@@ -316,7 +131,7 @@ describe.skip('SuperfaceTest Utils', () => {
         },
       ];
 
-      checkSensitiveInformation(definitions, schemes, values, params);
+      checkSensitiveInformation(definitions, configurations, params);
 
       expect(consoleOutput).toEqual([]);
     });

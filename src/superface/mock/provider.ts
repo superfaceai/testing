@@ -20,12 +20,13 @@ export function createProvider(options?: {
 }
 
 export const mockProviderJson = (options?: {
-  name?: string;
   services: ProviderService[];
+  name?: string;
+  baseUrl?: string;
 }): ProviderJson => ({
   name: options?.name ?? 'provider',
   services: options?.services ?? [
-    { id: 'test-service', baseUrl: 'service/base/url' },
+    { id: 'test-service', baseUrl: options?.baseUrl ?? 'service/base/url' },
   ],
   defaultService: 'test-service',
 });

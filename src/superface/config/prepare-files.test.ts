@@ -7,7 +7,7 @@ import { SuperfaceTestConfigPayload } from '../../superface-test.interfaces';
 import { getSuperJson } from '../../superface-test.utils';
 import { mockMapAST, mockProfileAST } from '../mock/ast';
 import { mockProviderJson } from '../mock/provider';
-import { mockSuperJson } from '../mock/superface.mock';
+import { mockSuperJson } from '../mock/super-json';
 import { getMapAst, getProfileAst } from './prepare-ast';
 import { prepareFiles } from './prepare-files';
 import { getProviderJson } from './prepare-provider-json';

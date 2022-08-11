@@ -4,7 +4,7 @@ import { ComponentUndefinedError } from '../../common/errors';
 import { mockMapAST, mockProfileAST } from '../mock/ast';
 import { mockBoundProfileProvider } from '../mock/boundProfileProvider';
 import { mockProviderJson } from '../mock/provider';
-import { mockSuperJson } from '../mock/superface.mock';
+import { mockSuperJson } from '../mock/super-json';
 import { createBoundProfileProvider } from './create-bound-profile-provider';
 import { prepareFiles } from './prepare-files';
 import { prepareSuperface } from './prepare-superface';

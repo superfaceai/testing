@@ -5,7 +5,7 @@ import { ProfileUndefinedError } from '../../common/errors';
 import { mockProfileAST, mockProfileRaw } from '../mock/ast';
 import { mockFileSystem } from '../mock/file-system';
 import { createProfile } from '../mock/profile';
-import { mockSuperJson } from '../mock/superface.mock';
+import { mockSuperJson } from '../mock/super-json';
 import { getProfileAst } from './prepare-ast';
 
 jest.mock('@superfaceai/parser', () => ({
