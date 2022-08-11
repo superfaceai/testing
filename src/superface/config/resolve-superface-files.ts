@@ -7,6 +7,7 @@ import {
   ProviderJson,
 } from '@superfaceai/ast';
 import {
+  IFileSystem,
   NodeFileSystem,
   Profile,
   profileAstId,
@@ -14,13 +15,23 @@ import {
   SuperJson,
 } from '@superfaceai/one-sdk';
 import { parseMap, parseProfile, Source } from '@superfaceai/parser';
+import {
+  ComponentUndefinedError,
+  MapUndefinedError,
+  ProfileUndefinedError,
+  ProviderJsonUndefinedError,
+  SuperJsonNotFoundError,
+} from '../../common/errors';
 
 import { SuperfaceTestConfigPayload } from '../../superface-test.interfaces';
 import { getSuperJson } from '../../superface-test.utils';
 
 // This deals only with files resolution, it should NOT be exported from directory.
 export async function resolveSuperfaceFiles(
-  payload: SuperfaceTestConfigPayload
+  payload: SuperfaceTestConfigPayload,
+  options?: {
+    fileSystem?: IFileSystem;
+  }
 ): Promise<{
   superJson: SuperJson;
   profileAst: ProfileDocumentNode;
@@ -28,94 +39,34 @@ export async function resolveSuperfaceFiles(
   mapAst: MapDocumentNode;
 }> {
   const superJson = await getSuperJson();
-  let profileAst: ProfileDocumentNode;
-  let providerJson: ProviderJson;
-  let mapAst: MapDocumentNode;
 
-  // TODO move to top, pass as param
-  const fs = NodeFileSystem;
-
-  // FIX: errors are trash
   if (!superJson) {
-    throw new Error('SJ not found');
+    throw new SuperJsonNotFoundError();
   }
+
+  const fs = options?.fileSystem ?? NodeFileSystem;
 
   // Load profile
   if (!payload.profile) {
-    throw new Error('Profile undefined');
+    throw new ComponentUndefinedError('Profile');
   }
-  if (payload.profile instanceof Profile) {
-    profileAst = payload.profile.ast;
-  } else {
-    const profileSettings = superJson.normalized.profiles[payload.profile];
-    if (!profileSettings) {
-      throw new Error('not defined in profile settings');
-    }
-    if (!('file' in profileSettings)) {
-      throw new Error('file not defined in profile settings');
-    }
-    const profilePath = superJson.resolvePath(profileSettings.file);
 
-    const content = await fs.readFile(profilePath);
+  const profileAst = await getProfileAst(payload.profile, superJson, fs);
 
-    if (content.isErr()) {
-      throw content.error;
-    }
-    if (profilePath.endsWith('.supr')) {
-      profileAst = parseProfile(new Source(content.value, profilePath));
-    } else {
-      profileAst = assertProfileDocumentNode(JSON.parse(content.value));
-    }
-  }
   // Load provider
-
   if (!payload.provider) {
-    throw new Error('Provider undefined');
+    throw new ComponentUndefinedError('Provider');
   }
-  if (payload.provider instanceof Provider) {
-    throw new Error('Provider not valid');
-  } else {
-    const providerSettings = superJson.normalized.providers[payload.provider];
-    if (!providerSettings) {
-      throw new Error('not defined provider settings');
-    }
-    if (!providerSettings.file) {
-      throw new Error('file not defined in provider settings');
-    }
-    const providerPath = superJson.resolvePath(providerSettings.file);
 
-    const content = await fs.readFile(providerPath);
-
-    if (content.isErr()) {
-      throw content.error;
-    }
-    providerJson = assertProviderJson(JSON.parse(content.value));
-  }
+  const providerJson = await getProviderJson(payload.provider, superJson, fs);
 
   // Load map
-
-  const profileProviderSettings =
-    superJson.normalized.profiles[profileAstId(profileAst)]?.providers[
-      providerJson.name
-    ];
-  if (!profileProviderSettings) {
-    throw new Error('not defined profile provider settings');
-  }
-  if (!('file' in profileProviderSettings)) {
-    throw new Error('file not defined in provider settings');
-  }
-  const mapPath = superJson.resolvePath(profileProviderSettings.file);
-
-  const content = await fs.readFile(mapPath);
-
-  if (content.isErr()) {
-    throw content.error;
-  }
-  if (mapPath.endsWith('.suma')) {
-    mapAst = parseMap(new Source(content.value, mapPath));
-  } else {
-    mapAst = assertMapDocumentNode(JSON.parse(content.value));
-  }
+  const mapAst = await getMapAst(
+    profileAstId(profileAst),
+    providerJson.name,
+    superJson,
+    fs
+  );
 
   return {
     superJson,
@@ -123,4 +74,83 @@ export async function resolveSuperfaceFiles(
     providerJson,
     mapAst,
   };
+}
+
+async function getProfileAst(
+  profile: Profile | string,
+  superJson: SuperJson,
+  fileSystem: IFileSystem
+): Promise<ProfileDocumentNode> {
+  if (profile instanceof Profile) {
+    return profile.ast;
+  } else {
+    const profileSettings = superJson.normalized.profiles[profile];
+
+    if (!profileSettings || !('file' in profileSettings)) {
+      throw new ProfileUndefinedError(profile);
+    }
+
+    const profilePath = superJson.resolvePath(profileSettings.file);
+    const content = await fileSystem.readFile(profilePath);
+
+    if (content.isErr()) {
+      throw content.error;
+    }
+
+    if (profilePath.endsWith('.supr')) {
+      return parseProfile(new Source(content.value, profilePath));
+    } else {
+      return assertProfileDocumentNode(JSON.parse(content.value));
+    }
+  }
+}
+
+async function getMapAst(
+  profileId: string,
+  providerName: string,
+  superJson: SuperJson,
+  fileSystem: IFileSystem
+): Promise<MapDocumentNode> {
+  const profileProviderSettings =
+    superJson.normalized.profiles[profileId]?.providers[providerName];
+
+  if (!profileProviderSettings || !('file' in profileProviderSettings)) {
+    throw new MapUndefinedError(profileId, providerName);
+  }
+
+  const mapPath = superJson.resolvePath(profileProviderSettings.file);
+  const content = await fileSystem.readFile(mapPath);
+
+  if (content.isErr()) {
+    throw content.error;
+  }
+
+  if (mapPath.endsWith('.suma')) {
+    return parseMap(new Source(content.value, mapPath));
+  } else {
+    return assertMapDocumentNode(JSON.parse(content.value));
+  }
+}
+
+async function getProviderJson(
+  provider: Provider | string,
+  superJson: SuperJson,
+  fileSystem: IFileSystem
+): Promise<ProviderJson> {
+  const providerName =
+    provider instanceof Provider ? provider.configuration.name : provider;
+  const providerSettings = superJson.normalized.providers[providerName];
+
+  if (!providerSettings || !providerSettings.file) {
+    throw new ProviderJsonUndefinedError(providerName);
+  }
+
+  const providerPath = superJson.resolvePath(providerSettings.file);
+  const content = await fileSystem.readFile(providerPath);
+
+  if (content.isErr()) {
+    throw content.error;
+  }
+
+  return assertProviderJson(JSON.parse(content.value));
 }

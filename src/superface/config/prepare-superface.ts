@@ -4,7 +4,14 @@ import {
   ProviderJson,
 } from '@superfaceai/ast';
 import {
+  AuthCache,
   BoundProfileProvider,
+  ICrypto,
+  IFetch,
+  IFileSystem,
+  ILogger,
+  Interceptable,
+  ITimers,
   profileAstId,
   SuperJson,
   UseCase,
@@ -16,7 +23,14 @@ import { resolveSuperfaceFiles } from './resolve-superface-files';
 
 //Prepares runnable bound profile provider
 export async function prepareSuperface(
-  payload: SuperfaceTestConfigPayload
+  payload: SuperfaceTestConfigPayload,
+  options?: {
+    fileSystem?: IFileSystem;
+    crypto?: ICrypto;
+    timers?: ITimers;
+    logger?: ILogger;
+    fetchInstance?: IFetch & Interceptable & AuthCache;
+  }
 ): Promise<{
   boundProfileProvider: BoundProfileProvider;
   profileId: string;
@@ -35,10 +49,20 @@ export async function prepareSuperface(
   const usecaseName =
     payload.useCase instanceof UseCase ? payload.useCase.name : payload.useCase;
 
-  const files = await resolveSuperfaceFiles(payload ?? {});
+  const files = await resolveSuperfaceFiles(payload ?? {}, {
+    fileSystem: options?.fileSystem,
+  });
 
   return {
-    boundProfileProvider: createBoundProfileProvider(files),
+    boundProfileProvider: createBoundProfileProvider({
+      ...files,
+      options: {
+        crypto: options?.crypto,
+        timers: options?.timers,
+        logger: options?.logger,
+        fetchInstance: options?.fetchInstance,
+      },
+    }),
     profileId: profileAstId(files.profileAst),
     providerName: files.providerJson.name,
     files,

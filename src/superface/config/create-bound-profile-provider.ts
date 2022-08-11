@@ -4,9 +4,15 @@ import {
   ProviderJson,
 } from '@superfaceai/ast';
 import {
+  AuthCache,
   BoundProfileProvider,
   Config,
   Events,
+  ICrypto,
+  IFetch,
+  ILogger,
+  Interceptable,
+  ITimers,
   NodeCrypto,
   NodeFetch,
   NodeFileSystem,
@@ -26,17 +32,25 @@ export function createBoundProfileProvider({
   profileAst,
   mapAst,
   providerJson,
+  options,
 }: {
   superJson: SuperJson;
   profileAst: ProfileDocumentNode;
   mapAst: MapDocumentNode;
   providerJson: ProviderJson;
+  options?: {
+    crypto?: ICrypto;
+    timers?: ITimers;
+    logger?: ILogger;
+    fetchInstance?: IFetch & Interceptable & AuthCache;
+  };
 }): BoundProfileProvider {
   // TODO: pass as params
-  const crypto = new NodeCrypto();
-  const timers = new NodeTimers();
-  const logger = new NodeLogger();
+  const crypto = options?.crypto ?? new NodeCrypto();
+  const timers = options?.timers ?? new NodeTimers();
+  const logger = options?.logger ?? new NodeLogger();
   const events = new Events(timers, logger);
+  const fetchInstance = options?.fetchInstance ?? new NodeFetch(timers);
 
   return new BoundProfileProvider(
     profileAst,
@@ -66,7 +80,7 @@ export function createBoundProfileProvider({
       ),
     },
     crypto,
-    new NodeFetch(timers),
+    fetchInstance,
     logger,
     events
   );
