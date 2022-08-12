@@ -71,7 +71,7 @@ describe('Prepare files module', () => {
       mocked(getMapAst).mockResolvedValue(mockMapAST);
       mocked(getProviderJson).mockResolvedValue(mockProviderJson());
 
-      await expect(prepareFiles(testPayload)).resolves.toBe({
+      await expect(prepareFiles(testPayload)).resolves.toEqual({
         superJson: mockSuperJson(),
         profileAst: mockProfileAST,
         mapAst: mockMapAST,

@@ -1,9 +1,4 @@
-import {
-  isApiKeySecurityValues,
-  isBasicAuthSecurityValues,
-  isBearerTokenSecurityValues,
-  SecurityValues,
-} from '@superfaceai/ast';
+import { SecurityValues } from '@superfaceai/ast';
 import {
   getValue,
   isPrimitive,
@@ -18,7 +13,10 @@ import createDebug from 'debug';
 import { join as joinPath } from 'path';
 
 import { InputVariables, RecordingDefinition, RecordingDefinitions } from '.';
-import { SuperJsonLoadingFailedError } from './common/errors';
+import {
+  SuperJsonLoadingFailedError,
+  SuperJsonNotFoundError,
+} from './common/errors';
 import {
   IGenerator,
   InputGenerateHash,
@@ -39,11 +37,11 @@ const debug = createDebug('superface:testing');
 export async function getSuperJson(): Promise<SuperJson | undefined> {
   const superPath = await SuperJson.detectSuperJson(process.cwd(), 3);
 
-  debug('Loading super.json from path:', superPath);
-
   if (superPath === undefined) {
-    return undefined;
+    throw new SuperJsonNotFoundError();
   }
+
+  debug('Loading super.json from path:', superPath);
 
   const superJsonResult = await SuperJson.load(
     joinPath(superPath, 'super.json')
@@ -71,7 +69,7 @@ export function assertsDefinitionsAreNotStrings(
 export function resolveCredential(securityValue: SecurityValues): string {
   debug('Resolving security value:', securityValue.id);
 
-  if (isApiKeySecurityValues(securityValue)) {
+  if ('apikey' in securityValue) {
     if (securityValue.apikey.startsWith('$')) {
       return process.env[securityValue.apikey.substr(1)] ?? '';
     } else {
@@ -79,7 +77,7 @@ export function resolveCredential(securityValue: SecurityValues): string {
     }
   }
 
-  if (isBasicAuthSecurityValues(securityValue)) {
+  if ('username' in securityValue) {
     let user: string, password: string;
 
     if (securityValue.username.startsWith('$')) {
@@ -97,7 +95,7 @@ export function resolveCredential(securityValue: SecurityValues): string {
     return Buffer.from(user + ':' + password).toString('base64');
   }
 
-  if (isBearerTokenSecurityValues(securityValue)) {
+  if ('token' in securityValue) {
     if (securityValue.token.startsWith('$')) {
       return process.env[securityValue.token.substr(1)] ?? '';
     } else {

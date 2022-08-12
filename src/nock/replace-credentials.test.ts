@@ -21,13 +21,15 @@ describe('replaceCredentials', () => {
 
       replaceCredentialInDefinition({
         definition,
-        scheme: {
+        security: {
           id: 'api-key',
           type: SecurityType.APIKEY,
           in: ApiKeyPlacement.HEADER,
           name: 'api_key',
+          apikey: 'secret',
         },
         baseUrl: BASE_URL,
+
         credential: 'secret',
         placeholder: TMP_PLACEHOLDER,
       });
@@ -54,11 +56,12 @@ describe('replaceCredentials', () => {
 
       replaceCredentialInDefinition({
         definition,
-        scheme: {
+        security: {
           id: 'api-key',
           type: SecurityType.APIKEY,
           in: ApiKeyPlacement.HEADER,
           name: 'api_key',
+          apikey: 'secret',
         },
         baseUrl: BASE_URL,
         credential: 'secret',
@@ -87,11 +90,12 @@ describe('replaceCredentials', () => {
 
       replaceCredentialInDefinition({
         definition,
-        scheme: {
+        security: {
           id: 'api-key',
           type: SecurityType.APIKEY,
           in: ApiKeyPlacement.BODY,
           name: 'api_key',
+          apikey: 'secret',
         },
         baseUrl: BASE_URL,
         credential: 'secret',
@@ -119,11 +123,12 @@ describe('replaceCredentials', () => {
 
       replaceCredentialInDefinition({
         definition,
-        scheme: {
+        security: {
           id: 'api-key',
           type: SecurityType.APIKEY,
           in: ApiKeyPlacement.PATH,
           name: 'api_key',
+          apikey: 'secret',
         },
         baseUrl: BASE_URL,
         credential: 'secret',
@@ -148,11 +153,12 @@ describe('replaceCredentials', () => {
 
       replaceCredentialInDefinition({
         definition,
-        scheme: {
+        security: {
           id: 'api-key',
           type: SecurityType.APIKEY,
           in: ApiKeyPlacement.PATH,
           name: 'api_key',
+          apikey: 'secret',
         },
         baseUrl: `${BASE_URL}/api`, //Path ends with /api
         credential: 'secret',
@@ -177,11 +183,12 @@ describe('replaceCredentials', () => {
 
       replaceCredentialInDefinition({
         definition,
-        scheme: {
+        security: {
           id: 'api-key',
           type: SecurityType.APIKEY,
           in: ApiKeyPlacement.QUERY,
           name: 'api_key',
+          apikey: 'secret',
         },
         baseUrl: BASE_URL,
         credential: 'secret',
@@ -213,11 +220,12 @@ describe('replaceCredentials', () => {
 
       replaceCredentialInDefinition({
         definition,
-        scheme: {
+        security: {
           id: 'api-key',
           type: SecurityType.APIKEY,
           in: ApiKeyPlacement.BODY,
           name: 'api_key',
+          apikey: 'secret',
         },
         baseUrl: BASE_URL,
         credential: 'secret',
@@ -254,10 +262,12 @@ describe('replaceCredentials', () => {
 
       replaceCredentialInDefinition({
         definition,
-        scheme: {
+        security: {
           id: 'basic',
           type: SecurityType.HTTP,
           scheme: HttpScheme.BASIC,
+          username: 'user',
+          password: 'secret',
         },
         baseUrl: BASE_URL,
         credential: 'secret',
@@ -289,10 +299,12 @@ describe('replaceCredentials', () => {
 
       replaceCredentialInDefinition({
         definition,
-        scheme: {
+        security: {
           id: 'basic',
           type: SecurityType.HTTP,
           scheme: HttpScheme.BASIC,
+          username: 'user',
+          password: 'secret',
         },
         baseUrl: BASE_URL,
         credential: 'secret',
@@ -328,10 +340,12 @@ describe('replaceCredentials', () => {
 
       replaceCredentialInDefinition({
         definition,
-        scheme: {
+        security: {
           id: 'basic',
           type: SecurityType.HTTP,
           scheme: HttpScheme.BASIC,
+          username: 'user',
+          password: 'secret',
         },
         baseUrl: BASE_URL,
         credential: 'secret',
@@ -368,10 +382,11 @@ describe('replaceCredentials', () => {
 
       replaceCredentialInDefinition({
         definition,
-        scheme: {
+        security: {
           id: 'bearer',
           type: SecurityType.HTTP,
           scheme: HttpScheme.BEARER,
+          token: 'secret',
         },
         baseUrl: BASE_URL,
         credential: 'secret',
@@ -403,10 +418,11 @@ describe('replaceCredentials', () => {
 
       replaceCredentialInDefinition({
         definition,
-        scheme: {
+        security: {
           id: 'bearer',
           type: SecurityType.HTTP,
           scheme: HttpScheme.BEARER,
+          token: 'secret',
         },
         baseUrl: BASE_URL,
         credential: 'secret',
@@ -442,10 +458,11 @@ describe('replaceCredentials', () => {
 
       replaceCredentialInDefinition({
         definition,
-        scheme: {
+        security: {
           id: 'bearer',
           type: SecurityType.HTTP,
           scheme: HttpScheme.BEARER,
+          token: 'secret',
         },
         baseUrl: BASE_URL,
         credential: 'secret',
@@ -484,11 +501,12 @@ describe('replaceCredentials', () => {
 
       replaceCredentialInDefinition({
         definition,
-        scheme: {
+        security: {
           id: 'api-key',
           type: SecurityType.APIKEY,
           in: ApiKeyPlacement.BODY,
           name: 'api_key',
+          apikey: 'secret',
         },
         baseUrl: BASE_URL,
         credential: secret,
@@ -520,11 +538,12 @@ describe('replaceCredentials', () => {
 
       replaceCredentialInDefinition({
         definition,
-        scheme: {
+        security: {
           id: 'api-key',
           type: SecurityType.APIKEY,
           in: ApiKeyPlacement.BODY,
           name: 'api_key',
+          apikey: 'secret',
         },
         baseUrl: BASE_URL,
         credential: TMP_PLACEHOLDER,
@@ -554,11 +573,12 @@ describe('replaceCredentials', () => {
 
       replaceCredentialInDefinition({
         definition,
-        scheme: {
+        security: {
           id: 'api-key',
           type: SecurityType.APIKEY,
           in: ApiKeyPlacement.QUERY,
           name: 'api_key',
+          apikey: secret,
         },
         baseUrl: BASE_URL,
         credential: secret,
@@ -585,11 +605,12 @@ describe('replaceCredentials', () => {
 
       replaceCredentialInDefinition({
         definition,
-        scheme: {
+        security: {
           id: 'api-key',
           type: SecurityType.APIKEY,
           in: ApiKeyPlacement.PATH,
           name: 'api_key',
+          apikey: secret,
         },
         baseUrl: BASE_URL,
         credential: secret,

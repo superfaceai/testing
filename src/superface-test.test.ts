@@ -11,10 +11,7 @@ import { writeRecordings } from './common/output-stream';
 import { generate } from './generate-hash';
 import { mockMapAST, mockProfileAST } from './superface/mock/ast';
 import { mockProviderJson } from './superface/mock/provider';
-import {
-  getMockedSfConfig,
-  mockSuperJson,
-} from './superface/mock/super-json';
+import { mockSuperJson } from './superface/mock/super-json';
 import { SuperfaceTest } from './superface-test';
 import {
   HIDDEN_CREDENTIALS_PLACEHOLDER,
@@ -59,7 +56,6 @@ const testPayload: SuperfaceTestConfigPayload = {
   provider: 'provider',
   useCase: 'test',
 };
-
 
 const DEFAULT_RECORDING_PATH = joinPath(process.cwd(), 'nock');
 
@@ -539,7 +535,7 @@ describe('SuperfaceTest', () => {
 
     describe('when loading recordings', () => {
       it('throws when recording fixture does not exist', async () => {
-        superfaceTest = new SuperfaceTest(await getMockedSfConfig());
+        superfaceTest = new SuperfaceTest(testPayload);
 
         const recorderSpy = jest.spyOn(recorder, 'rec');
 
@@ -574,7 +570,7 @@ describe('SuperfaceTest', () => {
       });
 
       it('loads fixture if it exists, but contains no recordings', async () => {
-        superfaceTest = new SuperfaceTest(await getMockedSfConfig());
+        superfaceTest = new SuperfaceTest(testPayload);
 
         const defineRecordingSpy = jest
           .spyOn(nock, 'define')
@@ -607,8 +603,8 @@ describe('SuperfaceTest', () => {
               providerJson.services,
               providerJson.defaultService
             ),
-          })
-        })
+          }),
+        });
 
         await expect(superfaceTest.run({ input: {} })).resolves.not.toThrow();
 
