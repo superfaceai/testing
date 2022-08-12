@@ -1,5 +1,6 @@
 import {
   MapDocumentNode,
+  NormalizedSuperJsonDocument,
   ProfileDocumentNode,
   ProviderJson,
 } from '@superfaceai/ast';
@@ -21,7 +22,6 @@ import {
   profileAstId,
   resolveSecurityConfiguration,
   ServiceSelector,
-  SuperJson,
 } from '@superfaceai/one-sdk';
 // TODO: export from SDK?
 import { resolveIntegrationParameters } from '@superfaceai/one-sdk/dist/core/profile-provider/parameters';
@@ -35,7 +35,7 @@ export function createBoundProfileProvider({
   options,
   configOptions,
 }: {
-  superJson: SuperJson;
+  superJson: NormalizedSuperJsonDocument;
   profileAst: ProfileDocumentNode;
   mapAst: MapDocumentNode;
   providerJson: ProviderJson;
@@ -79,17 +79,17 @@ export function createBoundProfileProvider({
         providerJson.defaultService
       ),
       profileProviderSettings:
-        superJson.normalized.profiles[profileAstId(profileAst)].providers[
+        superJson.profiles[profileAstId(profileAst)].providers[
           providerJson.name
         ],
       security: resolveSecurityConfiguration(
         providerJson.securitySchemes ?? [],
-        superJson.normalized.providers[providerJson.name].security ?? [],
+        superJson.providers[providerJson.name].security ?? [],
         providerJson.name
       ),
       parameters: resolveIntegrationParameters(
         providerJson,
-        superJson?.normalized.providers[providerJson.name]?.parameters
+        superJson?.providers[providerJson.name]?.parameters
       ),
     },
     crypto,

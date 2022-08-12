@@ -73,7 +73,7 @@ export async function loadRecording({
     processRecordings?: boolean;
     beforeRecordingLoad?: ProcessingFunction;
   };
-}) {
+}): Promise<void> {
   const { parameters, security, services } = boundProfileProvider.configuration;
   const integrationParameters = parameters ?? {};
   const baseUrl = services.getUrl();

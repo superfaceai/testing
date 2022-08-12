@@ -1,11 +1,15 @@
-import { SecurityValues } from '@superfaceai/ast';
+import { NormalizedSuperJsonDocument, SecurityValues } from '@superfaceai/ast';
 import {
+  detectSuperJson,
   getValue,
+  IFileSystem,
   isPrimitive,
+  loadSuperJson,
+  NodeFileSystem,
   NonPrimitive,
+  normalizeSuperJsonDocument,
   Primitive,
   SecurityConfiguration,
-  SuperJson,
   UnexpectedError,
   Variables,
 } from '@superfaceai/one-sdk';
@@ -34,8 +38,14 @@ const debug = createDebug('superface:testing');
 /**
  * Returns SuperJson based on path detected with its abstract method.
  */
-export async function getSuperJson(): Promise<SuperJson | undefined> {
-  const superPath = await SuperJson.detectSuperJson(process.cwd(), 3);
+export async function getSuperJson(options?: {
+  fileSystem: IFileSystem;
+}): Promise<NormalizedSuperJsonDocument | undefined> {
+  const superPath = await detectSuperJson(
+    process.cwd(),
+    options?.fileSystem ?? NodeFileSystem,
+    3
+  );
 
   if (superPath === undefined) {
     throw new SuperJsonNotFoundError();
@@ -43,8 +53,9 @@ export async function getSuperJson(): Promise<SuperJson | undefined> {
 
   debug('Loading super.json from path:', superPath);
 
-  const superJsonResult = await SuperJson.load(
-    joinPath(superPath, 'super.json')
+  const superJsonResult = await loadSuperJson(
+    joinPath(superPath, 'super.json'),
+    options?.fileSystem ?? NodeFileSystem
   );
 
   debug('Found super.json:', superJsonResult);
@@ -53,7 +64,7 @@ export async function getSuperJson(): Promise<SuperJson | undefined> {
     throw new SuperJsonLoadingFailedError(superJsonResult.error);
   }
 
-  return superJsonResult.value;
+  return normalizeSuperJsonDocument(superJsonResult.value);
 }
 
 export function assertsDefinitionsAreNotStrings(

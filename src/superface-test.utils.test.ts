@@ -1,10 +1,12 @@
 import { ApiKeyPlacement, SecurityType } from '@superfaceai/ast';
 import {
+  detectSuperJson,
   err,
+  loadSuperJson,
   SDKExecutionError,
   SecurityConfiguration,
-  SuperJson,
 } from '@superfaceai/one-sdk';
+import { mocked } from 'ts-jest/utils';
 
 import { RecordingDefinitions } from '.';
 import {
@@ -24,6 +26,11 @@ import {
   getSuperJson,
 } from './superface-test.utils';
 
+jest.mock('@superfaceai/one-sdk', () => ({
+  ...jest.requireActual('@superfaceai/one-sdk'),
+  detectSuperJson: jest.fn(),
+}));
+
 describe('SuperfaceTest Utils', () => {
   afterEach(() => {
     jest.restoreAllMocks();
@@ -31,29 +38,23 @@ describe('SuperfaceTest Utils', () => {
 
   describe('getSuperJson', () => {
     it('throws when detecting superJson fails', async () => {
-      const detectSpy = jest
-        .spyOn(SuperJson, 'detectSuperJson')
-        .mockResolvedValueOnce(undefined);
-
-      const loadSpy = jest.spyOn(SuperJson, 'load');
+      const detectSpy = mocked(detectSuperJson).mockResolvedValue(undefined);
 
       await expect(getSuperJson()).rejects.toThrowError(
         new SuperJsonNotFoundError()
       );
 
       expect(detectSpy).toHaveBeenCalledTimes(1);
-      expect(loadSpy).not.toHaveBeenCalled();
+      expect(loadSuperJson).not.toHaveBeenCalled();
     });
 
     it('throws when superJson loading fails', async () => {
-      const detectSpy = jest
-        .spyOn(SuperJson, 'detectSuperJson')
-        .mockResolvedValueOnce('.');
-
       const loadingError = new SDKExecutionError('super.json error', [], []);
-      const loadSpy = jest
-        .spyOn(SuperJson, 'load')
-        .mockResolvedValueOnce(err(loadingError));
+
+      const detectSpy = mocked(detectSuperJson).mockResolvedValue('.');
+      const loadSpy = mocked(loadSuperJson).mockResolvedValue(
+        err(loadingError)
+      );
 
       await expect(getSuperJson()).rejects.toThrowError(
         new SuperJsonLoadingFailedError(loadingError)

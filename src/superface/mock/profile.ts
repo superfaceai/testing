@@ -1,3 +1,4 @@
+import { NormalizedSuperJsonDocument } from '@superfaceai/ast';
 import {
   Config,
   Events,
@@ -6,7 +7,6 @@ import {
   Profile,
   ProfileConfiguration,
   SuperCache,
-  SuperJson,
 } from '@superfaceai/one-sdk';
 
 import { mockProfileAST } from './ast';
@@ -17,7 +17,7 @@ import { MockTimers } from './timers';
 const crypto = new NodeCrypto();
 
 export function createProfile(options?: {
-  superJson?: SuperJson;
+  superJson?: NormalizedSuperJsonDocument;
   name?: string;
 }): Profile {
   const timers = new MockTimers();

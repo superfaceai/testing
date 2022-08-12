@@ -9,6 +9,7 @@ import {
   ServiceSelector,
 } from '@superfaceai/one-sdk';
 
+/* eslint-disable @typescript-eslint/no-unsafe-return */
 export const mockBoundProfileProvider = jest.fn<
   BoundProfileProvider,
   Parameters<

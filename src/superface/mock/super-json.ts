@@ -1,12 +1,13 @@
-import { SuperJson } from '@superfaceai/one-sdk';
+import { NormalizedSuperJsonDocument } from '@superfaceai/ast';
+import { normalizeSuperJsonDocument } from '@superfaceai/one-sdk';
 
 export const mockSuperJson = (options?: {
   localProfile?: boolean;
   localMap?: boolean;
   localProvider?: boolean;
   pointsToAst?: boolean;
-}) =>
-  new SuperJson({
+}): NormalizedSuperJsonDocument =>
+  normalizeSuperJsonDocument({
     profiles: {
       profile: options?.localProfile
         ? {

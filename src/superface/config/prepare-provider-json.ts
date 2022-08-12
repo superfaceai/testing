@@ -1,21 +1,27 @@
-import { assertProviderJson, ProviderJson } from '@superfaceai/ast';
-import { IFileSystem, Provider, SuperJson } from '@superfaceai/one-sdk';
+import {
+  assertProviderJson,
+  NormalizedSuperJsonDocument,
+  ProviderJson,
+} from '@superfaceai/ast';
+import { IFileSystem, Provider } from '@superfaceai/one-sdk';
+
 import { ProviderJsonUndefinedError } from '../../common/errors';
 
 export async function getProviderJson(
   provider: Provider | string,
-  superJson: SuperJson,
+  superJson: NormalizedSuperJsonDocument,
   fileSystem: IFileSystem
 ): Promise<ProviderJson> {
   const providerName =
     provider instanceof Provider ? provider.configuration.name : provider;
-  const providerSettings = superJson.normalized.providers[providerName];
+  const providerSettings = superJson.providers[providerName];
 
   if (!providerSettings || !providerSettings.file) {
     throw new ProviderJsonUndefinedError(providerName);
   }
 
-  const providerPath = superJson.resolvePath(providerSettings.file);
+  // superJson.resolvePath(providerSettings.file);
+  const providerPath = providerSettings.file;
   const content = await fileSystem.readFile(providerPath);
 
   if (content.isErr()) {

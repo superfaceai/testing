@@ -1,5 +1,4 @@
 import {
-  BoundProfileProvider,
   NonPrimitive,
   Primitive,
   Profile,
@@ -8,8 +7,6 @@ import {
   UseCase,
 } from '@superfaceai/one-sdk';
 import { Definition } from 'nock/types';
-
-import { ISuperfaceClient } from './superface/client';
 
 export interface SuperfaceTestConfigPayload {
   profile?: Profile | string;
@@ -25,15 +22,6 @@ export interface HashOptions {
 }
 
 export type SuperfaceTestRun = SuperfaceTestConfigPayload & HashOptions;
-
-export interface SuperfaceTestConfig {
-  client?: ISuperfaceClient;
-  profile?: Profile;
-  provider?: Provider;
-  useCase?: UseCase;
-  boundProfileProvider?: BoundProfileProvider;
-}
-export type CompleteSuperfaceTestConfig = Required<SuperfaceTestConfig>;
 
 export type TestingReturn = Result<unknown, string>;
 

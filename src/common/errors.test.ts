@@ -32,13 +32,13 @@ describe('errors', () => {
       expect(() => {
         throw error;
       }).toThrow(
-        'Profile "profile" does not exist.\nUse \`superface create --profile --profileId profile\` to create it.'
+        'Profile "profile" does not exist.\nUse `superface create --profile --profileId profile` to create it.'
       );
     });
 
     it('returns correct format', () => {
       expect(error.toString()).toEqual(
-        'ProfileUndefinedError: Profile "profile" does not exist.\nUse \`superface create --profile --profileId profile\` to create it.'
+        'ProfileUndefinedError: Profile "profile" does not exist.\nUse `superface create --profile --profileId profile` to create it.'
       );
     });
   });
@@ -68,13 +68,13 @@ describe('errors', () => {
       expect(() => {
         throw error;
       }).toThrow(
-        'Provider for "provider" does not exist.\nUse \`superface create --provider --providerName provider\` to create it.'
+        'Provider for "provider" does not exist.\nUse `superface create --provider --providerName provider` to create it.'
       );
     });
 
     it('returns correct format', () => {
       expect(error.toString()).toEqual(
-        'ProviderJsonUndefinedError: Provider for "provider" does not exist.\nUse \`superface create --provider --providerName provider\` to create it.'
+        'ProviderJsonUndefinedError: Provider for "provider" does not exist.\nUse `superface create --provider --providerName provider` to create it.'
       );
     });
   });

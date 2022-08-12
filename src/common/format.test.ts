@@ -1,6 +1,6 @@
 import { matchWildCard } from './format';
 
-describe.skip('format', () => {
+describe('format', () => {
   describe('matchWildCard', () => {
     it.each([
       '::',

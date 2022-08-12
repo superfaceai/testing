@@ -1,12 +1,18 @@
 import { ok } from '@superfaceai/one-sdk';
-import { parseProfile } from '@superfaceai/parser';
+import { parseMap, parseProfile } from '@superfaceai/parser';
 import { mocked } from 'ts-jest/utils';
-import { ProfileUndefinedError } from '../../common/errors';
-import { mockProfileAST, mockProfileRaw } from '../mock/ast';
+
+import { MapUndefinedError, ProfileUndefinedError } from '../../common/errors';
+import {
+  mockMapAST,
+  mockMapRaw,
+  mockProfileAST,
+  mockProfileRaw,
+} from '../mock/ast';
 import { mockFileSystem } from '../mock/file-system';
 import { createProfile } from '../mock/profile';
 import { mockSuperJson } from '../mock/super-json';
-import { getProfileAst } from './prepare-ast';
+import { getMapAst, getProfileAst } from './prepare-ast';
 
 jest.mock('@superfaceai/parser', () => ({
   ...jest.requireActual('@superfaceai/parser'),
@@ -64,5 +70,69 @@ describe('Prepare AST module', () => {
     });
   });
 
-  describe('getMapAst', () => {});
+  describe('getMapAst', () => {
+    it('fails when specified profile is not in superJson', async () => {
+      await expect(
+        getMapAst(
+          'not-existing-profile',
+          'not-existing-provider',
+          mockSuperJson(),
+          mockFileSystem()
+        )
+      ).rejects.toThrowError(
+        new MapUndefinedError('not-existing-profile', 'not-existing-provider')
+      );
+    });
+
+    it('fails when specified provider is not in superJson', async () => {
+      await expect(
+        getMapAst(
+          'profile',
+          'not-existing-provider',
+          mockSuperJson(),
+          mockFileSystem()
+        )
+      ).rejects.toThrowError(
+        new MapUndefinedError('profile', 'not-existing-provider')
+      );
+    });
+
+    it('fails when specified provider is not local in superJson', async () => {
+      await expect(
+        getMapAst('profile', 'provider', mockSuperJson(), mockFileSystem())
+      ).rejects.toThrowError(new MapUndefinedError('profile', 'provider'));
+    });
+
+    describe('when superJson points to ast file', () => {
+      it('returns map ast', async () => {
+        await expect(
+          getMapAst(
+            'profile',
+            'provider',
+            mockSuperJson({ localProfile: true, pointsToAst: true }),
+            mockFileSystem({
+              readFile: async () => ok(JSON.stringify(mockMapAST)),
+            })
+          )
+        ).resolves.toEqual(mockMapAST);
+      });
+    });
+
+    describe('when superJson points to parsed file', () => {
+      it('returns map ast', async () => {
+        mocked(parseMap).mockReturnValue(mockMapAST);
+
+        await expect(
+          getMapAst(
+            'profile',
+            'provider',
+            mockSuperJson({ localProfile: true }),
+            mockFileSystem({
+              readFile: async () => ok(mockMapRaw),
+            })
+          )
+        ).resolves.toEqual(mockMapAST);
+      });
+    });
+  });
 });

@@ -1,5 +1,6 @@
 import {
   MapDocumentNode,
+  NormalizedSuperJsonDocument,
   ProfileDocumentNode,
   ProviderJson,
 } from '@superfaceai/ast';
@@ -13,7 +14,6 @@ import {
   Interceptable,
   ITimers,
   profileAstId,
-  SuperJson,
   UseCase,
 } from '@superfaceai/one-sdk';
 
@@ -38,7 +38,7 @@ export async function prepareSuperface(
   providerName: string;
   usecaseName: string;
   files: {
-    superJson: SuperJson;
+    superJson: NormalizedSuperJsonDocument;
     profileAst: ProfileDocumentNode;
     mapAst: MapDocumentNode;
     providerJson: ProviderJson;

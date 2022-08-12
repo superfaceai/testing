@@ -1,9 +1,9 @@
 import { ok } from '@superfaceai/one-sdk';
+
 import { ProviderJsonUndefinedError } from '../../common/errors';
 import { mockFileSystem } from '../mock/file-system';
-import { mockProviderJson } from '../mock/provider';
+import { createProvider, mockProviderJson } from '../mock/provider';
 import { mockSuperJson } from '../mock/super-json';
-import { createProvider } from '../mock/provider';
 import { getProviderJson } from './prepare-provider-json';
 
 describe('Prepare Provider JSON module', () => {

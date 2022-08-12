@@ -1,5 +1,6 @@
 import { ok } from '@superfaceai/one-sdk';
 import { mocked } from 'ts-jest/utils';
+
 import { ComponentUndefinedError } from '../../common/errors';
 import { mockMapAST, mockProfileAST } from '../mock/ast';
 import { mockBoundProfileProvider } from '../mock/boundProfileProvider';

@@ -9,18 +9,18 @@ import { matchWildCard } from './common/format';
 import { exists, readFileQuiet } from './common/io';
 import { writeRecordings } from './common/output-stream';
 import { generate } from './generate-hash';
+import { prepareSuperface } from './superface/config';
 import { mockMapAST, mockProfileAST } from './superface/mock/ast';
+import { mockBoundProfileProvider } from './superface/mock/boundProfileProvider';
 import { mockProviderJson } from './superface/mock/provider';
 import { mockSuperJson } from './superface/mock/super-json';
 import { SuperfaceTest } from './superface-test';
+import { SuperfaceTestConfigPayload } from './superface-test.interfaces';
 import {
   HIDDEN_CREDENTIALS_PLACEHOLDER,
   HIDDEN_INPUT_PLACEHOLDER,
   HIDDEN_PARAMETERS_PLACEHOLDER,
 } from './superface-test.utils';
-import { prepareSuperface } from './superface/config';
-import { mockBoundProfileProvider } from './superface/mock/boundProfileProvider';
-import { SuperfaceTestConfigPayload } from './superface-test.interfaces';
 
 /* eslint-disable @typescript-eslint/unbound-method */
 

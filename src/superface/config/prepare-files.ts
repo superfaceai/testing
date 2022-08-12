@@ -1,5 +1,6 @@
 import {
   MapDocumentNode,
+  NormalizedSuperJsonDocument,
   ProfileDocumentNode,
   ProviderJson,
 } from '@superfaceai/ast';
@@ -7,7 +8,6 @@ import {
   IFileSystem,
   NodeFileSystem,
   profileAstId,
-  SuperJson,
 } from '@superfaceai/one-sdk';
 
 import {
@@ -26,7 +26,7 @@ export async function prepareFiles(
     fileSystem?: IFileSystem;
   }
 ): Promise<{
-  superJson: SuperJson;
+  superJson: NormalizedSuperJsonDocument;
   profileAst: ProfileDocumentNode;
   providerJson: ProviderJson;
   mapAst: MapDocumentNode;
