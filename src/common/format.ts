@@ -55,17 +55,12 @@ export function matchWildCard(
   profileId: string,
   providerName: string,
   usecaseName: string,
-  // sfConfig: Pick<
-  //   CompleteSuperfaceTestConfig,
-  //   'profile' | 'provider' | 'useCase'
-  // >,
   superfaceEnv: string | undefined
 ): boolean {
   if (superfaceEnv === undefined || superfaceEnv === '') {
     return false;
   }
 
-  // const { profile, provider, useCase } = sfConfig;
   const [profilePayload, providerPayload, usecasePayload] =
     superfaceEnv.split(':');
 

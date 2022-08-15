@@ -6,8 +6,10 @@ export const mockSuperJson = (options?: {
   localMap?: boolean;
   localProvider?: boolean;
   pointsToAst?: boolean;
-}): NormalizedSuperJsonDocument =>
-  normalizeSuperJsonDocument({
+  path?: string;
+}): { path: string; document: NormalizedSuperJsonDocument } => ({
+  path: options?.path ?? 'path/to/super.json',
+  document: normalizeSuperJsonDocument({
     profiles: {
       profile: options?.localProfile
         ? {
@@ -47,4 +49,5 @@ export const mockSuperJson = (options?: {
             security: [],
           },
     },
-  });
+  }),
+});

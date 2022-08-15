@@ -20,7 +20,7 @@ export function createProvider(options?: {
 }
 
 export const mockProviderJson = (options?: {
-  services: ProviderService[];
+  services?: ProviderService[];
   name?: string;
   baseUrl?: string;
 }): ProviderJson => ({

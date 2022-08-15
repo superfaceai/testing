@@ -1,5 +1,22 @@
-import { ApiKeyPlacement, SecurityType } from '@superfaceai/ast';
-import { err, MapASTError, ok, ServiceSelector } from '@superfaceai/one-sdk';
+import {
+  ApiKeyPlacement,
+  MapDocumentNode,
+  NormalizedProfileProviderSettings,
+  ProfileDocumentNode,
+  ProviderService,
+  SecurityType,
+} from '@superfaceai/ast';
+import {
+  err,
+  IServiceSelector,
+  MapASTError,
+  MapInterpreterError,
+  ok,
+  ProfileParameterError,
+  Result,
+  SecurityConfiguration,
+  ServiceSelector,
+} from '@superfaceai/one-sdk';
 import nock, { pendingMocks, recorder } from 'nock';
 import { join as joinPath } from 'path';
 import { mocked } from 'ts-jest/utils';
@@ -15,7 +32,7 @@ import { mockBoundProfileProvider } from './superface/mock/boundProfileProvider'
 import { mockProviderJson } from './superface/mock/provider';
 import { mockSuperJson } from './superface/mock/super-json';
 import { SuperfaceTest } from './superface-test';
-import { SuperfaceTestConfigPayload } from './superface-test.interfaces';
+import { SuperfaceTestConfig } from './superface-test.interfaces';
 import {
   HIDDEN_CREDENTIALS_PLACEHOLDER,
   HIDDEN_INPUT_PLACEHOLDER,
@@ -41,16 +58,78 @@ jest.mock('./common/output-stream', () => ({
   writeRecordings: jest.fn(),
 }));
 
-const testPayload: SuperfaceTestConfigPayload = {
+const testPayload: SuperfaceTestConfig = {
   profile: 'profile',
   provider: 'provider',
   useCase: 'test',
 };
 
+const mockSuperface = (options?: {
+  superJson?: {
+    localProfile?: boolean;
+    localMap?: boolean;
+    localProvider?: boolean;
+    pointsToAst?: boolean;
+  };
+  profile?: {
+    name?: string;
+    ast?: ProfileDocumentNode;
+  };
+  provider?: {
+    name?: string;
+    baseUrl?: string;
+    mapAst?: MapDocumentNode;
+    services?: ProviderService[];
+  };
+  useCaseName?: string;
+  boundProfileProvider?: {
+    result?: Result<unknown, ProfileParameterError | MapInterpreterError>;
+    services?: IServiceSelector;
+    profileProviderSettings?: NormalizedProfileProviderSettings;
+    security?: SecurityConfiguration[];
+    parameters?: Record<string, string>;
+  };
+}) => {
+  const providerJson = mockProviderJson({
+    name: options?.provider?.name,
+    baseUrl: options?.provider?.baseUrl,
+    services: options?.provider?.services,
+  });
+
+  const boundProfileProvider = mockBoundProfileProvider(
+    options?.boundProfileProvider?.result ?? ok('value'),
+    {
+      services:
+        options?.boundProfileProvider?.services ??
+        new ServiceSelector(providerJson.services, providerJson.defaultService),
+      profileProviderSettings:
+        options?.boundProfileProvider?.profileProviderSettings,
+      security: options?.boundProfileProvider?.security,
+      parameters: options?.boundProfileProvider?.parameters,
+    }
+  );
+
+  return {
+    files: {
+      superJson: mockSuperJson({
+        localProfile: options?.superJson?.localProfile ?? true,
+        localMap: options?.superJson?.localMap ?? true,
+        localProvider: options?.superJson?.localProvider ?? true,
+      }).document,
+      profileAst: options?.profile?.ast ?? mockProfileAST,
+      mapAst: options?.provider?.mapAst ?? mockMapAST,
+      providerJson,
+    },
+    profileId: options?.profile?.name ?? 'profile',
+    providerName: options?.provider?.name ?? 'provider',
+    usecaseName: options?.useCaseName ?? 'test',
+    boundProfileProvider,
+  };
+};
+
 const DEFAULT_RECORDING_PATH = joinPath(process.cwd(), 'nock');
 
 describe('SuperfaceTest', () => {
-  const providerJson = mockProviderJson();
   let superfaceTest: SuperfaceTest;
 
   afterEach(() => {
@@ -79,27 +158,7 @@ describe('SuperfaceTest', () => {
         const endRecSpy = jest.spyOn(nock, 'restore');
 
         mocked(matchWildCard).mockReturnValueOnce(true);
-        mocked(prepareSuperface).mockResolvedValue({
-          files: {
-            superJson: mockSuperJson({
-              localProfile: true,
-              localMap: true,
-              localProvider: true,
-            }),
-            profileAst: mockProfileAST,
-            mapAst: mockMapAST,
-            providerJson,
-          },
-          profileId: 'profile',
-          providerName: 'provider',
-          usecaseName: 'test',
-          boundProfileProvider: mockBoundProfileProvider(ok('value'), {
-            services: new ServiceSelector(
-              providerJson.services,
-              providerJson.defaultService
-            ),
-          }),
-        });
+        mocked(prepareSuperface).mockResolvedValue(mockSuperface());
 
         await superfaceTest.run({ input: {} });
 
@@ -138,27 +197,7 @@ describe('SuperfaceTest', () => {
         jest.spyOn(recorder, 'play').mockReturnValueOnce([]);
 
         mocked(matchWildCard).mockReturnValueOnce(true);
-        mocked(prepareSuperface).mockResolvedValue({
-          files: {
-            superJson: mockSuperJson({
-              localProfile: true,
-              localMap: true,
-              localProvider: true,
-            }),
-            profileAst: mockProfileAST,
-            mapAst: mockMapAST,
-            providerJson,
-          },
-          profileId: 'profile',
-          providerName: 'provider',
-          usecaseName: 'test',
-          boundProfileProvider: mockBoundProfileProvider(ok('value'), {
-            services: new ServiceSelector(
-              providerJson.services,
-              providerJson.defaultService
-            ),
-          }),
-        });
+        mocked(prepareSuperface).mockResolvedValue(mockSuperface());
 
         await superfaceTest.run({ input: {} });
 
@@ -192,27 +231,10 @@ describe('SuperfaceTest', () => {
         ]);
 
         mocked(matchWildCard).mockReturnValueOnce(true);
-        mocked(prepareSuperface).mockResolvedValue({
-          files: {
-            superJson: mockSuperJson({
-              localProfile: true,
-              localMap: true,
-              localProvider: true,
-            }),
-            profileAst: mockProfileAST,
-            mapAst: mockMapAST,
-            providerJson,
-          },
-          profileId: 'profile',
-          providerName: 'provider',
-          usecaseName: 'test',
-          boundProfileProvider: mockBoundProfileProvider(
-            err(new MapASTError('error')),
-            {
-              services: new ServiceSelector(
-                providerJson.services,
-                providerJson.defaultService
-              ),
+        mocked(prepareSuperface).mockResolvedValue(
+          mockSuperface({
+            boundProfileProvider: {
+              result: err(new MapASTError('error')),
               security: [
                 {
                   id: 'api-key',
@@ -222,9 +244,9 @@ describe('SuperfaceTest', () => {
                   apikey: secret,
                 },
               ],
-            }
-          ),
-        });
+            },
+          })
+        );
 
         await superfaceTest.run({ input: {} });
 
@@ -259,33 +281,16 @@ describe('SuperfaceTest', () => {
         ]);
 
         mocked(matchWildCard).mockReturnValueOnce(true);
-        mocked(prepareSuperface).mockResolvedValue({
-          files: {
-            superJson: mockSuperJson({
-              localProfile: true,
-              localMap: true,
-              localProvider: true,
-            }),
-            profileAst: mockProfileAST,
-            mapAst: mockMapAST,
-            providerJson,
-          },
-          profileId: 'profile',
-          providerName: 'provider',
-          usecaseName: 'test',
-          boundProfileProvider: mockBoundProfileProvider(
-            err(new MapASTError('error')),
-            {
-              services: new ServiceSelector(
-                providerJson.services,
-                providerJson.defaultService
-              ),
+        mocked(prepareSuperface).mockResolvedValue(
+          mockSuperface({
+            boundProfileProvider: {
+              result: err(new MapASTError('error')),
               parameters: {
                 param,
               },
-            }
-          ),
-        });
+            },
+          })
+        );
 
         await superfaceTest.run({ input: {} });
 
@@ -326,30 +331,7 @@ describe('SuperfaceTest', () => {
         ]);
 
         mocked(matchWildCard).mockReturnValueOnce(true);
-        mocked(prepareSuperface).mockResolvedValue({
-          files: {
-            superJson: mockSuperJson({
-              localProfile: true,
-              localMap: true,
-              localProvider: true,
-            }),
-            profileAst: mockProfileAST,
-            mapAst: mockMapAST,
-            providerJson,
-          },
-          profileId: 'profile',
-          providerName: 'provider',
-          usecaseName: 'test',
-          boundProfileProvider: mockBoundProfileProvider(
-            err(new MapASTError('error')),
-            {
-              services: new ServiceSelector(
-                providerJson.services,
-                providerJson.defaultService
-              ),
-            }
-          ),
-        });
+        mocked(prepareSuperface).mockResolvedValue(mockSuperface());
 
         await superfaceTest.run(
           { input: { auth: { token, refresh } } },
@@ -390,27 +372,7 @@ describe('SuperfaceTest', () => {
         jest.spyOn(recorder, 'play').mockReturnValueOnce([]);
 
         mocked(matchWildCard).mockReturnValueOnce(true);
-        mocked(prepareSuperface).mockResolvedValue({
-          files: {
-            superJson: mockSuperJson({
-              localProfile: true,
-              localMap: true,
-              localProvider: true,
-            }),
-            profileAst: mockProfileAST,
-            mapAst: mockMapAST,
-            providerJson,
-          },
-          profileId: 'profile',
-          providerName: 'provider',
-          usecaseName: 'test',
-          boundProfileProvider: mockBoundProfileProvider(ok('value'), {
-            services: new ServiceSelector(
-              providerJson.services,
-              providerJson.defaultService
-            ),
-          }),
-        });
+        mocked(prepareSuperface).mockResolvedValue(mockSuperface());
 
         await superfaceTest.run({ input: {} });
 
@@ -434,27 +396,7 @@ describe('SuperfaceTest', () => {
         jest.spyOn(recorder, 'play').mockReturnValueOnce([]);
 
         mocked(matchWildCard).mockReturnValueOnce(true);
-        mocked(prepareSuperface).mockResolvedValue({
-          files: {
-            superJson: mockSuperJson({
-              localProfile: true,
-              localMap: true,
-              localProvider: true,
-            }),
-            profileAst: mockProfileAST,
-            mapAst: mockMapAST,
-            providerJson,
-          },
-          profileId: 'profile',
-          providerName: 'provider',
-          usecaseName: 'test',
-          boundProfileProvider: mockBoundProfileProvider(ok('value'), {
-            services: new ServiceSelector(
-              providerJson.services,
-              providerJson.defaultService
-            ),
-          }),
-        });
+        mocked(prepareSuperface).mockResolvedValue(mockSuperface());
 
         await superfaceTest.run({ input: {}, testName });
 
@@ -482,27 +424,7 @@ describe('SuperfaceTest', () => {
         jest.spyOn(recorder, 'play').mockReturnValueOnce([]);
 
         mocked(matchWildCard).mockReturnValueOnce(true);
-        mocked(prepareSuperface).mockResolvedValue({
-          files: {
-            superJson: mockSuperJson({
-              localProfile: true,
-              localMap: true,
-              localProvider: true,
-            }),
-            profileAst: mockProfileAST,
-            mapAst: mockMapAST,
-            providerJson,
-          },
-          profileId: 'profile',
-          providerName: 'provider',
-          usecaseName: 'test',
-          boundProfileProvider: mockBoundProfileProvider(ok('value'), {
-            services: new ServiceSelector(
-              providerJson.services,
-              providerJson.defaultService
-            ),
-          }),
-        });
+        mocked(prepareSuperface).mockResolvedValue(mockSuperface());
 
         await superfaceTest.run({ input, testName: undefined });
 
@@ -526,27 +448,7 @@ describe('SuperfaceTest', () => {
         const recorderSpy = jest.spyOn(recorder, 'rec');
 
         mocked(matchWildCard).mockReturnValueOnce(false);
-        mocked(prepareSuperface).mockResolvedValue({
-          files: {
-            superJson: mockSuperJson({
-              localProfile: true,
-              localMap: true,
-              localProvider: true,
-            }),
-            profileAst: mockProfileAST,
-            mapAst: mockMapAST,
-            providerJson,
-          },
-          profileId: 'profile',
-          providerName: 'provider',
-          usecaseName: 'test',
-          boundProfileProvider: mockBoundProfileProvider(ok('value'), {
-            services: new ServiceSelector(
-              providerJson.services,
-              providerJson.defaultService
-            ),
-          }),
-        });
+        mocked(prepareSuperface).mockResolvedValue(mockSuperface());
 
         await expect(superfaceTest.run({ input: {} })).rejects.toThrowError(
           new RecordingsNotFoundError()
@@ -570,27 +472,7 @@ describe('SuperfaceTest', () => {
         mocked(exists).mockResolvedValueOnce(true);
         mocked(readFileQuiet).mockResolvedValueOnce('[]');
         mocked(matchWildCard).mockReturnValueOnce(false);
-        mocked(prepareSuperface).mockResolvedValue({
-          files: {
-            superJson: mockSuperJson({
-              localProfile: true,
-              localMap: true,
-              localProvider: true,
-            }),
-            profileAst: mockProfileAST,
-            mapAst: mockMapAST,
-            providerJson,
-          },
-          profileId: 'profile',
-          providerName: 'provider',
-          usecaseName: 'test',
-          boundProfileProvider: mockBoundProfileProvider(ok('value'), {
-            services: new ServiceSelector(
-              providerJson.services,
-              providerJson.defaultService
-            ),
-          }),
-        });
+        mocked(prepareSuperface).mockResolvedValue(mockSuperface());
 
         await expect(superfaceTest.run({ input: {} })).resolves.not.toThrow();
 
@@ -606,26 +488,13 @@ describe('SuperfaceTest', () => {
 
     describe('when performing', () => {
       it('returns error from perform', async () => {
-        mocked(prepareSuperface).mockResolvedValue({
-          files: {
-            superJson: mockSuperJson({ localMap: true, localProvider: true }),
-            profileAst: mockProfileAST,
-            mapAst: mockMapAST,
-            providerJson,
-          },
-          profileId: 'profile',
-          providerName: 'provider',
-          usecaseName: 'test',
-          boundProfileProvider: mockBoundProfileProvider(
-            err(new MapASTError('error')),
-            {
-              services: new ServiceSelector(
-                providerJson.services,
-                providerJson.defaultService
-              ),
-            }
-          ),
-        });
+        mocked(prepareSuperface).mockResolvedValue(
+          mockSuperface({
+            boundProfileProvider: {
+              result: err(new MapASTError('error')),
+            },
+          })
+        );
 
         superfaceTest = new SuperfaceTest(testPayload);
 
@@ -637,26 +506,13 @@ describe('SuperfaceTest', () => {
       });
 
       it('retuns value from perform', async () => {
-        mocked(prepareSuperface).mockResolvedValue({
-          files: {
-            superJson: mockSuperJson({ localMap: true, localProvider: true }),
-            profileAst: mockProfileAST,
-            mapAst: mockMapAST,
-            providerJson,
-          },
-          profileId: 'profile',
-          providerName: 'provider',
-          usecaseName: 'test',
-          boundProfileProvider: mockBoundProfileProvider(
-            ok({ value: 'result' }),
-            {
-              services: new ServiceSelector(
-                providerJson.services,
-                providerJson.defaultService
-              ),
-            }
-          ),
-        });
+        mocked(prepareSuperface).mockResolvedValue(
+          mockSuperface({
+            boundProfileProvider: {
+              result: ok({ value: 'result' }),
+            },
+          })
+        );
 
         superfaceTest = new SuperfaceTest(testPayload);
 

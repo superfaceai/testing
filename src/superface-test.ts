@@ -22,7 +22,7 @@ import { endRecording, loadRecording, startRecording } from './nock/recorder';
 import { prepareSuperface } from './superface/config';
 import {
   NockConfig,
-  SuperfaceTestConfigPayload,
+  SuperfaceTestConfig,
   SuperfaceTestRun,
   TestingReturn,
 } from './superface-test.interfaces';
@@ -35,9 +35,9 @@ const debugHashing = createDebug('superface:testing:hash');
 export class SuperfaceTest {
   private nockConfig?: NockConfig;
   private generator: IGenerator;
-  public configuration: SuperfaceTestConfigPayload | undefined;
+  public configuration: SuperfaceTestConfig | undefined;
 
-  constructor(payload?: SuperfaceTestConfigPayload, nockConfig?: NockConfig) {
+  constructor(payload?: SuperfaceTestConfig, nockConfig?: NockConfig) {
     this.configuration = payload;
     this.nockConfig = nockConfig;
     this.generator = getGenerator(nockConfig?.testInstance);
@@ -52,7 +52,7 @@ export class SuperfaceTest {
     options?: RecordingProcessOptions
   ): Promise<TestingReturn> {
     const { profile, provider, useCase } = testCase;
-    const testCaseConfig: SuperfaceTestConfigPayload = {
+    const testCaseConfig: SuperfaceTestConfig = {
       profile: profile ?? this.configuration?.profile,
       provider: provider ?? this.configuration?.provider,
       useCase: useCase ?? this.configuration?.useCase,

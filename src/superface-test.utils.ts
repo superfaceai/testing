@@ -40,7 +40,7 @@ const debug = createDebug('superface:testing');
  */
 export async function getSuperJson(options?: {
   fileSystem: IFileSystem;
-}): Promise<NormalizedSuperJsonDocument | undefined> {
+}): Promise<{ path: string; document: NormalizedSuperJsonDocument }> {
   const superPath = await detectSuperJson(
     process.cwd(),
     options?.fileSystem ?? NodeFileSystem,
@@ -64,7 +64,10 @@ export async function getSuperJson(options?: {
     throw new SuperJsonLoadingFailedError(superJsonResult.error);
   }
 
-  return normalizeSuperJsonDocument(superJsonResult.value);
+  return {
+    path: superPath,
+    document: normalizeSuperJsonDocument(superJsonResult.value),
+  };
 }
 
 export function assertsDefinitionsAreNotStrings(

@@ -18,13 +18,13 @@ import {
 } from '@superfaceai/one-sdk';
 
 import { ComponentUndefinedError } from '../../common/errors';
-import { SuperfaceTestConfigPayload } from '../../superface-test.interfaces';
+import { SuperfaceTestConfig } from '../../superface-test.interfaces';
 import { createBoundProfileProvider } from './create-bound-profile-provider';
 import { prepareFiles } from './prepare-files';
 
 // Prepares runnable bound profile provider
 export async function prepareSuperface(
-  payload: SuperfaceTestConfigPayload,
+  payload: SuperfaceTestConfig,
   options?: {
     fileSystem?: IFileSystem;
     crypto?: ICrypto;

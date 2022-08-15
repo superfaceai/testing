@@ -10,18 +10,15 @@ import {
   profileAstId,
 } from '@superfaceai/one-sdk';
 
-import {
-  ComponentUndefinedError,
-  SuperJsonNotFoundError,
-} from '../../common/errors';
-import { SuperfaceTestConfigPayload } from '../../superface-test.interfaces';
+import { ComponentUndefinedError } from '../../common/errors';
+import { SuperfaceTestConfig } from '../../superface-test.interfaces';
 import { getSuperJson } from '../../superface-test.utils';
 import { getMapAst, getProfileAst } from './prepare-ast';
 import { getProviderJson } from './prepare-provider-json';
 
 // This deals only with files resolution, it should NOT be exported from directory.
 export async function prepareFiles(
-  payload: SuperfaceTestConfigPayload,
+  payload: SuperfaceTestConfig,
   options?: {
     fileSystem?: IFileSystem;
   }
@@ -32,11 +29,6 @@ export async function prepareFiles(
   mapAst: MapDocumentNode;
 }> {
   const superJson = await getSuperJson();
-
-  if (!superJson) {
-    throw new SuperJsonNotFoundError();
-  }
-
   const fs = options?.fileSystem ?? NodeFileSystem;
 
   // Load profile
@@ -62,7 +54,7 @@ export async function prepareFiles(
   );
 
   return {
-    superJson,
+    superJson: superJson.document,
     profileAst,
     providerJson,
     mapAst,

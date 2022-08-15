@@ -31,7 +31,7 @@ describe('IO functions', () => {
     INITIAL_CWD = process.cwd();
     process.chdir(WORKING_DIR);
 
-    INITIAL_SUPER_JSON = mockSuperJson();
+    INITIAL_SUPER_JSON = mockSuperJson().document;
   });
 
   afterAll(async () => {

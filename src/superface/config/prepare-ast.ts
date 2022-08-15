@@ -7,25 +7,28 @@ import {
 } from '@superfaceai/ast';
 import { IFileSystem, Profile } from '@superfaceai/one-sdk';
 import { parseMap, parseProfile, Source } from '@superfaceai/parser';
+import { dirname, resolve as resolvePath } from 'path';
 
 import { MapUndefinedError, ProfileUndefinedError } from '../../common/errors';
 
 export async function getProfileAst(
   profile: Profile | string,
-  superJson: NormalizedSuperJsonDocument,
+  superJson: { path: string; document: NormalizedSuperJsonDocument },
   fileSystem: IFileSystem
 ): Promise<ProfileDocumentNode> {
   if (profile instanceof Profile) {
     return profile.ast;
   } else {
-    const profileSettings = superJson.profiles[profile];
+    const profileSettings = superJson.document.profiles[profile];
 
     if (!profileSettings || !('file' in profileSettings)) {
       throw new ProfileUndefinedError(profile);
     }
 
-    // TODO: resolve path
-    const profilePath = profileSettings.file;
+    const profilePath = resolvePath(
+      dirname(superJson.path),
+      profileSettings.file
+    );
     const content = await fileSystem.readFile(profilePath);
 
     if (content.isErr()) {
@@ -44,18 +47,20 @@ export async function getProfileAst(
 export async function getMapAst(
   profileId: string,
   providerName: string,
-  superJson: NormalizedSuperJsonDocument,
+  superJson: { path: string; document: NormalizedSuperJsonDocument },
   fileSystem: IFileSystem
 ): Promise<MapDocumentNode> {
   const profileProviderSettings =
-    superJson.profiles[profileId]?.providers[providerName];
+    superJson.document.profiles[profileId]?.providers[providerName];
 
   if (!profileProviderSettings || !('file' in profileProviderSettings)) {
     throw new MapUndefinedError(profileId, providerName);
   }
 
-  // superJson.resolvePath(profileProviderSettings.file);
-  const mapPath = profileProviderSettings.file;
+  const mapPath = resolvePath(
+    dirname(superJson.path),
+    profileProviderSettings.file
+  );
   const content = await fileSystem.readFile(mapPath);
 
   if (content.isErr()) {

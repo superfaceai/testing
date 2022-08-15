@@ -4,24 +4,27 @@ import {
   ProviderJson,
 } from '@superfaceai/ast';
 import { IFileSystem, Provider } from '@superfaceai/one-sdk';
+import { dirname, resolve as resolvePath } from 'path';
 
 import { ProviderJsonUndefinedError } from '../../common/errors';
 
 export async function getProviderJson(
   provider: Provider | string,
-  superJson: NormalizedSuperJsonDocument,
+  superJson: { path: string; document: NormalizedSuperJsonDocument },
   fileSystem: IFileSystem
 ): Promise<ProviderJson> {
   const providerName =
     provider instanceof Provider ? provider.configuration.name : provider;
-  const providerSettings = superJson.providers[providerName];
+  const providerSettings = superJson.document.providers[providerName];
 
   if (!providerSettings || !providerSettings.file) {
     throw new ProviderJsonUndefinedError(providerName);
   }
 
-  // superJson.resolvePath(providerSettings.file);
-  const providerPath = providerSettings.file;
+  const providerPath = resolvePath(
+    dirname(superJson.path),
+    providerSettings.file
+  );
   const content = await fileSystem.readFile(providerPath);
 
   if (content.isErr()) {

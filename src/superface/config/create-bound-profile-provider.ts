@@ -23,7 +23,6 @@ import {
   resolveSecurityConfiguration,
   ServiceSelector,
 } from '@superfaceai/one-sdk';
-// TODO: export from SDK?
 import { resolveIntegrationParameters } from '@superfaceai/one-sdk/dist/core/profile-provider/parameters';
 
 // This deals only with BoundProfileProvider instance creation, it should NOT be exported from directory.

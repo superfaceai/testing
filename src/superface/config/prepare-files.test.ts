@@ -1,10 +1,7 @@
 import { mocked } from 'ts-jest/utils';
 
-import {
-  ComponentUndefinedError,
-  SuperJsonNotFoundError,
-} from '../../common/errors';
-import { SuperfaceTestConfigPayload } from '../../superface-test.interfaces';
+import { ComponentUndefinedError } from '../../common/errors';
+import { SuperfaceTestConfig } from '../../superface-test.interfaces';
 import { getSuperJson } from '../../superface-test.utils';
 import { mockMapAST, mockProfileAST } from '../mock/ast';
 import { mockProviderJson } from '../mock/provider';
@@ -13,7 +10,7 @@ import { getMapAst, getProfileAst } from './prepare-ast';
 import { prepareFiles } from './prepare-files';
 import { getProviderJson } from './prepare-provider-json';
 
-const testPayload: SuperfaceTestConfigPayload = {
+const testPayload: SuperfaceTestConfig = {
   profile: 'profile',
   provider: 'provider',
   useCase: 'test',
@@ -35,14 +32,6 @@ jest.mock('./prepare-provider-json', () => ({
 
 describe('Prepare files module', () => {
   describe('prepareFiles', () => {
-    it('fails when no super.json is found', async () => {
-      mocked(getSuperJson).mockResolvedValue(undefined);
-
-      await expect(prepareFiles(testPayload)).rejects.toThrowError(
-        new SuperJsonNotFoundError()
-      );
-    });
-
     it('fails when no profile is specified', async () => {
       mocked(getSuperJson).mockResolvedValue(mockSuperJson());
 
@@ -73,7 +62,7 @@ describe('Prepare files module', () => {
       mocked(getProviderJson).mockResolvedValue(mockProviderJson());
 
       await expect(prepareFiles(testPayload)).resolves.toEqual({
-        superJson: mockSuperJson(),
+        superJson: mockSuperJson().document,
         profileAst: mockProfileAST,
         mapAst: mockMapAST,
         providerJson: mockProviderJson(),

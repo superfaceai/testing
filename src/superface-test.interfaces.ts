@@ -8,7 +8,7 @@ import {
 } from '@superfaceai/one-sdk';
 import { Definition } from 'nock/types';
 
-export interface SuperfaceTestConfigPayload {
+export interface SuperfaceTestConfig {
   profile?: Profile | string;
   provider?: Provider | string;
   useCase?: UseCase | string;
@@ -21,7 +21,7 @@ export interface HashOptions {
   testName?: string;
 }
 
-export type SuperfaceTestRun = SuperfaceTestConfigPayload & HashOptions;
+export type SuperfaceTestRun = SuperfaceTestConfig & HashOptions;
 
 export type TestingReturn = Result<unknown, string>;
 

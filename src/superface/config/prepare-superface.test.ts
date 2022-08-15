@@ -27,7 +27,7 @@ describe('prepare superface module', () => {
 
   it('returns superface configuration when files get prepared successfuly', async () => {
     const expectedFiles = {
-      superJson: mockSuperJson(),
+      superJson: mockSuperJson().document,
       profileAst: mockProfileAST,
       mapAst: mockMapAST,
       providerJson: mockProviderJson(),
