@@ -1,10 +1,17 @@
-import { err, ok, PerformError, Result } from '@superfaceai/one-sdk';
+import {
+  err,
+  MapInterpreterError,
+  ok,
+  ProfileParameterError,
+  Result,
+  UnexpectedError,
+} from '@superfaceai/one-sdk';
 import createDebug from 'debug';
 import { enableNetConnect, recorder, restore as restoreRecordings } from 'nock';
 import { join as joinPath } from 'path';
 
 import { RecordingProcessOptions } from '.';
-import { UnexpectedError } from './common/errors';
+import { UnexpectedError as UnexpectedErrorTesting } from './common/errors';
 import {
   getFixtureName,
   matchWildCard,
@@ -94,7 +101,10 @@ export class SuperfaceTest {
       });
     }
 
-    let result: Result<unknown, PerformError>;
+    let result: Result<
+      unknown,
+      ProfileParameterError | MapInterpreterError | UnexpectedError
+    >;
     try {
       // Run perform method on specified configuration
       result = await sf.boundProfileProvider.perform(sf.usecaseName, input);
@@ -136,7 +146,7 @@ export class SuperfaceTest {
       return ok(result.value);
     }
 
-    throw new UnexpectedError('Unexpected result object');
+    throw new UnexpectedErrorTesting('Unexpected result object');
   }
 
   /**

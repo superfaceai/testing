@@ -17,9 +17,14 @@ import { getMapAst, getProfileAst } from './prepare-ast';
 jest.mock('@superfaceai/parser', () => ({
   ...jest.requireActual('@superfaceai/parser'),
   parseProfile: jest.fn(),
+  parseMap: jest.fn(),
 }));
 
 describe('Prepare AST module', () => {
+  beforeEach(() => {
+    jest.resetAllMocks();
+  });
+
   describe('getProfileAst', () => {
     it('fails when specified profile is not in superJson', async () => {
       await expect(
@@ -109,7 +114,7 @@ describe('Prepare AST module', () => {
           getMapAst(
             'profile',
             'provider',
-            mockSuperJson({ localProfile: true, pointsToAst: true }),
+            mockSuperJson({ localMap: true, pointsToAst: true }),
             mockFileSystem({
               readFile: async () => ok(JSON.stringify(mockMapAST)),
             })
@@ -126,7 +131,7 @@ describe('Prepare AST module', () => {
           getMapAst(
             'profile',
             'provider',
-            mockSuperJson({ localProfile: true }),
+            mockSuperJson({ localMap: true }),
             mockFileSystem({
               readFile: async () => ok(mockMapRaw),
             })

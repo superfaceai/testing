@@ -41,16 +41,6 @@ jest.mock('./common/output-stream', () => ({
   writeRecordings: jest.fn(),
 }));
 
-// jest.mock('./superface-test.utils', () => ({
-//   ...jest.requireActual('./superface-test.utils'),
-//   getSuperJson: jest.fn(),
-// }));
-
-// jest.mock('./superface/client', () => ({
-//   ...jest.requireActual('./superface/client'),
-//   addBoundProfileProvider: jest.fn(),
-// }));
-
 const testPayload: SuperfaceTestConfigPayload = {
   profile: 'profile',
   provider: 'provider',
@@ -70,10 +60,6 @@ describe('SuperfaceTest', () => {
     mocked(matchWildCard).mockReset();
     mocked(writeRecordings).mockReset();
   });
-
-  // TODO:
-  // describe('with superJson', () => {});
-  // describe('without superJson', () => {});
 
   describe('run', () => {
     describe('when recording', () => {
@@ -433,7 +419,7 @@ describe('SuperfaceTest', () => {
             DEFAULT_RECORDING_PATH,
             'profile',
             'provider',
-            'usecase',
+            'test',
             `recording-${expectedHash}.json`
           ),
           []
@@ -477,7 +463,7 @@ describe('SuperfaceTest', () => {
             DEFAULT_RECORDING_PATH,
             'profile',
             'provider',
-            'usecase',
+            'test',
             `recording-${expectedHash}.json`
           ),
           []
@@ -525,7 +511,7 @@ describe('SuperfaceTest', () => {
             DEFAULT_RECORDING_PATH,
             'profile',
             'provider',
-            'usecase',
+            'test',
             `recording-${expectedHash}.json`
           ),
           []
@@ -676,9 +662,11 @@ describe('SuperfaceTest', () => {
 
         mocked(matchWildCard).mockReturnValueOnce(true);
 
-        await expect(superfaceTest.run({ input: {} })).resolves.toEqual({
-          value: 'result',
-        });
+        await expect(superfaceTest.run({ input: {} })).resolves.toEqual(
+          ok({
+            value: 'result',
+          })
+        );
       });
     });
   });

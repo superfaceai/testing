@@ -29,11 +29,12 @@ import {
 jest.mock('@superfaceai/one-sdk', () => ({
   ...jest.requireActual('@superfaceai/one-sdk'),
   detectSuperJson: jest.fn(),
+  loadSuperJson: jest.fn(),
 }));
 
 describe('SuperfaceTest Utils', () => {
   afterEach(() => {
-    jest.restoreAllMocks();
+    jest.resetAllMocks();
   });
 
   describe('getSuperJson', () => {

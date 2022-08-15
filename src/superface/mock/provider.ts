@@ -26,7 +26,7 @@ export const mockProviderJson = (options?: {
 }): ProviderJson => ({
   name: options?.name ?? 'provider',
   services: options?.services ?? [
-    { id: 'test-service', baseUrl: options?.baseUrl ?? 'service/base/url' },
+    { id: 'test-service', baseUrl: options?.baseUrl ?? 'https://localhost' },
   ],
   defaultService: 'test-service',
 });
