@@ -22,17 +22,7 @@ import { SuperfaceTestConfig } from '../../superface-test.interfaces';
 import { createBoundProfileProvider } from './create-bound-profile-provider';
 import { prepareFiles } from './prepare-files';
 
-// Prepares runnable bound profile provider
-export async function prepareSuperface(
-  payload: SuperfaceTestConfig,
-  options?: {
-    fileSystem?: IFileSystem;
-    crypto?: ICrypto;
-    timers?: ITimers;
-    logger?: ILogger;
-    fetchInstance?: IFetch & Interceptable & AuthCache;
-  }
-): Promise<{
+export interface SuperfaceConfiguration {
   boundProfileProvider: BoundProfileProvider;
   profileId: string;
   providerName: string;
@@ -43,7 +33,19 @@ export async function prepareSuperface(
     mapAst: MapDocumentNode;
     providerJson: ProviderJson;
   };
-}> {
+}
+
+// Prepares runnable bound profile provider
+export async function prepareSuperface(
+  payload: SuperfaceTestConfig,
+  options?: {
+    fileSystem?: IFileSystem;
+    crypto?: ICrypto;
+    timers?: ITimers;
+    logger?: ILogger;
+    fetchInstance?: IFetch & Interceptable & AuthCache;
+  }
+): Promise<SuperfaceConfiguration> {
   if (!payload.useCase) {
     throw new ComponentUndefinedError('UseCase');
   }

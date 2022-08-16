@@ -34,6 +34,7 @@ import {
 } from './nock';
 
 const debug = createDebug('superface:testing');
+const debugSetup = createDebug('superface:testing:setup');
 
 /**
  * Returns SuperJson based on path detected with its abstract method.
@@ -51,18 +52,16 @@ export async function getSuperJson(options?: {
     throw new SuperJsonNotFoundError();
   }
 
-  debug('Loading super.json from path:', superPath);
-
   const superJsonResult = await loadSuperJson(
     joinPath(superPath, 'super.json'),
     options?.fileSystem ?? NodeFileSystem
   );
 
-  debug('Found super.json:', superJsonResult);
-
   if (superJsonResult.isErr()) {
     throw new SuperJsonLoadingFailedError(superJsonResult.error);
   }
+
+  debugSetup('SuperJson found on path:', superPath);
 
   return {
     path: superPath,

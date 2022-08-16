@@ -91,7 +91,7 @@ export class SuperJsonNotFoundError extends ErrorBase {
 export class SuperJsonLoadingFailedError extends ErrorBase {
   constructor(originalError: SDKExecutionError) {
     super(
-      'SuperJsonNotFoundError',
+      'SuperJsonLoadingFailedError',
       `Loading super.json failed.\n${originalError.toString()}`
     );
   }

@@ -4,9 +4,12 @@ import {
   ProviderJson,
 } from '@superfaceai/ast';
 import { IFileSystem, Provider } from '@superfaceai/one-sdk';
-import { dirname, resolve as resolvePath } from 'path';
+import createDebug from 'debug';
+import { resolve as resolvePath } from 'path';
 
 import { ProviderJsonUndefinedError } from '../../common/errors';
+
+const debugSetup = createDebug('superface:testing:setup');
 
 export async function getProviderJson(
   provider: Provider | string,
@@ -21,10 +24,11 @@ export async function getProviderJson(
     throw new ProviderJsonUndefinedError(providerName);
   }
 
-  const providerPath = resolvePath(
-    dirname(superJson.path),
-    providerSettings.file
-  );
+  const providerPath = resolvePath(superJson.path, providerSettings.file);
+
+  debugSetup('Found provider settings in super.json:', providerSettings);
+  debugSetup('ProviderJson resolved path:', providerPath);
+
   const content = await fileSystem.readFile(providerPath);
 
   if (content.isErr()) {

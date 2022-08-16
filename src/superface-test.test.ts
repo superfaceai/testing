@@ -1,22 +1,5 @@
-import {
-  ApiKeyPlacement,
-  MapDocumentNode,
-  NormalizedProfileProviderSettings,
-  ProfileDocumentNode,
-  ProviderService,
-  SecurityType,
-} from '@superfaceai/ast';
-import {
-  err,
-  IServiceSelector,
-  MapASTError,
-  MapInterpreterError,
-  ok,
-  ProfileParameterError,
-  Result,
-  SecurityConfiguration,
-  ServiceSelector,
-} from '@superfaceai/one-sdk';
+import { ApiKeyPlacement, SecurityType } from '@superfaceai/ast';
+import { err, MapASTError, ok } from '@superfaceai/one-sdk';
 import nock, { pendingMocks, recorder } from 'nock';
 import { join as joinPath } from 'path';
 import { mocked } from 'ts-jest/utils';
@@ -27,10 +10,7 @@ import { exists, readFileQuiet } from './common/io';
 import { writeRecordings } from './common/output-stream';
 import { generate } from './generate-hash';
 import { prepareSuperface } from './superface/config';
-import { mockMapAST, mockProfileAST } from './superface/mock/ast';
-import { mockBoundProfileProvider } from './superface/mock/boundProfileProvider';
-import { mockProviderJson } from './superface/mock/provider';
-import { mockSuperJson } from './superface/mock/super-json';
+import { mockSuperface } from './superface/mock/superface';
 import { SuperfaceTest } from './superface-test';
 import { SuperfaceTestConfig } from './superface-test.interfaces';
 import {
@@ -64,77 +44,12 @@ const testPayload: SuperfaceTestConfig = {
   useCase: 'test',
 };
 
-const mockSuperface = (options?: {
-  superJson?: {
-    localProfile?: boolean;
-    localMap?: boolean;
-    localProvider?: boolean;
-    pointsToAst?: boolean;
-  };
-  profile?: {
-    name?: string;
-    ast?: ProfileDocumentNode;
-  };
-  provider?: {
-    name?: string;
-    baseUrl?: string;
-    mapAst?: MapDocumentNode;
-    services?: ProviderService[];
-  };
-  useCaseName?: string;
-  boundProfileProvider?: {
-    result?: Result<unknown, ProfileParameterError | MapInterpreterError>;
-    services?: IServiceSelector;
-    profileProviderSettings?: NormalizedProfileProviderSettings;
-    security?: SecurityConfiguration[];
-    parameters?: Record<string, string>;
-  };
-}) => {
-  const providerJson = mockProviderJson({
-    name: options?.provider?.name,
-    baseUrl: options?.provider?.baseUrl,
-    services: options?.provider?.services,
-  });
-
-  const boundProfileProvider = mockBoundProfileProvider(
-    options?.boundProfileProvider?.result ?? ok('value'),
-    {
-      services:
-        options?.boundProfileProvider?.services ??
-        new ServiceSelector(providerJson.services, providerJson.defaultService),
-      profileProviderSettings:
-        options?.boundProfileProvider?.profileProviderSettings,
-      security: options?.boundProfileProvider?.security,
-      parameters: options?.boundProfileProvider?.parameters,
-    }
-  );
-
-  return {
-    files: {
-      superJson: mockSuperJson({
-        localProfile: options?.superJson?.localProfile ?? true,
-        localMap: options?.superJson?.localMap ?? true,
-        localProvider: options?.superJson?.localProvider ?? true,
-      }).document,
-      profileAst: options?.profile?.ast ?? mockProfileAST,
-      mapAst: options?.provider?.mapAst ?? mockMapAST,
-      providerJson,
-    },
-    profileId: options?.profile?.name ?? 'profile',
-    providerName: options?.provider?.name ?? 'provider',
-    usecaseName: options?.useCaseName ?? 'test',
-    boundProfileProvider,
-  };
-};
-
 const DEFAULT_RECORDING_PATH = joinPath(process.cwd(), 'nock');
 
 describe('SuperfaceTest', () => {
   let superfaceTest: SuperfaceTest;
 
   afterEach(() => {
-    jest.restoreAllMocks();
-
     mocked(exists).mockReset();
     mocked(matchWildCard).mockReset();
     mocked(writeRecordings).mockReset();
