@@ -22,7 +22,12 @@ import {
   MatchErrorResponseHeaders,
   MatchErrorStatus,
 } from './matcher.errors';
-import { decodeResponse, getHeaderValue, parseBody } from './matcher.utils';
+import {
+  decodeResponse,
+  getRequestHeader,
+  getResponseHeader,
+  parseBody,
+} from './matcher.utils';
 
 export interface MatchHeaders {
   old?: string;
@@ -174,9 +179,7 @@ export class Matcher {
     );
 
     // request body
-    if (oldTraffic.body !== undefined) {
-      this.matchRequestBody(oldTraffic.body, newTraffic.body, accept);
-    }
+    this.matchRequestBody(oldTraffic.body, newTraffic.body, accept);
 
     // response
     if (oldTraffic.response !== undefined) {
@@ -194,7 +197,7 @@ export class Matcher {
   ): RequestHeaderMatch {
     debugMatching('\trequest headers');
 
-    const accept = getHeaderValue(oldHeaders, newHeaders, 'accept');
+    const accept = getRequestHeader(oldHeaders, newHeaders, 'accept');
 
     this.addError(
       accept.old,
@@ -217,7 +220,11 @@ export class Matcher {
     debugMatching('\tresponse headers');
 
     // match content type
-    const contentType = getHeaderValue(oldHeaders, newHeaders, 'content-type');
+    const contentType = getResponseHeader(
+      oldHeaders,
+      newHeaders,
+      'content-type'
+    );
 
     if (contentType.old !== contentType.new) {
       this.addError(
@@ -232,7 +239,7 @@ export class Matcher {
     }
 
     // match content Encoding
-    const contentEncoding = getHeaderValue(
+    const contentEncoding = getResponseHeader(
       oldHeaders,
       newHeaders,
       'content-encoding'
@@ -250,7 +257,7 @@ export class Matcher {
       );
     }
 
-    const contentLength = getHeaderValue(
+    const contentLength = getResponseHeader(
       oldHeaders,
       newHeaders,
       'content-length'

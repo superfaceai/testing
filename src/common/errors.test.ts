@@ -1,9 +1,12 @@
 import {
   assertIsIOError,
+  BaseURLNotFoundError,
   ComponentUndefinedError,
   InstanceMissingError,
   MapUndefinedError,
+  ProfileUndefinedError,
   RecordingPathUndefinedError,
+  RecordingsNotFoundError,
   SuperJsonNotFoundError,
   UnexpectedError,
 } from './errors';
@@ -37,6 +40,24 @@ describe('errors', () => {
     it('returns correct format', () => {
       expect(error.toString()).toEqual(
         'MapUndefinedError: Map for profile and provider does not exist.\nUse `superface create --map --profileId profile --providerName provider` to create it.'
+      );
+    });
+  });
+
+  describe('when throwing ProfileUndefinedError', () => {
+    const error = new ProfileUndefinedError('profile');
+
+    it('throws in correct format', () => {
+      expect(() => {
+        throw error;
+      }).toThrow(
+        'Profile profile does not exist.\nUse `superface create --profile --profileId profile` to create it.'
+      );
+    });
+
+    it('returns correct format', () => {
+      expect(error.toString()).toEqual(
+        'ProfileUndefinedError: Profile profile does not exist.\nUse `superface create --profile --profileId profile` to create it.'
       );
     });
   });
@@ -185,6 +206,42 @@ describe('errors', () => {
     it('returns correct format', () => {
       expect(error.toString()).toEqual(
         'SuperJsonNotFoundError: No super.json found.'
+      );
+    });
+  });
+
+  describe('when throwing RecordingsNotFoundError', () => {
+    const error = new RecordingsNotFoundError('path/to/recording.json');
+
+    it('throws in correct format', () => {
+      expect(() => {
+        throw error;
+      }).toThrow(
+        'Recordings could not be found for running mocked tests at "path/to/recording.json".\nYou must call the live API first to record API traffic.\nUse the environment variable SUPERFACE_LIVE_API to call the API and record traffic.\nSee https://github.com/superfaceai/testing#recording to learn more.'
+      );
+    });
+
+    it('returns correct format', () => {
+      expect(error.toString()).toEqual(
+        'RecordingsNotFoundError: Recordings could not be found for running mocked tests at "path/to/recording.json".\nYou must call the live API first to record API traffic.\nUse the environment variable SUPERFACE_LIVE_API to call the API and record traffic.\nSee https://github.com/superfaceai/testing#recording to learn more.'
+      );
+    });
+  });
+
+  describe('when throwing BaseURLNotFoundError', () => {
+    const error = new BaseURLNotFoundError('provider');
+
+    it('throws in correct format', () => {
+      expect(() => {
+        throw error;
+      }).toThrow(
+        'No base URL was found for provider provider, configure a service in provider.json.'
+      );
+    });
+
+    it('returns correct format', () => {
+      expect(error.toString()).toEqual(
+        'BaseURLNotFoundError: No base URL was found for provider provider, configure a service in provider.json.'
       );
     });
   });
