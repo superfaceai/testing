@@ -1,26 +1,16 @@
-import { NormalizedSuperJsonDocument, SecurityValues } from '@superfaceai/ast';
+import { SecurityValues } from '@superfaceai/ast';
 import {
-  detectSuperJson,
   getValue,
-  IFileSystem,
   isPrimitive,
-  loadSuperJson,
-  NodeFileSystem,
   NonPrimitive,
-  normalizeSuperJsonDocument,
   Primitive,
   SecurityConfiguration,
   UnexpectedError,
   Variables,
 } from '@superfaceai/one-sdk';
 import createDebug from 'debug';
-import { join as joinPath } from 'path';
 
 import { InputVariables, RecordingDefinition, RecordingDefinitions } from '.';
-import {
-  SuperJsonLoadingFailedError,
-  SuperJsonNotFoundError,
-} from './common/errors';
 import {
   IGenerator,
   InputGenerateHash,
@@ -34,40 +24,6 @@ import {
 } from './nock';
 
 const debug = createDebug('superface:testing');
-const debugSetup = createDebug('superface:testing:setup');
-
-/**
- * Returns SuperJson based on path detected with its abstract method.
- */
-export async function getSuperJson(options?: {
-  fileSystem: IFileSystem;
-}): Promise<{ path: string; document: NormalizedSuperJsonDocument }> {
-  const superPath = await detectSuperJson(
-    process.cwd(),
-    options?.fileSystem ?? NodeFileSystem,
-    3
-  );
-
-  if (superPath === undefined) {
-    throw new SuperJsonNotFoundError();
-  }
-
-  const superJsonResult = await loadSuperJson(
-    joinPath(superPath, 'super.json'),
-    options?.fileSystem ?? NodeFileSystem
-  );
-
-  if (superJsonResult.isErr()) {
-    throw new SuperJsonLoadingFailedError(superJsonResult.error);
-  }
-
-  debugSetup('SuperJson found on path:', superPath);
-
-  return {
-    path: superPath,
-    document: normalizeSuperJsonDocument(superJsonResult.value),
-  };
-}
 
 export function assertsDefinitionsAreNotStrings(
   definitions: string[] | RecordingDefinition[]

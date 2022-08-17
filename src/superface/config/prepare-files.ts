@@ -12,9 +12,9 @@ import {
 
 import { ComponentUndefinedError } from '../../common/errors';
 import { SuperfaceTestConfig } from '../../superface-test.interfaces';
-import { getSuperJson } from '../../superface-test.utils';
 import { getMapAst, getProfileAst } from './prepare-ast';
 import { getProviderJson } from './prepare-provider-json';
+import { getSuperJson } from './prepare-super-json';
 
 // This deals only with files resolution, it should NOT be exported from directory.
 export async function prepareFiles(

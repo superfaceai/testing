@@ -2,13 +2,13 @@ import { mocked } from 'ts-jest/utils';
 
 import { ComponentUndefinedError } from '../../common/errors';
 import { SuperfaceTestConfig } from '../../superface-test.interfaces';
-import { getSuperJson } from '../../superface-test.utils';
 import { mockMapAST, mockProfileAST } from '../mock/ast';
 import { mockProviderJson } from '../mock/provider';
 import { mockSuperJson } from '../mock/super-json';
 import { getMapAst, getProfileAst } from './prepare-ast';
 import { prepareFiles } from './prepare-files';
 import { getProviderJson } from './prepare-provider-json';
+import { getSuperJson } from './prepare-super-json';
 
 const testPayload: SuperfaceTestConfig = {
   profile: 'profile',
@@ -16,8 +16,8 @@ const testPayload: SuperfaceTestConfig = {
   useCase: 'test',
 };
 
-jest.mock('../../superface-test.utils', () => ({
-  ...jest.requireActual('../../superface-test.utils'),
+jest.mock('./prepare-super-json', () => ({
+  ...jest.requireActual('./prepare-super-json'),
   getSuperJson: jest.fn(),
 }));
 
