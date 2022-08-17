@@ -14,6 +14,7 @@ import { RecordingsNotFoundError, UnexpectedError } from '../common/errors';
 import { matchWildCard, removeTimestamp } from '../common/format';
 import { getGenerator } from '../hash-generator';
 import {
+  IGenerator,
   ITestConfig,
   NockConfig,
   RecordingDefinitions,
@@ -22,11 +23,14 @@ import {
   TestingReturn,
   TestPayload,
 } from '../interfaces';
-import { IMatcher } from '../interfaces/matcher';
+// import { IMatcher } from '../interfaces/matcher';
 import { match } from '../matcher';
+import * as recorder from '../recorder';
 import {
-  IRecordingController,
-  RecordingController,
+  endAndProcessRecording,
+  getRecordings,
+  processAndLoadRecordings,
+  setupRecordingPath,
 } from '../recording-controller';
 import { TestConfig } from '../superface/config';
 import { searchValues } from './utils';
@@ -35,15 +39,14 @@ const debug = createDebug('superface:testing');
 
 export class SuperfaceTest {
   private config: ITestConfig;
-  private recordingController: IRecordingController;
-  private matcher?: IMatcher;
+  private generator: IGenerator;
+  private nockConfig: NockConfig;
+  // private matcher?: IMatcher;
 
   constructor(payload?: TestPayload, nockConfig?: NockConfig) {
     this.config = new TestConfig(payload ?? {});
-    this.recordingController = new RecordingController(
-      getGenerator(nockConfig?.testInstance),
-      nockConfig
-    );
+    this.nockConfig = nockConfig ?? {};
+    this.generator = getGenerator(nockConfig?.testInstance);
 
     // this.matcher = new Matcher();
   }
@@ -73,17 +76,23 @@ export class SuperfaceTest {
     const processRecordings = options?.processRecordings ?? true;
     const inputVariables = searchValues(input, options?.hideInput);
 
-    this.recordingController.setup(input, fixtureName, testCase.testName);
-    const existingRecordings = await this.recordingController.getRecordings();
+    // this.recordingController.setup(input, fixtureName, testCase.testName);
+    const recordingPath = setupRecordingPath(
+      this.generator,
+      input,
+      fixtureName,
+      { nockConfig: this.nockConfig, testName: testCase.testName }
+    );
+    const existingRecordings = await getRecordings(recordingPath);
 
     if (record) {
-      this.recordingController.start();
+      recorder.startRecording();
     } else {
       if (!existingRecordings) {
         throw new RecordingsNotFoundError();
       }
 
-      await this.recordingController.loadRecordings(
+      await processAndLoadRecordings(
         existingRecordings,
         boundProfileProvider,
         provider,
@@ -99,16 +108,12 @@ export class SuperfaceTest {
 
     let newRecordings: RecordingDefinitions | undefined;
     if (record) {
-      newRecordings = await this.recordingController.end(
-        config,
-        inputVariables,
-        {
-          processRecordings,
-          beforeRecordingSave: options?.beforeRecordingSave,
-        }
-      );
+      newRecordings = await endAndProcessRecording(config, inputVariables, {
+        processRecordings,
+        beforeRecordingSave: options?.beforeRecordingSave,
+      });
     } else {
-      this.recordingController.restore();
+      recorder.restoreRecording();
 
       debug('Restored HTTP requests and enabled outgoing requests');
     }
@@ -147,7 +152,7 @@ export class SuperfaceTest {
       // Run perform method on specified configuration
       result = await useCase.perform(input, { provider });
     } catch (error: unknown) {
-      this.recordingController.restore();
+      recorder.restoreRecording();
 
       throw error;
     }
