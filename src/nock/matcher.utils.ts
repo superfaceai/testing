@@ -2,27 +2,27 @@ import { decodeBuffer } from 'http-encoding';
 import { ReplyBody } from 'nock/types';
 import { URLSearchParams } from 'url';
 
+import { UnexpectedError } from '../common/errors';
 import { MatchHeaders } from './matcher';
 
-export function getHeaderValue(
-  oldHeaders: string[] | Record<string, string | string[]>,
-  newHeaders: string[] | Record<string, string | string[]>,
+export function getRequestHeaderValue(
+  headerName: string,
+  payload: Record<string, string | string[]>
+): string | string[] | undefined {
+  const headerKey = Object.keys(payload).find(
+    key => key.toLowerCase() === headerName.toLowerCase()
+  );
+
+  return headerKey ? payload[headerKey] : undefined;
+}
+
+export function getRequestHeader(
+  oldHeaders: Record<string, string | string[]>,
+  newHeaders: Record<string, string | string[]>,
   headerName: string
 ): MatchHeaders {
-  let oldHeader = Array.isArray(oldHeaders)
-    ? oldHeaders.find(
-        (_, i, headers) =>
-          headers[i === 0 ? i : i - 1].toLowerCase() ===
-          headerName.toLowerCase()
-      )
-    : oldHeaders[headerName.toLowerCase()];
-  let newHeader = Array.isArray(newHeaders)
-    ? newHeaders.find(
-        (_, i, headers) =>
-          headers[i === 0 ? i : i - 1].toLowerCase() ===
-          headerName.toLowerCase()
-      )
-    : newHeaders[headerName.toLowerCase()];
+  let oldHeader = getRequestHeaderValue(headerName, oldHeaders);
+  let newHeader = getRequestHeaderValue(headerName, newHeaders);
 
   if (Array.isArray(oldHeader)) {
     oldHeader = oldHeader.join(', ');
@@ -38,19 +38,49 @@ export function getHeaderValue(
   };
 }
 
-/* eslint-disable @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access */
+export function getResponseHeaderValue(
+  headerName: string,
+  payload: string[]
+): string | undefined {
+  for (let i = 0; i < payload.length; i += 2) {
+    if (payload[i].toLowerCase() === headerName.toLowerCase()) {
+      return payload[i + 1];
+    }
+  }
+
+  return undefined;
+}
+
+export function getResponseHeader(
+  oldHeaders: string[],
+  newHeaders: string[],
+  headerName: string
+): MatchHeaders {
+  const oldHeader = getResponseHeaderValue(headerName, oldHeaders);
+  const newHeader = getResponseHeaderValue(headerName, newHeaders);
+
+  return {
+    old: oldHeader,
+    new: newHeader,
+  };
+}
+
+/* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+function composeBuffer(response: any[]): Buffer {
+  return Buffer.concat(response.map(res => Buffer.from(res, 'hex')));
+}
+
 export async function decodeResponse(
   response: unknown,
   contentEncoding: string
 ): Promise<ReplyBody> {
-  let buffer: Buffer;
-  if (Array.isArray(response)) {
-    buffer = Buffer.concat(response.map(res => Buffer.from(res, 'hex')));
-  } else {
-    throw new Error(
+  if (!Array.isArray(response)) {
+    throw new UnexpectedError(
       `Response is encoded by "${contentEncoding}" and is not an array`
     );
   }
+
+  const buffer = composeBuffer(response);
 
   return JSON.parse(
     (await decodeBuffer(buffer, contentEncoding)).toString()

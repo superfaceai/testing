@@ -74,9 +74,9 @@ export interface RecordingProcessOptions {
 
 export interface TestCoverageBase {
   recordingErrors: ErrorCollection;
-  profile: string;
-  provider: string;
-  useCase: string;
+  profileId: string;
+  providerName: string;
+  useCaseName: string;
   impact: string;
   input: NonPrimitive;
   result: TestingReturn;

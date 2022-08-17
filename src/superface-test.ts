@@ -29,7 +29,7 @@ import { getFixtureName, matchWildCard } from './common/format';
 import { exists, mkdirQuiet, readFileQuiet, rename } from './common/io';
 import { writeRecordings } from './common/output-stream';
 import { IGenerator } from './generate-hash';
-import { AnalysisResult, analyzeErrors } from './nock/analyzer';
+import { AnalysisResult, analyzeChangeImpact } from './nock/analyzer';
 import { Matcher } from './nock/matcher';
 import { report, saveReport } from './reporter';
 import {
@@ -448,11 +448,19 @@ export class SuperfaceTest {
     if (match.valid) {
       // do not save new recording as there were no breaking changes found
     } else {
-      this.analysis = analyzeErrors(
-        this.sfConfig as CompleteSuperfaceTestConfig,
-        match.errors,
-        this.recordingPath ?? ''
-      );
+      const impact = analyzeChangeImpact(match.errors);
+
+      // Alert changes
+      const config = this.sfConfig as CompleteSuperfaceTestConfig;
+
+      this.analysis = {
+        impact,
+        profileId: config.profile.configuration.id,
+        providerName: config.provider.configuration.name,
+        useCaseName: config.useCase.name,
+        recordingPath: this.recordingPath ?? '',
+        errors: match.errors,
+      };
 
       // Save new recording as unsupported
       await writeRecordings(
