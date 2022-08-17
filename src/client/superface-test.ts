@@ -76,13 +76,13 @@ export class SuperfaceTest {
     this.recordingController.setup(input, fixtureName, testCase.testName);
     const existingRecordings = await this.recordingController.getRecordings();
 
-    if (!record && !existingRecordings) {
-      throw new RecordingsNotFoundError();
-    }
-
     if (record) {
       this.recordingController.start();
     } else {
+      if (!existingRecordings) {
+        throw new RecordingsNotFoundError();
+      }
+
       await this.recordingController.loadRecordings(
         existingRecordings,
         boundProfileProvider,
@@ -100,8 +100,7 @@ export class SuperfaceTest {
     let newRecordings: RecordingDefinitions | undefined;
     if (record) {
       newRecordings = await this.recordingController.end(
-        boundProfileProvider,
-        provider,
+        config,
         inputVariables,
         {
           processRecordings,
@@ -115,7 +114,7 @@ export class SuperfaceTest {
     }
 
     // match existing and new recordings
-    if (existingRecordings !== undefined) {
+    if (record && existingRecordings !== undefined) {
       match(existingRecordings, newRecordings ?? []);
     }
 

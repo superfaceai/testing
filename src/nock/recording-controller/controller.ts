@@ -11,6 +11,7 @@ import {
 import { exists, readFileQuiet } from '../../common/io';
 import { writeRecordings } from '../../common/output-stream';
 import {
+  CompleteSuperfaceTestConfig,
   IGenerator,
   InputVariables,
   NockConfig,
@@ -27,12 +28,16 @@ export interface IRecordingController {
   recordingPath?: string;
 
   setup: (input: NonPrimitive, fixtureName: string, testName?: string) => void;
-  getRecordings: (version?: string) => Promise<RecordingDefinitions | undefined>;
+  getRecordings: (
+    version?: string
+  ) => Promise<RecordingDefinitions | undefined>;
   write: (recordings: RecordingDefinitions) => Promise<void>;
   start: () => void;
   end: (
-    boundProfileProvider: BoundProfileProvider,
-    provider: Provider,
+    config: Pick<
+      CompleteSuperfaceTestConfig,
+      'provider' | 'boundProfileProvider'
+    >,
     inputVariables?: InputVariables,
     options?: {
       processRecordings?: boolean;
@@ -76,7 +81,9 @@ export class RecordingController {
     this.setupRecordingPath(hash, fixtureName);
   }
 
-  async getRecordings(_version?: string): Promise<RecordingDefinitions | undefined> {
+  async getRecordings(
+    _version?: string
+  ): Promise<RecordingDefinitions | undefined> {
     if (!this.recordingPath) {
       throw new RecordingPathUndefinedError();
     }
@@ -110,8 +117,10 @@ export class RecordingController {
   }
 
   async end(
-    boundProfileProvider: BoundProfileProvider,
-    provider: Provider,
+    {
+      provider,
+      boundProfileProvider,
+    }: Pick<CompleteSuperfaceTestConfig, 'provider' | 'boundProfileProvider'>,
     inputVariables?: InputVariables,
     options?: {
       processRecordings?: boolean;
