@@ -111,6 +111,15 @@ export class BaseURLNotFoundError extends ErrorBase {
   }
 }
 
+export class CoverageFileNotFoundError extends ErrorBase {
+  constructor(path: string) {
+    super(
+      'CoverageFileNotFoundError',
+      `No coverage file at path "${path}" found.`
+    );
+  }
+}
+
 export function assertIsIOError(
   error: unknown
 ): asserts error is { code: string } {
