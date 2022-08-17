@@ -1,7 +1,7 @@
 import { createHash } from 'crypto';
 import createDebug from 'debug';
 
-import { HashOptions, IGenerator } from '../../interfaces';
+import { HashOptions, IGenerator } from '../interfaces';
 
 const debugHashing = createDebug('superface:testing:hash');
 

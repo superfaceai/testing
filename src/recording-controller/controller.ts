@@ -7,9 +7,9 @@ import {
   BaseURLNotFoundError,
   RecordingPathUndefinedError,
   UnexpectedError,
-} from '../../common/errors';
-import { exists, readFileQuiet } from '../../common/io';
-import { writeRecordings } from '../../common/output-stream';
+} from '../common/errors';
+import { exists, readFileQuiet } from '../common/io';
+import { writeRecordings } from '../common/output-stream';
 import {
   CompleteSuperfaceTestConfig,
   IGenerator,
@@ -17,7 +17,7 @@ import {
   NockConfig,
   ProcessingFunction,
   RecordingDefinitions,
-} from '../../interfaces';
+} from '../interfaces';
 import { IRecorder, Recorder } from '../recorder/recorder';
 import { checkSensitiveInformation, replaceCredentials } from './utils';
 

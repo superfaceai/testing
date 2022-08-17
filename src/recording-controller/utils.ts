@@ -8,8 +8,8 @@ import {
 import { Primitive } from '@superfaceai/one-sdk/dist/internal/interpreter/variables';
 import createDebug from 'debug';
 
-import { UnexpectedError } from '../../common/errors';
-import { RecordingDefinition, RecordingDefinitions } from '../../interfaces';
+import { UnexpectedError } from '../common/errors';
+import { RecordingDefinition, RecordingDefinitions } from '../interfaces';
 import {
   replaceCredentialInDefinition,
   replaceInputInDefinition,

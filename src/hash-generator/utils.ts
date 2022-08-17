@@ -1,4 +1,4 @@
-import { IGenerator } from '../../interfaces';
+import { IGenerator } from '../interfaces';
 import {
   InputGenerateHash,
   JestGenerateHash,

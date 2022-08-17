@@ -12,6 +12,7 @@ import { join as joinPath } from 'path';
 
 import { RecordingsNotFoundError, UnexpectedError } from '../common/errors';
 import { matchWildCard, removeTimestamp } from '../common/format';
+import { getGenerator } from '../hash-generator';
 import {
   ITestConfig,
   NockConfig,
@@ -22,12 +23,11 @@ import {
   TestPayload,
 } from '../interfaces';
 import { IMatcher } from '../interfaces/matcher';
-import { getGenerator } from '../nock/hash-generator';
-import { match } from '../nock/matcher';
+import { match } from '../matcher';
 import {
   IRecordingController,
   RecordingController,
-} from '../nock/recording-controller';
+} from '../recording-controller';
 import { TestConfig } from '../superface/config';
 import { searchValues } from './utils';
 

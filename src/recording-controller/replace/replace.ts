@@ -9,8 +9,8 @@ import createDebug from 'debug';
 import { ReplyBody, RequestBodyMatcher } from 'nock/types';
 import { URL } from 'url';
 
-import { UnexpectedError } from '../../../common/errors';
-import { RecordingDefinition } from '../../../interfaces/nock';
+import { UnexpectedError } from '../../common/errors';
+import { RecordingDefinition } from '../../interfaces/nock';
 import { includes, replaceCredential } from './utils';
 
 export interface ReplaceOptions {

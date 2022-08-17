@@ -1,4 +1,4 @@
-import { RecordingDefinitions } from '../../interfaces';
+import { RecordingDefinitions } from '../interfaces';
 
 export function match(
   _oldRecordings: RecordingDefinitions,

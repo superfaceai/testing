@@ -1,5 +1,5 @@
-import { UnexpectedError } from "../../common/errors";
-import { RecordingDefinitions } from "../../interfaces";
+import { UnexpectedError } from "../common/errors";
+import { RecordingDefinitions } from "../interfaces";
 
 export function assertsDefinitionsAreNotStrings(
     definitions: string[] | RecordingDefinitions

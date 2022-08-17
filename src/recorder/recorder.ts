@@ -13,7 +13,7 @@ import {
   NockConfig,
   ProcessingFunction,
   RecordingDefinitions,
-} from '../../interfaces';
+} from '../interfaces';
 import {
   assertsDefinitionsAreNotStrings,
 } from './utils';
