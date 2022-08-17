@@ -96,31 +96,32 @@ export interface SuperfaceClientOptions {
   };
 }
 
-const DEFAULT_SUPERJSON = new SuperJson({
-  profiles: {
-    profile: {
-      file: 'path/to/profile.supr',
-      providers: {
-        provider: {
-          file: 'path/to/map.suma',
+const mockSuperJson = (security?: SecurityValues[]) =>
+  new SuperJson({
+    profiles: {
+      profile: {
+        file: 'path/to/profile.supr',
+        providers: {
+          provider: {
+            file: 'path/to/map.suma',
+          },
         },
       },
     },
-  },
-  providers: {
-    provider: {
-      file: 'path/to/provider.json',
-      security: [],
+    providers: {
+      provider: {
+        file: 'path/to/provider.json',
+        security: security ?? [],
+      },
     },
-  },
-});
+  });
 
 export const SuperfaceClientMock = jest.fn<
   SuperfaceClient,
   Parameters<(options?: SuperfaceClientOptions) => SuperfaceClient>
 >((options?: SuperfaceClientOptions) => ({
   ...Object.create(SuperfaceClient.prototype),
-  superJson: options?.superJson ?? DEFAULT_SUPERJSON,
+  superJson: options?.superJson ?? mockSuperJson(),
   getProfile: getProfileMock,
   getProvider: getProviderMock,
   cacheBoundProfileProvider: jest.fn().mockReturnValue({
@@ -148,7 +149,7 @@ export const getMockedSfConfig = async (options?: {
   parameters?: Record<string, string>;
 }): Promise<CompleteSuperfaceTestConfig> => ({
   client: new SuperfaceClientMock({
-    superJson: options?.superJson ?? DEFAULT_SUPERJSON,
+    superJson: options?.superJson ?? mockSuperJson(options?.securityValues),
     configuration: {
       baseUrl: options?.baseUrl ?? 'https://base.url',
       securitySchemes: options?.securitySchemes,

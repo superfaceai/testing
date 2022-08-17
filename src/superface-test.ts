@@ -53,6 +53,7 @@ import {
   checkSensitiveInformation,
   getGenerator,
   getProfileId,
+  getSecurityValues,
   getSuperJson,
   isProfileProviderLocal,
   replaceCredentials,
@@ -181,7 +182,13 @@ export class SuperfaceTest {
     const { configuration } = this.boundProfileProvider;
     const integrationParameters = configuration.parameters ?? {};
     const securitySchemes = configuration.security;
-    const securityValues = this.sfConfig.provider.configuration.security;
+    const superJson = this.sfConfig.client?.superJson ?? (await getSuperJson());
+
+    const securityValues = getSecurityValues(
+      this.sfConfig.provider.configuration.name,
+      superJson.normalized
+    );
+
     const baseUrl = configuration.services.getUrl();
 
     if (baseUrl === undefined) {
@@ -285,7 +292,14 @@ export class SuperfaceTest {
       assertBoundProfileProvider(this.boundProfileProvider);
 
       const { configuration } = this.boundProfileProvider;
-      const securityValues = this.sfConfig.provider.configuration.security;
+      const superJson =
+        this.sfConfig.client?.superJson ?? (await getSuperJson());
+
+      const securityValues = getSecurityValues(
+        this.sfConfig.provider.configuration.name,
+        superJson.normalized
+      );
+
       const securitySchemes = configuration.security;
       const integrationParameters = configuration.parameters ?? {};
 
