@@ -13,7 +13,7 @@ import {
   ProcessingFunction,
   RecordingDefinitions,
 } from '../interfaces';
-import * as recorder from '../recorder';
+import { endRecording, loadRecordings } from './recorder';
 import { checkSensitiveInformation, replaceCredentials } from './utils';
 
 const debug = createDebug('superface:recording-controller');
@@ -80,7 +80,7 @@ export async function endAndProcessRecording(
     beforeRecordingSave?: ProcessingFunction;
   }
 ): Promise<RecordingDefinitions | undefined> {
-  const definitions = recorder.endRecording();
+  const definitions = endRecording();
 
   if (definitions === undefined || definitions.length === 0) {
     return undefined;
@@ -169,5 +169,5 @@ export async function processAndLoadRecordings(
     });
   }
 
-  await recorder.loadRecordings(definitions, options?.beforeRecordingLoad);
+  await loadRecordings(definitions, options?.beforeRecordingLoad);
 }

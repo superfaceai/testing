@@ -25,13 +25,7 @@ import {
 } from '../interfaces';
 // import { IMatcher } from '../interfaces/matcher';
 import { match } from '../matcher';
-import * as recorder from '../recorder';
-import {
-  endAndProcessRecording,
-  getRecordings,
-  processAndLoadRecordings,
-  setupRecordingPath,
-} from '../recording-controller';
+import * as recorder from '../recording';
 import { TestConfig } from '../superface/config';
 import { searchValues } from './utils';
 
@@ -77,13 +71,13 @@ export class SuperfaceTest {
     const inputVariables = searchValues(input, options?.hideInput);
 
     // this.recordingController.setup(input, fixtureName, testCase.testName);
-    const recordingPath = setupRecordingPath(
+    const recordingPath = recorder.setupRecordingPath(
       this.generator,
       input,
       fixtureName,
       { nockConfig: this.nockConfig, testName: testCase.testName }
     );
-    const existingRecordings = await getRecordings(recordingPath);
+    const existingRecordings = await recorder.getRecordings(recordingPath);
 
     if (record) {
       recorder.startRecording();
@@ -92,7 +86,7 @@ export class SuperfaceTest {
         throw new RecordingsNotFoundError();
       }
 
-      await processAndLoadRecordings(
+      await recorder.processAndLoadRecordings(
         existingRecordings,
         boundProfileProvider,
         provider,
@@ -108,10 +102,14 @@ export class SuperfaceTest {
 
     let newRecordings: RecordingDefinitions | undefined;
     if (record) {
-      newRecordings = await endAndProcessRecording(config, inputVariables, {
-        processRecordings,
-        beforeRecordingSave: options?.beforeRecordingSave,
-      });
+      newRecordings = await recorder.endAndProcessRecording(
+        config,
+        inputVariables,
+        {
+          processRecordings,
+          beforeRecordingSave: options?.beforeRecordingSave,
+        }
+      );
     } else {
       recorder.restoreRecording();
 
