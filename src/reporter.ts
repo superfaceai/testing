@@ -34,15 +34,10 @@ export async function saveReport({
     path,
     `coverage-${hash}.json`
   );
-  const { profileId, providerName, useCaseName, impact, errors } = analysis;
   const data: TestCoverageBase = {
-    recordingErrors: errors,
+    ...analysis,
     input,
     result,
-    profileId,
-    providerName,
-    useCaseName,
-    impact,
   };
 
   debug(`Writing report on path "${coveragePath}"`);

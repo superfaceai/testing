@@ -12,7 +12,7 @@ import {
 } from '@superfaceai/one-sdk/dist/internal/interpreter/variables';
 import { Definition } from 'nock/types';
 
-import { ErrorCollection } from './nock/matcher.errors';
+import { AnalysisResult } from './nock/analyzer';
 
 export interface SuperfaceTestConfigPayload {
   client?: SuperfaceClient;
@@ -72,15 +72,10 @@ export interface RecordingProcessOptions {
   fullError?: boolean;
 }
 
-export interface TestCoverageBase {
-  recordingErrors: ErrorCollection;
-  profileId: string;
-  providerName: string;
-  useCaseName: string;
-  impact: string;
+export type TestCoverageBase = AnalysisResult & {
   input: NonPrimitive;
   result: TestingReturn;
-}
+};
 
 // TODO: add this to testanalysis somehow
 // export type TestCoverage =
