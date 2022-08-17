@@ -1,4 +1,4 @@
-import { NonPrimitive } from "@superfaceai/one-sdk/dist/internal/interpreter/variables";
+import { NonPrimitive } from '@superfaceai/one-sdk/dist/internal/interpreter/variables';
 
 export interface HashOptions {
   input: NonPrimitive;

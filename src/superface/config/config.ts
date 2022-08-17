@@ -8,8 +8,17 @@ import {
 import createDebug from 'debug';
 
 import { ComponentUndefinedError } from '../../common/errors';
-import { CompleteSuperfaceTestConfig, ITestConfig, TestPayload } from '../../interfaces';
-import { assertsPreparedConfig, getProfileId, getSuperJson, isProfileProviderLocal } from './utils';
+import {
+  CompleteSuperfaceTestConfig,
+  ITestConfig,
+  TestPayload,
+} from '../../interfaces';
+import {
+  assertsPreparedConfig,
+  getProfileId,
+  getSuperJson,
+  isProfileProviderLocal,
+} from './utils';
 
 const debugSetup = createDebug('superface:testing:setup');
 
