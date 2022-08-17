@@ -1,8 +1,8 @@
 import { NonPrimitive } from '@superfaceai/one-sdk/dist/internal/interpreter/variables';
 import createDebug from 'debug';
 import { join as joinPath } from 'path';
-import { CoverageFileNotFoundError } from './common/errors';
 
+import { CoverageFileNotFoundError } from './common/errors';
 import { exists, readFileQuiet, readFilesInDir, rimraf } from './common/io';
 import { OutputStream } from './common/output-stream';
 import { AnalysisResult } from './nock/analyzer';

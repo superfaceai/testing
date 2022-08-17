@@ -21,6 +21,9 @@ import { matchWildCard } from './common/format';
 import { exists, readFileQuiet } from './common/io';
 import { writeRecordings } from './common/output-stream';
 import { generate } from './generate-hash';
+import { Matcher } from './nock/matcher';
+import { MatchErrorResponse } from './nock/matcher.errors';
+import { saveReport } from './reporter';
 import {
   getMockedSfConfig,
   getProfileMock,
@@ -34,9 +37,6 @@ import {
   HIDDEN_INPUT_PLACEHOLDER,
   HIDDEN_PARAMETERS_PLACEHOLDER,
 } from './superface-test.utils';
-import { Matcher } from './nock/matcher';
-import { MatchErrorResponse } from './nock/matcher.errors';
-import { saveReport } from './reporter';
 
 /* eslint-disable @typescript-eslint/unbound-method */
 
@@ -55,7 +55,7 @@ jest.mock('./common/output-stream', () => ({
   writeRecordings: jest.fn(),
 }));
 
-jest.mock('./reporter')
+jest.mock('./reporter');
 
 const DEFAULT_RECORDING_PATH = joinPath(process.cwd(), 'nock');
 
@@ -420,9 +420,9 @@ describe('SuperfaceTest', () => {
           };
 
           jest.spyOn(recorder, 'play').mockReturnValueOnce([newRecording]);
-          
+
           const writeRecordingsSpy = mocked(writeRecordings);
-          const errors ={
+          const errors = {
             added: [],
             removed: [],
             changed: [
@@ -434,7 +434,7 @@ describe('SuperfaceTest', () => {
                 'response property "value" is not present'
               ),
             ],
-          }
+          };
           const matcherSpy = jest.spyOn(Matcher, 'match').mockResolvedValue({
             valid: false,
             errors,

@@ -1,6 +1,7 @@
 import { ok } from '@superfaceai/one-sdk';
 import { join as joinPath } from 'path';
 import { mocked } from 'ts-jest/utils';
+
 import { CoverageFileNotFoundError } from './common/errors';
 import { exists, readFileQuiet, readFilesInDir } from './common/io';
 import { OutputStream } from './common/output-stream';
@@ -58,7 +59,7 @@ describe('Reporter module', () => {
     });
 
     it('warns that writing failed, when writeIfAbsent returns false', async () => {
-      let consoleOutput: string[] = [];
+      const consoleOutput: string[] = [];
       const originalWarn = console.warn;
       const mockedWarn = (output: string) => consoleOutput.push(output);
       console.warn = mockedWarn;
