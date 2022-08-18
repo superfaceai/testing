@@ -535,7 +535,7 @@ export function getGenerator(testInstance: unknown): IGenerator {
   return new InputGenerateHash();
 }
 
-export function parsePublishEnv(variable: string | undefined): boolean {
+export function parseBooleanEnv(variable: string | undefined): boolean {
   if (variable === 'true') {
     return true;
   }

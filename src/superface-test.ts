@@ -54,7 +54,7 @@ import {
   getSuperJson,
   isProfileProviderLocal,
   mapError,
-  parsePublishEnv,
+  parseBooleanEnv,
   replaceCredentials,
   searchValues,
 } from './superface-test.utils';
@@ -108,9 +108,9 @@ export class SuperfaceTest {
 
     this.setupRecordingPath(getFixtureName(this.sfConfig), hash);
 
-    // Replace currently supported recordings with unsupported (new recordings with changes)
-    if (await this.canReplaceRecording()) {
-      await this.replaceUnsupportedRecording();
+    // Replace currently supported traffic with new (with changes)
+    if (await this.canUpdateTraffic()) {
+      await this.updateTraffic();
     }
 
     // Parse env variable and check if test should be recorded
@@ -122,7 +122,6 @@ export class SuperfaceTest {
       record,
       processRecordings,
       inputVariables,
-      options?.recordingVersion,
       options?.beforeRecordingLoad
     );
 
@@ -192,26 +191,26 @@ export class SuperfaceTest {
     await report(alert, options);
   }
 
-  private async replaceUnsupportedRecording(): Promise<void> {
-    const pathToUnsupported = this.composeRecordingPath('unsupported');
+  private async updateTraffic(): Promise<void> {
     const pathToCurrent = this.composeRecordingPath();
+    const pathToNew = this.composeRecordingPath('new');
 
     await mkdirQuiet(joinPath(dirname(pathToCurrent), 'old'));
 
-    // TODO: compose version based on executed usecase
-    await rename(pathToCurrent, this.composeRecordingPath('1.0.0'));
-    await rename(pathToUnsupported, pathToCurrent);
+    // TODO: compose version based on used map
+    let i = 0;
+    while (await exists(this.composeRecordingPath(`${i}`))) {
+      i++;
+    }
+
+    await rename(pathToCurrent, this.composeRecordingPath(`${i}`));
+    await rename(pathToNew, pathToCurrent);
   }
 
-  private async canReplaceRecording(): Promise<boolean> {
-    const replaceRecording = parsePublishEnv(
-      process.env.PUBLISH_UNSUPPORTED_RECORDINGS
-    );
+  private async canUpdateTraffic(): Promise<boolean> {
+    const updateTraffic = parseBooleanEnv(process.env.UPDATE_TRAFFIC);
 
-    if (
-      replaceRecording &&
-      (await exists(this.composeRecordingPath('unsupported')))
-    ) {
+    if (updateTraffic && (await exists(this.composeRecordingPath('new')))) {
       return true;
     }
 
@@ -232,7 +231,6 @@ export class SuperfaceTest {
     record: boolean,
     processRecordings: boolean,
     inputVariables?: InputVariables,
-    recordingVersion?: string,
     beforeRecordingLoad?: ProcessingFunction
   ): Promise<void> {
     if (record) {
@@ -251,7 +249,6 @@ export class SuperfaceTest {
       await this.loadRecordings(
         processRecordings,
         inputVariables,
-        recordingVersion,
         beforeRecordingLoad
       );
     }
@@ -260,11 +257,9 @@ export class SuperfaceTest {
   private async loadRecordings(
     processRecordings: boolean,
     inputVariables?: InputVariables,
-    recordingVersion?: string,
     beforeRecordingLoad?: ProcessingFunction
   ): Promise<void> {
-    // TODO: validate version format
-    const definitions = await this.getRecordings(recordingVersion);
+    const definitions = await this.getRecordings();
 
     assertsPreparedConfig(this.sfConfig);
     assertBoundProfileProvider(this.boundProfileProvider);
@@ -310,19 +305,32 @@ export class SuperfaceTest {
     }
   }
 
-  async getRecordings(version?: string): Promise<RecordingDefinitions> {
-    const recordingPath = this.composeRecordingPath(version);
-    const recordingExists = await exists(recordingPath);
+  async getRecordings(): Promise<RecordingDefinitions> {
+    const useNewTraffic = parseBooleanEnv(process.env.USE_NEW_TRAFFIC);
+    const newRecordingPath = this.composeRecordingPath('new');
+
+    if (useNewTraffic && (await exists(newRecordingPath))) {
+      return await this.parseRecordings(newRecordingPath);
+    }
+
+    const currentRecordingPath = this.composeRecordingPath();
+    const recordingExists = await exists(currentRecordingPath);
 
     if (!recordingExists) {
-      throw new RecordingsNotFoundError(recordingPath);
+      throw new RecordingsNotFoundError(currentRecordingPath);
     }
 
-    const definitionFile = await readFileQuiet(recordingPath);
+    return await this.parseRecordings(currentRecordingPath);
+  }
+
+  private async parseRecordings(path: string): Promise<RecordingDefinitions> {
+    const definitionFile = await readFileQuiet(path);
 
     if (definitionFile === undefined) {
-      throw new UnexpectedError('Reading recording file failed');
+      throw new UnexpectedError('Reading new recording file failed');
     }
+
+    debug(`Parsing recording file at: "${path}"`);
 
     return JSON.parse(definitionFile) as RecordingDefinitions;
   }
@@ -462,11 +470,8 @@ export class SuperfaceTest {
         errors: match.errors,
       };
 
-      // Save new recording as unsupported
-      await writeRecordings(
-        this.composeRecordingPath('unsupported'),
-        newTraffic
-      );
+      // Save new traffic
+      await writeRecordings(this.composeRecordingPath('new'), newTraffic);
     }
   }
 
@@ -475,8 +480,8 @@ export class SuperfaceTest {
       throw new RecordingPathUndefinedError();
     }
 
-    if (version === 'unsupported') {
-      return `${this.recordingPath}-unsupported.json`;
+    if (version === 'new') {
+      return `${this.recordingPath}-new.json`;
     }
 
     if (version !== undefined) {

@@ -454,7 +454,7 @@ describe('SuperfaceTest', () => {
 
           expect(writeRecordingsSpy).toBeCalledTimes(1);
           expect(writeRecordingsSpy).toBeCalledWith(
-            expect.stringContaining('unsupported'),
+            expect.stringContaining('new'),
             [newRecording]
           );
 
