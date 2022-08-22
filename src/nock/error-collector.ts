@@ -11,10 +11,10 @@ export class ErrorCollector {
   private readonly changed: MatchError[] = [];
 
   get count(): number {
-    return [...this.added, ...this.removed, ...this.changed].length;
+    return this.added.length + this.removed.length + this.changed.length;
   }
 
-  get errors(): ErrorCollection {
+  get errors(): ErrorCollection<MatchError> {
     return {
       added: this.added,
       removed: this.removed,

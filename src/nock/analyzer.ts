@@ -1,5 +1,6 @@
 import {
   ErrorCollection,
+  MatchError,
   MatchErrorLength,
   MatchErrorResponse,
   MatchErrorResponseHeaders,
@@ -19,10 +20,12 @@ export interface AnalysisResult {
   useCaseName: string;
   recordingPath: string;
   impact: MatchImpact;
-  errors: ErrorCollection;
+  errors: ErrorCollection<MatchError>;
 }
 
-export function analyzeChangeImpact(errors: ErrorCollection): MatchImpact {
+export function analyzeChangeImpact(
+  errors: ErrorCollection<MatchError>
+): MatchImpact {
   // check for breaking changes
   const responseDoesNotMatch = [...errors.removed, ...errors.changed].some(
     error => error instanceof MatchErrorResponse

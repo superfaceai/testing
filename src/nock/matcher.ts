@@ -62,7 +62,7 @@ CONSIDER DISABLING SENSITIVE INFORMATION LOGGING BY APPENDING THE DEBUG ENVIRONM
 
 export type MatchResult =
   | { valid: true }
-  | { valid: false; errors: ErrorCollection };
+  | { valid: false; errors: ErrorCollection<MatchError> };
 
 export class Matcher {
   private static errorCollector: ErrorCollector;

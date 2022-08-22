@@ -13,6 +13,7 @@ import {
 import { Definition } from 'nock/types';
 
 import { AnalysisResult } from './nock/analyzer';
+import { ErrorCollection } from './nock/matcher.errors';
 
 export interface SuperfaceTestConfigPayload {
   client?: SuperfaceClient;
@@ -71,9 +72,10 @@ export interface RecordingProcessOptions {
   fullError?: boolean;
 }
 
-export type TestAnalysis = AnalysisResult & {
+export type TestAnalysis = Omit<AnalysisResult, 'errors'> & {
   input: NonPrimitive;
   result: TestingReturn;
+  errors: ErrorCollection<string>;
 };
 
 // TODO: add this to testanalysis somehow

@@ -6,7 +6,7 @@ import { CoverageFileNotFoundError } from './common/errors';
 import { exists, readFileQuiet, readFilesInDir, rimraf } from './common/io';
 import { OutputStream } from './common/output-stream';
 import { AnalysisResult } from './nock/analyzer';
-import { ErrorCollection } from './nock/matcher.errors';
+import { ErrorCollection, MatchError } from './nock/matcher.errors';
 import {
   TestAnalysis,
   TestingReturn,
@@ -17,6 +17,10 @@ export const DEFAULT_COVERAGE_PATH = 'superface-test-coverage';
 
 const debug = createDebug('superface:testing:reporter');
 
+/**
+ * Saves provider change report along with input and result
+ * on filesystem under /superface-test-coverage
+ */
 export async function saveReport({
   input,
   result,
@@ -56,32 +60,32 @@ export async function saveReport({
   }
 }
 
-function parseErrors(errors: ErrorCollection): ErrorCollection {
-  const result: ErrorCollection = { added: [], changed: [], removed: [] };
+/**
+ * Parses catched errors to strings.
+ *
+ * @param errors error collection with MatchError instances
+ * @returns error collection with strings
+ */
+function parseErrors(
+  errors: ErrorCollection<MatchError>
+): ErrorCollection<string> {
+  const result: ErrorCollection<string> = {
+    added: [],
+    changed: [],
+    removed: [],
+  };
 
-  errors.added.forEach((error, i) => {
-    if (typeof error === 'string') {
-      result.added[i] = error;
-    } else {
-      result.added[i] = error.toString();
-    }
-  });
+  for (const error of errors.added) {
+    result.added.push(error.toString());
+  }
 
-  errors.removed.forEach((error, i) => {
-    if (typeof error === 'string') {
-      result.removed[i] = error;
-    } else {
-      result.removed[i] = error.toString();
-    }
-  });
+  for (const error of errors.removed) {
+    result.removed.push(error.toString());
+  }
 
-  errors.changed.forEach((error, i) => {
-    if (typeof error === 'string') {
-      result.changed[i] = error;
-    } else {
-      result.changed[i] = error.toString();
-    }
-  });
+  for (const error of errors.changed) {
+    result.changed.push(error.toString());
+  }
 
   return result;
 }
