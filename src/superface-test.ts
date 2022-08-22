@@ -146,8 +146,10 @@ export class SuperfaceTest {
       throw error;
     }
 
-    // TODO: add some env variable to enable/disable this
-    if (this.analysis) {
+    if (
+      this.analysis &&
+      !parseBooleanEnv(process.env.DISABLE_PROVIDER_CHANGES_COVERAGE)
+    ) {
       await saveReport({
         input,
         result,
