@@ -71,7 +71,7 @@ export interface RecordingProcessOptions {
   fullError?: boolean;
 }
 
-export type TestCoverageBase = AnalysisResult & {
+export type TestAnalysis = AnalysisResult & {
   input: NonPrimitive;
   result: TestingReturn;
 };
@@ -87,4 +87,4 @@ export type TestCoverageBase = AnalysisResult & {
 //       error: PerformError | string;
 //     };
 
-export type TestReport = TestCoverageBase[];
+export type TestReport = TestAnalysis[];

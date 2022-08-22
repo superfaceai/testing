@@ -6,8 +6,9 @@ import { CoverageFileNotFoundError } from './common/errors';
 import { exists, readFileQuiet, readFilesInDir, rimraf } from './common/io';
 import { OutputStream } from './common/output-stream';
 import { AnalysisResult } from './nock/analyzer';
+import { ErrorCollection } from './nock/matcher.errors';
 import {
-  TestCoverageBase,
+  TestAnalysis,
   TestingReturn,
   TestReport,
 } from './superface-test.interfaces';
@@ -35,8 +36,10 @@ export async function saveReport({
     path,
     `coverage-${hash}.json`
   );
-  const data: TestCoverageBase = {
+
+  const data: TestAnalysis = {
     ...analysis,
+    errors: parseErrors(analysis.errors),
     input,
     result,
   };
@@ -51,6 +54,36 @@ export async function saveReport({
   if (!write) {
     console.warn('Writing coverage data failed');
   }
+}
+
+function parseErrors(errors: ErrorCollection): ErrorCollection {
+  const result: ErrorCollection = { added: [], changed: [], removed: [] };
+
+  errors.added.forEach((error, i) => {
+    if (typeof error === 'string') {
+      result.added[i] = error;
+    } else {
+      result.added[i] = error.toString();
+    }
+  });
+
+  errors.removed.forEach((error, i) => {
+    if (typeof error === 'string') {
+      result.removed[i] = error;
+    } else {
+      result.removed[i] = error.toString();
+    }
+  });
+
+  errors.changed.forEach((error, i) => {
+    if (typeof error === 'string') {
+      result.changed[i] = error;
+    } else {
+      result.changed[i] = error.toString();
+    }
+  });
+
+  return result;
 }
 
 export async function report(
@@ -75,7 +108,7 @@ export async function report(
       throw new CoverageFileNotFoundError(path);
     }
 
-    const coverage = JSON.parse(data) as TestCoverageBase;
+    const coverage = JSON.parse(data) as TestAnalysis;
 
     report.push(coverage);
 

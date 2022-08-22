@@ -138,11 +138,17 @@ export class MatchErrorResponse extends MatchError {
   }
 }
 
-export interface ErrorCollection {
-  added: MatchError[];
-  removed: MatchError[];
-  changed: MatchError[];
-}
+export type ErrorCollection =
+  | {
+      added: MatchError[];
+      removed: MatchError[];
+      changed: MatchError[];
+    }
+  | {
+      added: string[];
+      removed: string[];
+      changed: string[];
+    };
 
 export enum ErrorType {
   ADD = 'add',
