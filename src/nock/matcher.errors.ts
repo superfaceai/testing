@@ -111,9 +111,11 @@ export class MatchErrorRequestBody extends MatchError {
     const message =
       typeof payload === 'string'
         ? `Request body does not match: ${payload}`
-        : `Request body does not match: "${
+        : `Request body does not match: \nold:\n\`\`\`${
             inspect(payload.oldRequestBody) ?? 'not-existing'
-          }" : "${inspect(payload.newRequestBody) ?? 'not-existing'}"`;
+          }\`\`\`\nnew:\n\`\`\`${
+            inspect(payload.newRequestBody) ?? 'not-existing'
+          }\`\`\``;
 
     super('MatchErrorRequestBody', message);
 
@@ -128,10 +130,11 @@ export class MatchErrorResponse extends MatchError {
   ) {
     super(
       'MatchErrorResponse',
-      `Response does not match: "${
+      `Response does not match: \nold:\n\`\`\`${
         inspect(payload.oldResponse) ?? 'not-existing'
-      }" : "${inspect(payload.newResponse) ?? 'not-existing'}"\n` +
-        stringPayload
+      }\`\`\`\nnew:\n\`\`\`${
+        inspect(payload.newResponse) ?? 'not-existing'
+      }\`\`\`\n` + stringPayload
     );
 
     Object.setPrototypeOf(this, MatchErrorResponse.prototype);
