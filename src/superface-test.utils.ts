@@ -53,7 +53,8 @@ import {
   SuperfaceTestConfigPayload,
 } from './superface-test.interfaces';
 
-const debug = createDebug('superface:testing');
+const debugSetup = createDebug('superface:testing:setup');
+const debugRecording = createDebug('superface:testing:recordings');
 
 /**
  * Asserts that entered sfConfig contains every component and
@@ -128,7 +129,7 @@ export function isProfileProviderLocal(
   profileId: string,
   superJsonNormalized: NormalizedSuperJsonDocument
 ): void {
-  debug(
+  debugSetup(
     'Checking for local profile provider in super.json for given profile:',
     profileId
   );
@@ -146,7 +147,7 @@ export function isProfileProviderLocal(
     throw new MapUndefinedError(profileId, providerId);
   }
 
-  debug('Found profile provider:', targetedProfileProvider);
+  debugSetup('Found profile provider:', targetedProfileProvider);
 
   if (!('file' in targetedProfileProvider)) {
     throw new MapUndefinedError(profileId, providerId);
@@ -192,7 +193,7 @@ export function getUseCaseName(useCase: UseCase | string): string {
 export async function getSuperJson(): Promise<SuperJson> {
   const superPath = await SuperJson.detectSuperJson(process.cwd(), 3);
 
-  debug('Loading super.json from path:', superPath);
+  debugSetup('Loading super.json from path:', superPath);
 
   if (superPath === undefined) {
     throw new SuperJsonNotFoundError();
@@ -202,7 +203,7 @@ export async function getSuperJson(): Promise<SuperJson> {
     joinPath(superPath, 'super.json')
   );
 
-  debug('Found super.json:', superJsonResult);
+  debugSetup('Found super.json:', superJsonResult);
 
   if (superJsonResult.isErr()) {
     throw new SuperJsonLoadingFailedError(superJsonResult.error);
@@ -222,7 +223,7 @@ export function assertsDefinitionsAreNotStrings(
 }
 
 export function resolveCredential(securityValue: SecurityValues): string {
-  debug('Resolving security value:', securityValue.id);
+  debugRecording('Resolving security value:', securityValue.id);
 
   if (isApiKeySecurityValues(securityValue)) {
     if (securityValue.apikey.startsWith('$')) {
@@ -323,11 +324,11 @@ export function replaceCredentials({
   beforeSave: boolean;
   baseUrl: string;
 }): void {
-  debug('Replacing credentials from recording definitions');
+  debugRecording('Replacing credentials from recording definitions');
 
   for (const definition of definitions) {
     for (const scheme of securitySchemes) {
-      debug(
+      debugRecording(
         `Going through scheme with id: '${scheme.id}' and type: '${scheme.type}'`
       );
 
@@ -349,7 +350,7 @@ export function replaceCredentials({
     }
 
     for (const [name, value] of Object.entries(integrationParameters)) {
-      debug('Going through integration parameter:', name);
+      debugRecording('Going through integration parameter:', name);
 
       replaceParameterInDefinition({
         definition,
@@ -360,7 +361,7 @@ export function replaceCredentials({
 
     if (inputVariables) {
       for (const [name, value] of Object.entries(inputVariables)) {
-        debug('Going through input property:', name);
+        debugRecording('Going through input property:', name);
 
         replaceInputInDefinition({
           definition,
