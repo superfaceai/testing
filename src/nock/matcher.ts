@@ -71,7 +71,6 @@ export class Matcher {
    * Matches old recording file to new recorded traffic.
    * Assumes we always have correct order of HTTP calls.
    *
-   * @param recordingPath - path to old recording
    * @param oldTrafficDefs - old traffic loaded from recording file
    * @param newTrafficDefs - new recorded traffic
    * @returns object representing whether recordings match or not

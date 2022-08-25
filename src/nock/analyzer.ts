@@ -32,7 +32,7 @@ export function analyzeChangeImpact(errors: ErrorCollection): MatchImpact {
     ...errors.removed,
     ...errors.changed,
   ].some(error => error instanceof MatchErrorResponseHeaders);
-  const recordingsCountMatch = [...errors.added, ...errors.removed].some(
+  const recordingsCountNotMatch = [...errors.added, ...errors.removed].some(
     error => error instanceof MatchErrorLength
   );
 
@@ -40,7 +40,7 @@ export function analyzeChangeImpact(errors: ErrorCollection): MatchImpact {
     responseDoesNotMatch ||
     responseHeadersDoesNotMatch ||
     statusCodeDoesNotMatch ||
-    recordingsCountMatch
+    recordingsCountNotMatch
   ) {
     return MatchImpact.MAJOR;
   }
@@ -59,7 +59,10 @@ export function analyzeChangeImpact(errors: ErrorCollection): MatchImpact {
     return MatchImpact.MINOR;
   }
 
-  if ([...errors.added, ...errors.removed, ...errors.changed].length !== 0) {
+  const errorCount =
+    errors.added.length + errors.removed.length + errors.changed.length;
+
+  if (errorCount !== 0) {
     return MatchImpact.PATCH;
   }
 
