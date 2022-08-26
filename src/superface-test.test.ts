@@ -369,7 +369,7 @@ describe('SuperfaceTest', () => {
         );
       });
 
-      describe('and there already exists old traffic', () => {
+      describe('and when old traffic already exists', () => {
         it('does not write recordings when old and new traffic match', async () => {
           superfaceTest = new SuperfaceTest(await getMockedSfConfig());
 
