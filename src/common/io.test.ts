@@ -1,15 +1,22 @@
 import { SuperJson } from '@superfaceai/one-sdk';
-import { join } from 'path';
+import { join as joinPath, resolve as resolvePath } from 'path';
 import { Writable } from 'stream';
 
-import { exists, rimraf, streamEnd, streamWrite } from './io';
+import {
+  exists,
+  mkdirQuiet,
+  readFilesInDir,
+  rimraf,
+  streamEnd,
+  streamWrite,
+} from './io';
 import { OutputStream } from './output-stream';
 
 describe('IO functions', () => {
-  const WORKING_DIR = join('fixtures', 'io');
+  const WORKING_DIR = joinPath('fixtures', 'io');
 
   const FIXTURE = {
-    superJson: join('superface', 'super.json'),
+    superJson: joinPath('superface', 'super.json'),
   };
 
   let INITIAL_CWD: string;
@@ -105,5 +112,59 @@ describe('IO functions', () => {
       }, 100);
       await expect(actualPromise).resolves.toBeUndefined();
     }, 10000);
+  });
+
+  describe('when reading files in directory', () => {
+    it('fails when directory does not exist', async () => {
+      const dirname = 'not-existing-directory';
+
+      await expect(readFilesInDir(dirname)).rejects.toThrow();
+    });
+
+    it('returns empty array when directory has no files', async () => {
+      const dirname = 'test';
+      await mkdirQuiet(dirname);
+
+      await expect(readFilesInDir(dirname)).resolves.toEqual([]);
+    });
+
+    it('returns list of files in directory', async () => {
+      const dirname = 'test';
+      const expectedFileName = joinPath(dirname, 'test.json');
+
+      // prepare
+      await mkdirQuiet(dirname);
+      await OutputStream.writeIfAbsent(expectedFileName, 'test');
+
+      await expect(readFilesInDir(dirname)).resolves.toEqual(
+        expect.arrayContaining([resolvePath(expectedFileName)])
+      );
+    });
+
+    it('returns list of files, even nested in directories', async () => {
+      const dirname = 'test';
+      const expectedFileName1 = joinPath(dirname, 'test.json');
+      const expectedFileName2 = joinPath(dirname, 'nested', 'test.json');
+      const expectedFileName3 = joinPath(
+        dirname,
+        'nested',
+        'nested',
+        'test.json'
+      );
+
+      // prepare
+      const options = { dirs: true };
+      await OutputStream.writeIfAbsent(expectedFileName1, 'test', options);
+      await OutputStream.writeIfAbsent(expectedFileName2, 'test', options);
+      await OutputStream.writeIfAbsent(expectedFileName3, 'test', options);
+
+      await expect(readFilesInDir(dirname)).resolves.toEqual(
+        expect.arrayContaining([
+          resolvePath(expectedFileName1),
+          resolvePath(expectedFileName2),
+          resolvePath(expectedFileName3),
+        ])
+      );
+    });
   });
 });

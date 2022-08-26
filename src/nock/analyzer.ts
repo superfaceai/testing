@@ -1,5 +1,6 @@
 import {
   ErrorCollection,
+  MatchError,
   MatchErrorLength,
   MatchErrorResponse,
   MatchErrorResponseHeaders,
@@ -12,15 +13,19 @@ export enum MatchImpact {
   PATCH = 'patch',
   NONE = 'none',
 }
+
 export interface AnalysisResult {
   profileId: string;
   providerName: string;
   useCaseName: string;
   recordingPath: string;
   impact: MatchImpact;
+  errors: ErrorCollection<MatchError>;
 }
 
-export function analyzeChangeImpact(errors: ErrorCollection): MatchImpact {
+export function analyzeChangeImpact(
+  errors: ErrorCollection<MatchError>
+): MatchImpact {
   // check for breaking changes
   const responseDoesNotMatch = [...errors.removed, ...errors.changed].some(
     error => error instanceof MatchErrorResponse

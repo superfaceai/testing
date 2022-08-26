@@ -62,7 +62,7 @@ CONSIDER DISABLING SENSITIVE INFORMATION LOGGING BY APPENDING THE DEBUG ENVIRONM
 
 export type MatchResult =
   | { valid: true }
-  | { valid: false; errors: ErrorCollection };
+  | { valid: false; errors: ErrorCollection<MatchError> };
 
 export class Matcher {
   private static errorCollector: ErrorCollector;
@@ -331,13 +331,13 @@ export class Matcher {
   }
 
   private static async matchResponse(
-    oldResponse: unknown,
-    newResponse: unknown,
+    oldRes: unknown,
+    newRes: unknown,
     contentEncoding?: MatchHeaders
   ): Promise<void> {
     debugMatching('\tresponse');
-    let oldRes = oldResponse,
-      newRes = newResponse;
+    let oldResponse = oldRes,
+      newResponse = newRes;
 
     // if responses are encoded - decode them
     if (contentEncoding?.old !== undefined) {
@@ -345,7 +345,7 @@ export class Matcher {
         `Decoding old response based on ${contentEncoding.old} encoding`
       );
 
-      oldRes = await decodeResponse(oldResponse, contentEncoding.old);
+      oldResponse = await decodeResponse(oldRes, contentEncoding.old);
     }
 
     if (contentEncoding?.new !== undefined) {
@@ -353,11 +353,11 @@ export class Matcher {
         `Decoding new response based on ${contentEncoding.new} encoding`
       );
 
-      newRes = await decodeResponse(newResponse, contentEncoding.new);
+      newResponse = await decodeResponse(newRes, contentEncoding.new);
     }
 
     // validate responses
-    const valid = this.createAndValidateSchema(oldRes, newRes);
+    const valid = this.createAndValidateSchema(oldResponse, newResponse);
 
     if (!valid) {
       debugMatching(schemaValidator.errors);

@@ -2,6 +2,7 @@ import {
   assertIsIOError,
   BaseURLNotFoundError,
   ComponentUndefinedError,
+  CoverageFileNotFoundError,
   InstanceMissingError,
   MapUndefinedError,
   ProfileUndefinedError,
@@ -242,6 +243,23 @@ describe('errors', () => {
     it('returns correct format', () => {
       expect(error.toString()).toEqual(
         'BaseURLNotFoundError: No base URL was found for provider provider, configure a service in provider.json.'
+      );
+    });
+  });
+
+  describe('when throwing CoverageFileNotFoundError', () => {
+    const samplePath = 'path/to/coverage.json';
+    const error = new CoverageFileNotFoundError(samplePath);
+
+    it('throws in correct format', () => {
+      expect(() => {
+        throw error;
+      }).toThrow(`No coverage file at path "${samplePath}" found.`);
+    });
+
+    it('returns correct format', () => {
+      expect(error.toString()).toEqual(
+        `CoverageFileNotFoundError: No coverage file at path "${samplePath}" found.`
       );
     });
   });

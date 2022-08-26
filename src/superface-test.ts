@@ -29,8 +29,9 @@ import { getFixtureName, matchWildCard } from './common/format';
 import { exists, mkdirQuiet, readFileQuiet, rename } from './common/io';
 import { writeRecordings } from './common/output-stream';
 import { IGenerator } from './generate-hash';
-import { analyzeChangeImpact } from './nock/analyzer';
+import { AnalysisResult, analyzeChangeImpact } from './nock/analyzer';
 import { Matcher } from './nock/matcher';
+import { report, saveReport } from './reporter';
 import {
   AlertFunction,
   CompleteSuperfaceTestConfig,
@@ -53,7 +54,7 @@ import {
   getSuperJson,
   isProfileProviderLocal,
   mapError,
-  parsePublishEnv,
+  parseBooleanEnv,
   replaceCredentials,
   searchValues,
 } from './superface-test.utils';
@@ -68,6 +69,7 @@ export class SuperfaceTest {
   private nockConfig?: NockConfig;
   private fixturesPath?: string;
   private recordingPath?: string;
+  private analysis?: AnalysisResult;
   private generator: IGenerator;
 
   constructor(sfConfig?: SuperfaceTestConfigPayload, nockConfig?: NockConfig) {
@@ -106,9 +108,9 @@ export class SuperfaceTest {
 
     this.setupRecordingPath(getFixtureName(this.sfConfig), hash);
 
-    // Replace currently supported recordings with unsupported (new recordings with changes)
-    if (await this.canReplaceRecording()) {
-      await this.replaceUnsupportedRecording();
+    // Replace currently supported traffic with new (with changes)
+    if (await this.canUpdateTraffic()) {
+      await this.updateTraffic();
     }
 
     // Parse env variable and check if test should be recorded
@@ -120,7 +122,6 @@ export class SuperfaceTest {
       record,
       processRecordings,
       inputVariables,
-      options?.recordingVersion,
       options?.beforeRecordingLoad
     );
 
@@ -136,7 +137,6 @@ export class SuperfaceTest {
         processRecordings,
         inputVariables,
         beforeRecordingSave: options?.beforeRecordingSave,
-        alert: options?.alert,
       });
     } catch (error: unknown) {
       restoreRecordings();
@@ -145,6 +145,21 @@ export class SuperfaceTest {
 
       throw error;
     }
+
+    if (
+      this.analysis &&
+      !parseBooleanEnv(process.env.DISABLE_PROVIDER_CHANGES_COVERAGE)
+    ) {
+      await saveReport({
+        input,
+        result,
+        path: getFixtureName(this.sfConfig),
+        hash: this.generator.hash({ input, testName }),
+        analysis: this.analysis,
+      });
+    }
+
+    this.analysis = undefined;
 
     if (result.isErr()) {
       debug('Perform failed with error:', result.error.toString());
@@ -165,26 +180,39 @@ export class SuperfaceTest {
     throw new UnexpectedError('Unexpected result object');
   }
 
-  private async replaceUnsupportedRecording(): Promise<void> {
-    const pathToUnsupported = this.composeRecordingPath('unsupported');
+  // static async collectData(): Promise<void> {
+  //   await collect();
+  // }
+
+  static async report(
+    alert: AlertFunction,
+    options?: {
+      onlyFailedTests?: boolean;
+    }
+  ): Promise<void> {
+    await report(alert, options);
+  }
+
+  private async updateTraffic(): Promise<void> {
     const pathToCurrent = this.composeRecordingPath();
+    const pathToNew = this.composeRecordingPath('new');
 
     await mkdirQuiet(joinPath(dirname(pathToCurrent), 'old'));
 
-    // TODO: compose version based on executed usecase
-    await rename(pathToCurrent, this.composeRecordingPath('1.0.0'));
-    await rename(pathToUnsupported, pathToCurrent);
+    // TODO: compose version based on used map
+    let i = 0;
+    while (await exists(this.composeRecordingPath(`${i}`))) {
+      i++;
+    }
+
+    await rename(pathToCurrent, this.composeRecordingPath(`${i}`));
+    await rename(pathToNew, pathToCurrent);
   }
 
-  private async canReplaceRecording(): Promise<boolean> {
-    const replaceRecording = parsePublishEnv(
-      process.env.PUBLISH_UNSUPPORTED_RECORDINGS
-    );
+  private async canUpdateTraffic(): Promise<boolean> {
+    const updateTraffic = parseBooleanEnv(process.env.UPDATE_TRAFFIC);
 
-    if (
-      replaceRecording &&
-      (await exists(this.composeRecordingPath('unsupported')))
-    ) {
+    if (updateTraffic && (await exists(this.composeRecordingPath('new')))) {
       return true;
     }
 
@@ -205,7 +233,6 @@ export class SuperfaceTest {
     record: boolean,
     processRecordings: boolean,
     inputVariables?: InputVariables,
-    recordingVersion?: string,
     beforeRecordingLoad?: ProcessingFunction
   ): Promise<void> {
     if (record) {
@@ -224,7 +251,6 @@ export class SuperfaceTest {
       await this.loadRecordings(
         processRecordings,
         inputVariables,
-        recordingVersion,
         beforeRecordingLoad
       );
     }
@@ -233,11 +259,9 @@ export class SuperfaceTest {
   private async loadRecordings(
     processRecordings: boolean,
     inputVariables?: InputVariables,
-    recordingVersion?: string,
     beforeRecordingLoad?: ProcessingFunction
   ): Promise<void> {
-    // TODO: validate version format
-    const definitions = await this.getRecordings(recordingVersion);
+    const definitions = await this.getRecordings();
 
     assertsPreparedConfig(this.sfConfig);
     assertBoundProfileProvider(this.boundProfileProvider);
@@ -283,19 +307,32 @@ export class SuperfaceTest {
     }
   }
 
-  async getRecordings(version?: string): Promise<RecordingDefinitions> {
-    const recordingPath = this.composeRecordingPath(version);
-    const recordingExists = await exists(recordingPath);
+  async getRecordings(): Promise<RecordingDefinitions> {
+    const useNewTraffic = parseBooleanEnv(process.env.USE_NEW_TRAFFIC);
+    const newRecordingPath = this.composeRecordingPath('new');
+
+    if (useNewTraffic && (await exists(newRecordingPath))) {
+      return await this.parseRecordings(newRecordingPath);
+    }
+
+    const currentRecordingPath = this.composeRecordingPath();
+    const recordingExists = await exists(currentRecordingPath);
 
     if (!recordingExists) {
-      throw new RecordingsNotFoundError(recordingPath);
+      throw new RecordingsNotFoundError(currentRecordingPath);
     }
 
-    const definitionFile = await readFileQuiet(recordingPath);
+    return await this.parseRecordings(currentRecordingPath);
+  }
+
+  private async parseRecordings(path: string): Promise<RecordingDefinitions> {
+    const definitionFile = await readFileQuiet(path);
 
     if (definitionFile === undefined) {
-      throw new UnexpectedError('Reading recording file failed');
+      throw new UnexpectedError('Reading new recording file failed');
     }
+
+    debug(`Parsing recording file at: "${path}"`);
 
     return JSON.parse(definitionFile) as RecordingDefinitions;
   }
@@ -313,13 +350,11 @@ export class SuperfaceTest {
     processRecordings,
     inputVariables,
     beforeRecordingSave,
-    alert,
   }: {
     record: boolean;
     processRecordings: boolean;
     inputVariables?: InputVariables;
     beforeRecordingSave?: ProcessingFunction;
-    alert?: AlertFunction;
   }): Promise<void> {
     if (record) {
       const definitions = recorder.play();
@@ -390,7 +425,7 @@ export class SuperfaceTest {
       const recordingExists = await exists(this.composeRecordingPath());
 
       if (recordingExists) {
-        await this.matchTraffic(definitions, alert);
+        await this.matchTraffic(definitions);
       } else {
         // recording file does not exist -> record new traffic
         await writeRecordings(this.composeRecordingPath(), definitions);
@@ -407,10 +442,7 @@ export class SuperfaceTest {
     }
   }
 
-  private async matchTraffic(
-    newTraffic: RecordingDefinitions,
-    alert?: AlertFunction
-  ) {
+  private async matchTraffic(newTraffic: RecordingDefinitions) {
     // recording file exist -> record and compare new traffic
     const oldRecording = await readFileQuiet(this.composeRecordingPath());
 
@@ -429,23 +461,19 @@ export class SuperfaceTest {
       const impact = analyzeChangeImpact(match.errors);
 
       // Alert changes
-      if (alert !== undefined) {
-        const config = this.sfConfig as CompleteSuperfaceTestConfig;
+      const config = this.sfConfig as CompleteSuperfaceTestConfig;
 
-        await alert({
-          impact,
-          profileId: config.profile.configuration.id,
-          providerName: config.provider.configuration.name,
-          useCaseName: config.useCase.name,
-          recordingPath: this.recordingPath ?? '',
-        });
-      }
+      this.analysis = {
+        impact,
+        profileId: config.profile.configuration.id,
+        providerName: config.provider.configuration.name,
+        useCaseName: config.useCase.name,
+        recordingPath: this.recordingPath ?? '',
+        errors: match.errors,
+      };
 
-      // Save new recording as unsupported
-      await writeRecordings(
-        this.composeRecordingPath('unsupported'),
-        newTraffic
-      );
+      // Save new traffic
+      await writeRecordings(this.composeRecordingPath('new'), newTraffic);
     }
   }
 
@@ -454,8 +482,8 @@ export class SuperfaceTest {
       throw new RecordingPathUndefinedError();
     }
 
-    if (version === 'unsupported') {
-      return `${this.recordingPath}-unsupported.json`;
+    if (version === 'new') {
+      return `${this.recordingPath}-new.json`;
     }
 
     if (version !== undefined) {

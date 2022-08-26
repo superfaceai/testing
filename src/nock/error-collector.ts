@@ -13,7 +13,7 @@ export class ErrorCollector {
     return this.added.length + this.removed.length + this.changed.length;
   }
 
-  get errors(): ErrorCollection {
+  get errors(): ErrorCollection<MatchError> {
     return {
       added: this.added,
       removed: this.removed,

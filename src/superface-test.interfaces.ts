@@ -13,6 +13,7 @@ import {
 import { Definition } from 'nock/types';
 
 import { AnalysisResult } from './nock/analyzer';
+import { ErrorCollection } from './nock/matcher.errors';
 
 export interface SuperfaceTestConfigPayload {
   client?: SuperfaceClient;
@@ -29,7 +30,7 @@ export interface HashOptions {
   testName?: string;
 }
 
-export type AlertFunction = (analysis: AnalysisResult) => void | Promise<void>;
+export type AlertFunction = (report: TestReport) => unknown | Promise<unknown>;
 
 export type SuperfaceTestRun = Omit<
   SuperfaceTestConfigPayload,
@@ -68,7 +69,24 @@ export interface RecordingProcessOptions {
   beforeRecordingSave?: ProcessingFunction;
   beforeRecordingLoad?: ProcessingFunction;
   hideInput?: string[];
-  recordingVersion?: string;
-  alert?: AlertFunction;
   fullError?: boolean;
 }
+
+export type TestAnalysis = Omit<AnalysisResult, 'errors'> & {
+  input: NonPrimitive;
+  result: TestingReturn;
+  errors: ErrorCollection<string>;
+};
+
+// TODO: add this to testanalysis somehow
+// export type TestCoverage =
+//   | {
+//       pass: true;
+//       value: unknown;
+//     }
+//   | {
+//       pass: false;
+//       error: PerformError | string;
+//     };
+
+export type TestReport = TestAnalysis[];
