@@ -8,14 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 - New parameter `fullError` in method `run()` to enable returning whole `PerformError` instead of string
-- Environment variable `UPDATE_TRAFFIC` to replace old traffic with new, if present
-- Environment variable `DISABLE_PROVIDER_CHANGES_COVERAGE` to disable collecting of test reports
-- Environment variable `USE_NEW_TRAFFIC` to test with newly recorded traffic
 - Module `matcher` for comparing old and new HTTP traffic
 - Module `analyzer` for determining impact of provider changes
 - Module `reporter` for reporting provider changes throughout tests
-- Errors for module `matcher`
 - Class `ErrorCollector` for collecting errors in `matcher`
+- Environment variable `UPDATE_TRAFFIC` to replace old traffic with new, if present
+- Environment variable `DISABLE_PROVIDER_CHANGES_COVERAGE` to disable collecting of test reports
+- Environment variable `USE_NEW_TRAFFIC` to test with newly recorded traffic
+- Errors for module `matcher`
 - Error `CoverageFileNotFoundError` for correct reporting
 
 ### Removed
@@ -23,7 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Return value from method `run` to `PerformError | string`
-- Do not overwrite HTTP traffic recording when in record mode, instead save next to old one with suffix `-new`
+- Does not overwrite HTTP traffic recording when in record mode, instead save next to old one with suffix `-new`
 
 ## [2.0.3] - 2022-02-15
 ### Changed
