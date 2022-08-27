@@ -11,8 +11,8 @@ import {
   Primitive,
 } from '@superfaceai/one-sdk/dist/internal/interpreter/variables';
 import { Definition } from 'nock/types';
-import { MatchImpact } from './nock/analyzer';
 
+import { MatchImpact } from './nock/analyzer';
 import { ErrorCollection, MatchError } from './nock/matcher.errors';
 
 export interface SuperfaceTestConfigPayload {

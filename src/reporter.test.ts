@@ -13,10 +13,12 @@ jest.mock('./common/io');
 
 const sampleHash = 'XXX';
 const samplePath = joinPath('profile', 'provider', 'test');
-const sampleAnalysis = {
+const sampleAnalysisResult = {
   errors: { added: [], changed: [], removed: [] },
-  recordingPath: '',
   impact: MatchImpact.PATCH,
+};
+const sampleTestResult = {
+  recordingPath: '',
   profileId: 'profile',
   providerName: 'provider',
   useCaseName: 'test',
@@ -35,7 +37,8 @@ describe('Reporter module', () => {
         `coverage-XXX.json`
       );
       const expectedReport = {
-        ...sampleAnalysis,
+        ...sampleAnalysisResult,
+        ...sampleTestResult,
         input: {},
         result: ok(''),
       };
@@ -46,7 +49,8 @@ describe('Reporter module', () => {
           result: ok(''),
           path: samplePath,
           hash: sampleHash,
-          analysis: sampleAnalysis,
+          analysis: sampleAnalysisResult,
+          ...sampleTestResult,
         })
       ).resolves.toBeUndefined();
 
@@ -71,7 +75,8 @@ describe('Reporter module', () => {
         result: ok(''),
         path: samplePath,
         hash: sampleHash,
-        analysis: sampleAnalysis,
+        analysis: sampleAnalysisResult,
+        ...sampleTestResult,
       });
 
       expect(consoleOutput).toEqual(['Writing coverage data failed']);
@@ -115,7 +120,7 @@ describe('Reporter module', () => {
 
     it('calls injected alert function with parsed files', async () => {
       const sampleReport = {
-        ...sampleAnalysis,
+        ...sampleAnalysisResult,
         input: {},
         result: ok(''),
       };
