@@ -11,9 +11,9 @@ import {
   Primitive,
 } from '@superfaceai/one-sdk/dist/internal/interpreter/variables';
 import { Definition } from 'nock/types';
+import { MatchImpact } from './nock/analyzer';
 
-import { AnalysisResult } from './nock/analyzer';
-import { ErrorCollection } from './nock/matcher.errors';
+import { ErrorCollection, MatchError } from './nock/matcher.errors';
 
 export interface SuperfaceTestConfigPayload {
   client?: SuperfaceClient;
@@ -72,21 +72,19 @@ export interface RecordingProcessOptions {
   fullError?: boolean;
 }
 
+export interface AnalysisResult {
+  impact: MatchImpact;
+  errors: ErrorCollection<MatchError>;
+}
+
 export type TestAnalysis = Omit<AnalysisResult, 'errors'> & {
+  profileId: string;
+  providerName: string;
+  useCaseName: string;
+  recordingPath: string;
   input: NonPrimitive;
   result: TestingReturn;
   errors: ErrorCollection<string>;
 };
-
-// TODO: add this to testanalysis somehow
-// export type TestCoverage =
-//   | {
-//       pass: true;
-//       value: unknown;
-//     }
-//   | {
-//       pass: false;
-//       error: PerformError | string;
-//     };
 
 export type TestReport = TestAnalysis[];

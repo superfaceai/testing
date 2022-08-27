@@ -14,15 +14,6 @@ export enum MatchImpact {
   NONE = 'none',
 }
 
-export interface AnalysisResult {
-  profileId: string;
-  providerName: string;
-  useCaseName: string;
-  recordingPath: string;
-  impact: MatchImpact;
-  errors: ErrorCollection<MatchError>;
-}
-
 export function analyzeChangeImpact(
   errors: ErrorCollection<MatchError>
 ): MatchImpact {
@@ -51,8 +42,6 @@ export function analyzeChangeImpact(
   }
 
   // check for minor changes
-  // TODO: determine minor change based on added data in response
-  // - needs different solution than JSON schema validation
   const responseExtended = errors.added.some(
     error => error instanceof MatchErrorResponse
   );

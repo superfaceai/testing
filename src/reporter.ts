@@ -5,9 +5,9 @@ import { join as joinPath } from 'path';
 import { CoverageFileNotFoundError } from './common/errors';
 import { exists, readFileQuiet, readFilesInDir, rimraf } from './common/io';
 import { OutputStream } from './common/output-stream';
-import { AnalysisResult } from './nock/analyzer';
 import { ErrorCollection, MatchError } from './nock/matcher.errors';
 import {
+  AnalysisResult,
   TestAnalysis,
   TestingReturn,
   TestReport,
@@ -27,12 +27,20 @@ export async function saveReport({
   path,
   hash,
   analysis,
+  recordingPath,
+  profileId,
+  providerName,
+  useCaseName,
 }: {
   input: NonPrimitive;
   result: TestingReturn;
   path: string;
   hash: string;
+  recordingPath: string;
   analysis: AnalysisResult;
+  profileId: string;
+  providerName: string;
+  useCaseName: string;
 }): Promise<void> {
   debug('Saving coverage report');
   const coveragePath = joinPath(
@@ -44,6 +52,10 @@ export async function saveReport({
   const data: TestAnalysis = {
     ...analysis,
     errors: parseErrors(analysis.errors),
+    recordingPath,
+    profileId,
+    providerName,
+    useCaseName,
     input,
     result,
   };

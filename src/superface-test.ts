@@ -29,12 +29,12 @@ import { getFixtureName, matchWildCard } from './common/format';
 import { exists, mkdirQuiet, readFileQuiet, rename } from './common/io';
 import { writeRecordings } from './common/output-stream';
 import { IGenerator } from './generate-hash';
-import { AnalysisResult, analyzeChangeImpact } from './nock/analyzer';
+import { analyzeChangeImpact } from './nock/analyzer';
 import { Matcher } from './nock/matcher';
 import { report, saveReport } from './reporter';
 import {
   AlertFunction,
-  CompleteSuperfaceTestConfig,
+  AnalysisResult,
   InputVariables,
   NockConfig,
   ProcessingFunction,
@@ -155,6 +155,10 @@ export class SuperfaceTest {
         result,
         path: getFixtureName(this.sfConfig),
         hash: this.generator.hash({ input, testName }),
+        recordingPath: this.recordingPath ?? '',
+        profileId: this.sfConfig.profile.configuration.id,
+        providerName: this.sfConfig.provider.configuration.name,
+        useCaseName: this.sfConfig.useCase.name,
         analysis: this.analysis,
       });
     }
@@ -460,15 +464,8 @@ export class SuperfaceTest {
     } else {
       const impact = analyzeChangeImpact(match.errors);
 
-      // Alert changes
-      const config = this.sfConfig as CompleteSuperfaceTestConfig;
-
       this.analysis = {
         impact,
-        profileId: config.profile.configuration.id,
-        providerName: config.provider.configuration.name,
-        useCaseName: config.useCase.name,
-        recordingPath: this.recordingPath ?? '',
         errors: match.errors,
       };
 
