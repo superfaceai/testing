@@ -25,6 +25,8 @@ import {
 } from '@superfaceai/one-sdk';
 import { resolveIntegrationParameters } from '@superfaceai/one-sdk/dist/core/profile-provider/parameters';
 
+import { resolveSecurityValues } from './prepare-superface';
+
 // This deals only with BoundProfileProvider instance creation, it should NOT be exported from directory.
 export function createBoundProfileProvider({
   superJson,
@@ -81,10 +83,12 @@ export function createBoundProfileProvider({
         superJson.profiles[profileAstId(profileAst)].providers[
           providerJson.name
         ],
-      security: resolveSecurityConfiguration(
-        providerJson.securitySchemes ?? [],
-        superJson.providers[providerJson.name].security ?? [],
-        providerJson.name
+      security: resolveSecurityValues(
+        resolveSecurityConfiguration(
+          providerJson.securitySchemes ?? [],
+          superJson.providers[providerJson.name].security ?? [],
+          providerJson.name
+        )
       ),
       parameters: resolveIntegrationParameters(
         providerJson,
