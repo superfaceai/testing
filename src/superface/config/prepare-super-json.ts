@@ -1,8 +1,10 @@
 import { NormalizedSuperJsonDocument } from '@superfaceai/ast';
 import {
   detectSuperJson,
+  IEnvironment,
   IFileSystem,
   loadSuperJson,
+  NodeEnvironment,
   NodeFileSystem,
   normalizeSuperJsonDocument,
 } from '@superfaceai/one-sdk';
@@ -20,7 +22,8 @@ const debugSetup = createDebug('superface:testing:setup');
  * Returns SuperJson based on path detected with its abstract method.
  */
 export async function getSuperJson(options?: {
-  fileSystem: IFileSystem;
+  fileSystem?: IFileSystem;
+  environment?: IEnvironment;
 }): Promise<{ path: string; document: NormalizedSuperJsonDocument }> {
   const superPath = await detectSuperJson(
     process.cwd(),
@@ -45,6 +48,9 @@ export async function getSuperJson(options?: {
 
   return {
     path: superPath,
-    document: normalizeSuperJsonDocument(superJsonResult.value),
+    document: normalizeSuperJsonDocument(
+      superJsonResult.value,
+      options?.environment ?? new NodeEnvironment()
+    ),
   };
 }

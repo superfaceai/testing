@@ -1,25 +1,19 @@
 import {
-  HttpScheme,
   MapDocumentNode,
   NormalizedSuperJsonDocument,
   ProfileDocumentNode,
   ProviderJson,
-  SecurityType,
 } from '@superfaceai/ast';
 import {
   AuthCache,
   BoundProfileProvider,
   ICrypto,
-  IEnvironment,
   IFetch,
   IFileSystem,
   ILogger,
   Interceptable,
   ITimers,
-  NodeEnvironment,
   profileAstId,
-  resolveEnv,
-  SecurityConfiguration,
   UseCase,
 } from '@superfaceai/one-sdk';
 
@@ -73,34 +67,4 @@ export async function prepareSuperface(
       options,
     }),
   };
-}
-
-export function resolveSecurityValues(
-  configurations: SecurityConfiguration[],
-  options?: {
-    environment?: IEnvironment;
-  }
-): SecurityConfiguration[] {
-  const environment = options?.environment ?? new NodeEnvironment();
-
-  return configurations.map(configuration => {
-    if (configuration.type === SecurityType.APIKEY) {
-      configuration.apikey = resolveEnv(configuration.apikey, environment);
-    } else if (
-      (configuration.type === SecurityType.HTTP &&
-        configuration.scheme === HttpScheme.BASIC) ||
-      (configuration.type === SecurityType.HTTP &&
-        configuration.scheme === HttpScheme.DIGEST)
-    ) {
-      configuration.username = resolveEnv(configuration.username, environment);
-      configuration.password = resolveEnv(configuration.password, environment);
-    } else if (
-      configuration.type === SecurityType.HTTP &&
-      configuration.scheme === HttpScheme.BEARER
-    ) {
-      configuration.token = resolveEnv(configuration.token, environment);
-    }
-
-    return configuration;
-  });
 }
