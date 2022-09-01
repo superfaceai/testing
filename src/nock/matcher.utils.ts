@@ -72,7 +72,7 @@ function composeBuffer(response: any[]): Buffer {
 
 export async function decodeResponse(
   response: unknown,
-  contentEncoding: string
+  contentEncoding = 'gzip'
 ): Promise<ReplyBody> {
   if (!Array.isArray(response)) {
     throw new UnexpectedError(
@@ -82,9 +82,15 @@ export async function decodeResponse(
 
   const buffer = composeBuffer(response);
 
-  return JSON.parse(
-    (await decodeBuffer(buffer, contentEncoding)).toString()
-  ) as ReplyBody;
+  if (contentEncoding.toLowerCase() === 'gzip') {
+    return JSON.parse(
+      (await decodeBuffer(buffer, contentEncoding)).toString()
+    ) as ReplyBody;
+  } else {
+    throw new UnexpectedError(
+      `Content encoding ${contentEncoding} is not supported`
+    );
+  }
 }
 
 /**

@@ -27,7 +27,10 @@ import {
 } from './common/errors';
 import { getFixtureName, matchWildCard } from './common/format';
 import { exists, mkdirQuiet, readFileQuiet, rename } from './common/io';
-import { writeRecordings } from './common/output-stream';
+import {
+  decodeRecordingsResponse,
+  writeRecordings,
+} from './common/output-stream';
 import { IGenerator } from './generate-hash';
 import { analyzeChangeImpact } from './nock/analyzer';
 import { Matcher } from './nock/matcher';
@@ -199,24 +202,27 @@ export class SuperfaceTest {
 
   private async updateTraffic(): Promise<void> {
     const pathToCurrent = this.composeRecordingPath();
-    const pathToNew = this.composeRecordingPath('new');
+    const pathToNew = this.composeRecordingPath({ version: 'new' });
 
     await mkdirQuiet(joinPath(dirname(pathToCurrent), 'old'));
 
     // TODO: compose version based on used map
     let i = 0;
-    while (await exists(this.composeRecordingPath(`${i}`))) {
+    while (await exists(this.composeRecordingPath({ version: `${i}` }))) {
       i++;
     }
 
-    await rename(pathToCurrent, this.composeRecordingPath(`${i}`));
+    await rename(pathToCurrent, this.composeRecordingPath({ version: `${i}` }));
     await rename(pathToNew, pathToCurrent);
   }
 
   private async canUpdateTraffic(): Promise<boolean> {
     const updateTraffic = parseBooleanEnv(process.env.UPDATE_TRAFFIC);
 
-    if (updateTraffic && (await exists(this.composeRecordingPath('new')))) {
+    if (
+      updateTraffic &&
+      (await exists(this.composeRecordingPath({ version: 'new' })))
+    ) {
       return true;
     }
 
@@ -313,7 +319,7 @@ export class SuperfaceTest {
 
   async getRecordings(): Promise<RecordingDefinitions> {
     const useNewTraffic = parseBooleanEnv(process.env.USE_NEW_TRAFFIC);
-    const newRecordingPath = this.composeRecordingPath('new');
+    const newRecordingPath = this.composeRecordingPath({ version: 'new' });
 
     if (useNewTraffic && (await exists(newRecordingPath))) {
       return await this.parseRecordings(newRecordingPath);
@@ -369,8 +375,15 @@ export class SuperfaceTest {
         'Recording ended - Restored HTTP requests and cleared recorded traffic'
       );
 
+      const recordingExists = await exists(this.composeRecordingPath());
+
       if (definitions.length === 0) {
-        await writeRecordings(this.composeRecordingPath(), []);
+        await writeRecordings(
+          this.composeRecordingPath(
+            recordingExists ? { version: 'new' } : undefined
+          ),
+          []
+        );
 
         return;
       }
@@ -426,13 +439,16 @@ export class SuperfaceTest {
         );
       }
 
-      const recordingExists = await exists(this.composeRecordingPath());
-
       if (recordingExists) {
         await this.matchTraffic(definitions);
       } else {
         // recording file does not exist -> record new traffic
         await writeRecordings(this.composeRecordingPath(), definitions);
+
+        // save recording with decoded response
+        if (parseBooleanEnv(process.env.DECODE_RESPONSE)) {
+          await this.writeDecodedRecordings(definitions);
+        }
       }
 
       debug('Recorded definitions written');
@@ -449,6 +465,9 @@ export class SuperfaceTest {
   private async matchTraffic(newTraffic: RecordingDefinitions) {
     // recording file exist -> record and compare new traffic
     const oldRecording = await readFileQuiet(this.composeRecordingPath());
+    const oldRecordingDecodedPath = this.composeRecordingPath({
+      decoded: true,
+    });
 
     if (oldRecording === undefined) {
       throw new UnexpectedError('Reading old recording file failed');
@@ -461,6 +480,13 @@ export class SuperfaceTest {
 
     if (match.valid) {
       // do not save new recording as there were no breaking changes found
+      // only write recordings with decoded responses if they do not exist
+      if (
+        parseBooleanEnv(process.env.DECODE_RESPONSE) &&
+        !(await exists(oldRecordingDecodedPath))
+      ) {
+        await this.writeDecodedRecordings(newTraffic);
+      }
     } else {
       const impact = analyzeChangeImpact(match.errors);
 
@@ -470,27 +496,69 @@ export class SuperfaceTest {
       };
 
       // Save new traffic
-      await writeRecordings(this.composeRecordingPath('new'), newTraffic);
+      await writeRecordings(
+        this.composeRecordingPath({ version: 'new' }),
+        newTraffic
+      );
+
+      // save new traffic with decoded response
+      if (parseBooleanEnv(process.env.DECODE_RESPONSE)) {
+        await this.writeDecodedRecordings(newTraffic, {
+          version: 'new',
+        });
+      }
     }
   }
 
-  private composeRecordingPath(version?: string): string {
+  private async writeDecodedRecordings(
+    recordings: RecordingDefinitions,
+    pathConfig?: { version?: string }
+  ): Promise<void> {
+    const encodedRecordings = recordings.filter(def =>
+      Array.isArray(def.response)
+    );
+
+    if (encodedRecordings.length === 0) {
+      return;
+    }
+
+    await decodeRecordingsResponse(encodedRecordings);
+    await writeRecordings(
+      this.composeRecordingPath({ ...pathConfig, decoded: true }),
+      encodedRecordings
+    );
+  }
+
+  private composeRecordingPath(options?: {
+    version?: string;
+    decoded?: boolean;
+  }): string {
     if (!this.recordingPath) {
       throw new RecordingPathUndefinedError();
     }
 
-    if (version === 'new') {
-      return `${this.recordingPath}-new.json`;
+    if (options?.version === 'new') {
+      return `${this.recordingPath}-new${
+        options.decoded ? '.decoded.json' : '.json'
+      }`;
     }
 
-    if (version !== undefined) {
+    if (options?.version !== undefined) {
       const baseDir = dirname(this.recordingPath);
       const hash = basename(this.recordingPath);
 
-      return joinPath(baseDir, 'old', `${hash}_${version}.json`);
+      return joinPath(
+        baseDir,
+        'old',
+        `${hash}_${options.version}${
+          options.decoded ? '.decoded.json' : '.json'
+        }`
+      );
     }
 
-    return `${this.recordingPath}.json`;
+    return `${this.recordingPath}${
+      options?.decoded ? '.decoded.json' : '.json'
+    }`;
   }
 
   /**

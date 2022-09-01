@@ -478,7 +478,7 @@ describe('SuperfaceTest', () => {
         const writeRecordingsSpy = mocked(writeRecordings);
         jest.spyOn(recorder, 'play').mockReturnValueOnce([]);
 
-        mocked(exists).mockResolvedValue(true);
+        mocked(exists).mockResolvedValue(false);
         mocked(matchWildCard).mockReturnValueOnce(true);
 
         await superfaceTest.run({ input: {} });
@@ -502,7 +502,7 @@ describe('SuperfaceTest', () => {
         const writeRecordingsSpy = mocked(writeRecordings);
         jest.spyOn(recorder, 'play').mockReturnValueOnce([]);
 
-        mocked(exists).mockResolvedValue(true);
+        mocked(exists).mockResolvedValue(false);
         mocked(matchWildCard).mockReturnValueOnce(true);
 
         await superfaceTest.run({ input: {}, testName });
@@ -531,7 +531,7 @@ describe('SuperfaceTest', () => {
         const writeRecordingsSpy = mocked(writeRecordings);
         jest.spyOn(recorder, 'play').mockReturnValueOnce([]);
 
-        mocked(exists).mockResolvedValue(true);
+        mocked(exists).mockResolvedValue(false);
         mocked(matchWildCard).mockReturnValueOnce(true);
 
         await superfaceTest.run({ input, testName: undefined });
