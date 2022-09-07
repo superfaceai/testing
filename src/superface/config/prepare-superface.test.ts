@@ -19,38 +19,40 @@ jest.mock('./create-bound-profile-provider', () => ({
 }));
 
 describe('prepare superface module', () => {
-  it('fails when no useCase is specified', async () => {
-    await expect(prepareSuperface({})).rejects.toThrowError(
-      new ComponentUndefinedError('UseCase')
-    );
-  });
+  describe('prepareSuperface', () => {
+    it('fails when no useCase is specified', async () => {
+      await expect(prepareSuperface({})).rejects.toThrowError(
+        new ComponentUndefinedError('UseCase')
+      );
+    });
 
-  it('returns superface configuration when files get prepared successfuly', async () => {
-    const expectedFiles = {
-      superJson: mockSuperJson().document,
-      profileAst: mockProfileAST,
-      mapAst: mockMapAST,
-      providerJson: mockProviderJson(),
-    };
-    const expectedBoundProfileProvider = mockBoundProfileProvider(ok(''));
+    it('returns superface configuration when files get prepared successfuly', async () => {
+      const expectedFiles = {
+        superJson: mockSuperJson().document,
+        profileAst: mockProfileAST,
+        mapAst: mockMapAST,
+        providerJson: mockProviderJson(),
+      };
+      const expectedBoundProfileProvider = mockBoundProfileProvider(ok(''));
 
-    mocked(prepareFiles).mockResolvedValue(expectedFiles);
-    mocked(createBoundProfileProvider).mockReturnValue(
-      expectedBoundProfileProvider
-    );
+      mocked(prepareFiles).mockResolvedValue(expectedFiles);
+      mocked(createBoundProfileProvider).mockReturnValue(
+        expectedBoundProfileProvider
+      );
 
-    await expect(
-      prepareSuperface({
-        profile: 'profile',
-        provider: 'provider',
-        useCase: 'test',
-      })
-    ).resolves.toEqual({
-      profileId: 'profile',
-      providerName: 'provider',
-      usecaseName: 'test',
-      files: expectedFiles,
-      boundProfileProvider: expectedBoundProfileProvider,
+      await expect(
+        prepareSuperface({
+          profile: 'profile',
+          provider: 'provider',
+          useCase: 'test',
+        })
+      ).resolves.toEqual({
+        profileId: 'profile',
+        providerName: 'provider',
+        usecaseName: 'test',
+        files: expectedFiles,
+        boundProfileProvider: expectedBoundProfileProvider,
+      });
     });
   });
 });

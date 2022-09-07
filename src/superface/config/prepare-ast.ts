@@ -1,6 +1,7 @@
 import {
   assertMapDocumentNode,
   assertProfileDocumentNode,
+  EXTENSIONS,
   MapDocumentNode,
   NormalizedSuperJsonDocument,
   ProfileDocumentNode,
@@ -10,7 +11,12 @@ import { parseMap, parseProfile, Source } from '@superfaceai/parser';
 import createDebug from 'debug';
 import { resolve as resolvePath } from 'path';
 
-import { MapUndefinedError, ProfileUndefinedError } from '../../common/errors';
+import {
+  MapUndefinedError,
+  ProfileUndefinedError,
+  UnexpectedError,
+} from '../../common/errors';
+import { exists } from '../../common/io';
 
 const debugSetup = createDebug('superface:testing:setup');
 
@@ -33,20 +39,7 @@ export async function getProfileAst(
     debugSetup('Found profile settings in super.json:', profileSettings);
     debugSetup('Profile resolved path:', profilePath);
 
-    const content = await fileSystem.readFile(profilePath);
-
-    if (content.isErr()) {
-      throw content.error;
-    }
-
-    // TODO: make parser optional
-    if (profilePath.endsWith('.supr')) {
-      debugSetup('Trying to parse profile:', profilePath);
-
-      return parseProfile(new Source(content.value, profilePath));
-    } else {
-      return assertProfileDocumentNode(JSON.parse(content.value));
-    }
+    return await getProfileDocument(profilePath, fileSystem);
   }
 }
 
@@ -71,18 +64,83 @@ export async function getMapAst(
   );
   debugSetup('Map resolved path:', mapPath);
 
-  const content = await fileSystem.readFile(mapPath);
+  return await getMapDocument(mapPath, fileSystem);
+}
+
+async function readAst(
+  path: string,
+  fileSystem: IFileSystem
+): Promise<unknown> {
+  const content = await fileSystem.readFile(path);
 
   if (content.isErr()) {
     throw content.error;
   }
 
-  // TODO: make parser optional
-  if (mapPath.endsWith('.suma')) {
-    debugSetup('Trying to parse map:', mapPath);
+  return JSON.parse(content.value) as unknown;
+}
 
-    return parseMap(new Source(content.value, mapPath));
+async function getProfileDocument(
+  path: string,
+  fileSystem: IFileSystem
+): Promise<ProfileDocumentNode> {
+  const isAst = path.endsWith(EXTENSIONS.profile.build);
+  const isSource = path.endsWith(EXTENSIONS.profile.source);
+
+  if (isAst) {
+    return assertProfileDocumentNode(await readAst(path, fileSystem));
+  } else if (isSource) {
+    const astPath = path.replace(
+      EXTENSIONS.profile.source,
+      EXTENSIONS.profile.build
+    );
+    const astExist = await exists(astPath);
+
+    if (astExist) {
+      return assertProfileDocumentNode(await readAst(astPath, fileSystem));
+    }
+
+    const content = await fileSystem.readFile(path);
+
+    if (content.isErr()) {
+      throw content.error;
+    }
+
+    debugSetup('Trying to parse profile:', path);
+
+    return parseProfile(new Source(content.value, path));
   } else {
-    return assertMapDocumentNode(JSON.parse(content.value));
+    throw new UnexpectedError(`Specified path is invalid:\n${path}`);
+  }
+}
+
+async function getMapDocument(
+  path: string,
+  fileSystem: IFileSystem
+): Promise<MapDocumentNode> {
+  const isAst = path.endsWith(EXTENSIONS.map.build);
+  const isSource = path.endsWith(EXTENSIONS.map.source);
+
+  if (isAst) {
+    return assertMapDocumentNode(await readAst(path, fileSystem));
+  } else if (isSource) {
+    const astPath = path.replace(EXTENSIONS.map.source, EXTENSIONS.map.build);
+    const astExist = await exists(astPath);
+
+    if (astExist) {
+      return assertMapDocumentNode(await readAst(astPath, fileSystem));
+    }
+
+    const content = await fileSystem.readFile(path);
+
+    if (content.isErr()) {
+      throw content.error;
+    }
+
+    debugSetup('Trying to parse map:', path);
+
+    return parseMap(new Source(content.value, path));
+  } else {
+    throw new UnexpectedError(`Specified path is invalid:\n${path}`);
   }
 }
