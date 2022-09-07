@@ -1,4 +1,4 @@
-import { NormalizedSuperJsonDocument } from '@superfaceai/ast';
+import { EXTENSIONS, NormalizedSuperJsonDocument } from '@superfaceai/ast';
 import { normalizeSuperJsonDocument } from '@superfaceai/one-sdk';
 
 export const mockSuperJson = (options?: {
@@ -14,14 +14,14 @@ export const mockSuperJson = (options?: {
       profile: options?.localProfile
         ? {
             file: options?.pointsToAst
-              ? 'path/to/profile.ast.json'
-              : 'path/to/profile.supr',
+              ? `path/to/profile${EXTENSIONS.profile.build}`
+              : `path/to/profile${EXTENSIONS.profile.source}`,
             providers: {
               provider: options?.localMap
                 ? {
                     file: options?.pointsToAst
-                      ? 'path/to/map.ast.json'
-                      : 'path/to/map.suma',
+                      ? `path/to/map${EXTENSIONS.map.build}`
+                      : `path/to/map${EXTENSIONS.map.source}`,
                   }
                 : {},
             },
@@ -32,8 +32,8 @@ export const mockSuperJson = (options?: {
               provider: options?.localMap
                 ? {
                     file: options?.pointsToAst
-                      ? 'path/to/map.ast.json'
-                      : 'path/to/map.suma',
+                      ? `path/to/map${EXTENSIONS.map.build}`
+                      : `path/to/map${EXTENSIONS.map.source}`,
                   }
                 : {},
             },
