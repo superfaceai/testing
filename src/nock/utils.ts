@@ -2,6 +2,8 @@ import {
   ApiKeyPlacement,
   ApiKeySecurityScheme,
   ApiKeySecurityValues,
+  DigestSecurityScheme,
+  DigestSecurityValues,
   HttpScheme,
   SecurityType,
 } from '@superfaceai/ast';
@@ -11,7 +13,6 @@ import { ReplyBody, RequestBodyMatcher } from 'nock/types';
 import { URL } from 'url';
 
 import { RecordingDefinition } from '..';
-import { UnexpectedError } from '../common/errors';
 
 interface ReplaceOptions {
   definition: RecordingDefinition;
@@ -30,6 +31,7 @@ CONSIDER DISABLING SENSITIVE INFORMATION LOGGING BY APPENDING THE DEBUG ENVIRONM
 );
 
 const AUTH_HEADER_NAME = 'Authorization';
+const WWW_AUTH_HEADER_NAME = 'WWW-Authenticate';
 
 const replace = (
   payload: string,
@@ -93,8 +95,37 @@ function replaceCredentialInRawHeaders({
   definition,
   credential,
   placeholder,
-}: ReplaceOptions): void {
+  security,
+}: ReplaceOptions & {
+  security?: SecurityConfiguration;
+}): void {
   if (definition.rawHeaders) {
+    if (
+      security?.type === SecurityType.HTTP &&
+      security.scheme === HttpScheme.DIGEST
+    ) {
+      const { authorizationHeader, challengeHeader } = security;
+
+      const supportedHeaders = new Set([
+        AUTH_HEADER_NAME,
+        WWW_AUTH_HEADER_NAME,
+        authorizationHeader,
+        challengeHeader,
+      ]);
+
+      for (const header of supportedHeaders) {
+        const index = definition.rawHeaders.findIndex(
+          rawHeader => rawHeader.toLowerCase() === header?.toLowerCase()
+        );
+
+        if (index !== -1) {
+          definition.rawHeaders[index + 1] = `Digest ${placeholder}`;
+        }
+      }
+
+      return;
+    }
+
     definition.rawHeaders = definition.rawHeaders.map(header => {
       if (includes(header, credential)) {
         debug('Replacing credentials in raw header');
@@ -377,6 +408,53 @@ function replaceBearerAuth(
   }
 }
 
+function replaceDigestAuth(
+  definition: RecordingDefinition,
+  placeholder: string,
+  security: DigestSecurityScheme & DigestSecurityValues
+): void {
+  const { authorizationHeader, challengeHeader } = security;
+
+  // Challenge digest header
+  if (
+    challengeHeader &&
+    definition.reqheaders?.[challengeHeader] !== undefined
+  ) {
+    debug(`Replacing Digest token from challenge header: ${challengeHeader}`);
+
+    definition.reqheaders[challengeHeader] = `Digest ${placeholder}`;
+  }
+
+  // Authorization digest header
+  if (
+    authorizationHeader &&
+    definition.reqheaders?.[authorizationHeader] !== undefined
+  ) {
+    debug(
+      `Replacing Digest token from authorization header: ${authorizationHeader}`
+    );
+
+    definition.reqheaders[authorizationHeader] = `Digest ${placeholder}`;
+  }
+
+  // Authorization or www-authenticate header
+  if (challengeHeader === undefined || authorizationHeader === undefined) {
+    if (definition.reqheaders?.[AUTH_HEADER_NAME] !== undefined) {
+      debug(`Replacing Digest token from default header: ${AUTH_HEADER_NAME}`);
+
+      definition.reqheaders[AUTH_HEADER_NAME] = `Digest ${placeholder}`;
+    }
+
+    if (definition.reqheaders?.[WWW_AUTH_HEADER_NAME] !== undefined) {
+      debug(
+        `Replacing Digest token from default header: ${WWW_AUTH_HEADER_NAME}`
+      );
+
+      definition.reqheaders[WWW_AUTH_HEADER_NAME] = `Digest ${placeholder}`;
+    }
+  }
+}
+
 /**
  * Replaces occurences of credentials from security schemes in recorded HTTP calls
  *
@@ -384,7 +462,7 @@ function replaceBearerAuth(
  * based on security scheme.
  *
  * It can look in following places of HTTP recording definition:
- * - headers and rawHeaders (bearer & basic)
+ * - headers and rawHeaders (bearer, basic & digest)
  * - body (apiKey)
  * - path (apiKey)
  * - query (apiKey)
@@ -428,7 +506,8 @@ export function replaceCredentialInDefinition({
     security.type === SecurityType.HTTP &&
     security.scheme === HttpScheme.DIGEST
   ) {
-    throw new UnexpectedError('Digest auth not implemented');
+    replaceDigestAuth(definition, placeholder, security);
+    replaceCredentialInRawHeaders({ ...options, security });
   }
 
   replaceCredentialInResponse(options);
