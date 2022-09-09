@@ -29,6 +29,15 @@ export class UnexpectedError extends ErrorBase {
   }
 }
 
+export class ProviderUndefinedError extends ErrorBase {
+  constructor(provider: string) {
+    super(
+      'ProviderUndefinedError',
+      `Provider ${provider} does not exist.\nUse \`superface create --provider --providerName ${provider}\` to create it.`
+    );
+  }
+}
+
 export class MapUndefinedError extends ErrorBase {
   constructor(profile: string, provider: string) {
     super(

@@ -6,6 +6,7 @@ import {
   InstanceMissingError,
   MapUndefinedError,
   ProfileUndefinedError,
+  ProviderUndefinedError,
   RecordingPathUndefinedError,
   RecordingsNotFoundError,
   SuperJsonNotFoundError,
@@ -41,6 +42,24 @@ describe('errors', () => {
     it('returns correct format', () => {
       expect(error.toString()).toEqual(
         'MapUndefinedError: Map for profile and provider does not exist.\nUse `superface create --map --profileId profile --providerName provider` to create it.'
+      );
+    });
+  });
+
+  describe('when throwing ProviderUndefinedError', () => {
+    const error = new ProviderUndefinedError('provider');
+
+    it('throws in correct format', () => {
+      expect(() => {
+        throw error;
+      }).toThrow(
+        `Provider provider does not exist.\nUse \`superface create --provider --providerName provider\` to create it.`
+      );
+    });
+
+    it('returns correct format', () => {
+      expect(error.toString()).toEqual(
+        'ProviderUndefinedError: Provider provider does not exist.\nUse `superface create --provider --providerName provider` to create it.'
       );
     });
   });
