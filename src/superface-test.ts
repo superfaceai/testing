@@ -27,10 +27,7 @@ import {
 } from './common/errors';
 import { getFixtureName, matchWildCard } from './common/format';
 import { exists, mkdirQuiet, readFileQuiet, rename } from './common/io';
-import {
-  decodeRecordingsResponse,
-  writeRecordings,
-} from './common/output-stream';
+import { decodeRecordings, writeRecordings } from './common/output-stream';
 import { IGenerator } from './generate-hash';
 import { analyzeChangeImpact } from './nock/analyzer';
 import { Matcher } from './nock/matcher';
@@ -522,10 +519,11 @@ export class SuperfaceTest {
       return;
     }
 
-    await decodeRecordingsResponse(encodedRecordings);
+    const decodedRecs = await decodeRecordings(encodedRecordings);
+
     await writeRecordings(
       this.composeRecordingPath({ ...pathConfig, decoded: true }),
-      encodedRecordings
+      decodedRecs
     );
   }
 

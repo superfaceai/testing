@@ -1,6 +1,7 @@
 import Ajv from 'ajv';
 import createDebug from 'debug';
 import { createSchema } from 'genson-js/dist';
+import { ReplyBody } from 'nock/types';
 import { inspect } from 'util';
 
 import {
@@ -331,8 +332,8 @@ export class Matcher {
   }
 
   private static async matchResponse(
-    oldRes: unknown,
-    newRes: unknown,
+    oldRes: ReplyBody | undefined,
+    newRes: ReplyBody | undefined,
     contentEncoding?: MatchHeaders
   ): Promise<void> {
     debugMatching('\tresponse');

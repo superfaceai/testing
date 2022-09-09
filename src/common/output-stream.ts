@@ -59,17 +59,23 @@ export class OutputStream {
   }
 }
 
-export async function decodeRecordingsResponse(
+export async function decodeRecordings(
   recordings: RecordingDefinition[]
-): Promise<void> {
-  for (const rec of recordings) {
-    const contentEncoding = getResponseHeaderValue(
-      'Content-Encoding',
-      rec.rawHeaders ?? []
-    );
+): Promise<RecordingDefinition[]> {
+  return Promise.all(recordings.map(decodeRecordingResponse));
+}
 
-    rec.response = await decodeResponse(rec.response, contentEncoding);
-  }
+export async function decodeRecordingResponse(
+  recording: RecordingDefinition
+): Promise<RecordingDefinition> {
+  const contentEncoding = getResponseHeaderValue(
+    'Content-Encoding',
+    recording.rawHeaders ?? []
+  );
+
+  const response = await decodeResponse(recording.response, contentEncoding);
+
+  return { ...recording, response };
 }
 
 export async function writeRecordings(

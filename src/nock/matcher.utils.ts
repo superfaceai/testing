@@ -71,9 +71,13 @@ function composeBuffer(response: any[]): Buffer {
 }
 
 export async function decodeResponse(
-  response: unknown,
-  contentEncoding = 'gzip'
-): Promise<ReplyBody> {
+  response: ReplyBody | undefined,
+  contentEncoding?: string
+): Promise<ReplyBody | undefined> {
+  if (response === undefined || contentEncoding === undefined) {
+    return response;
+  }
+
   if (!Array.isArray(response)) {
     throw new UnexpectedError(
       `Response is encoded by "${contentEncoding}" and is not an array`

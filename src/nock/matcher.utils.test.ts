@@ -1,3 +1,5 @@
+import { ReplyBody } from 'nock/types';
+
 import { UnexpectedError } from '../common/errors';
 import {
   decodeResponse,
@@ -90,9 +92,9 @@ describe('Matcher utils', () => {
   describe('decodeResponse', () => {
     const contentEncoding = 'gzip';
 
-    it.each([() => ({ value: 1 }), { value: 1 }, '{value: 1}', true, 1])(
+    it.each([() => ({ value: 1 }), { value: 1 }, '{value: 1}'])(
       'fails when specified response is not array of hex data',
-      async (response: unknown) => {
+      async (response: ReplyBody | undefined) => {
         await expect(
           decodeResponse(response, contentEncoding)
         ).rejects.toThrowError(
