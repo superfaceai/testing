@@ -1,7 +1,8 @@
-import { SuperJson } from '@superfaceai/one-sdk';
+import { NormalizedSuperJsonDocument } from '@superfaceai/ast';
 import { join } from 'path';
 import { Writable } from 'stream';
 
+import { mockSuperJson } from '../superface/mock/super-json';
 import { exists, rimraf, streamEnd, streamWrite } from './io';
 import { OutputStream } from './output-stream';
 
@@ -13,7 +14,7 @@ describe('IO functions', () => {
   };
 
   let INITIAL_CWD: string;
-  let INITIAL_SUPER_JSON: SuperJson;
+  let INITIAL_SUPER_JSON: NormalizedSuperJsonDocument;
 
   //Mock writable stream for testing backpressure
   class MockWritable extends Writable {
@@ -30,7 +31,7 @@ describe('IO functions', () => {
     INITIAL_CWD = process.cwd();
     process.chdir(WORKING_DIR);
 
-    INITIAL_SUPER_JSON = (await SuperJson.load(FIXTURE.superJson)).unwrap();
+    INITIAL_SUPER_JSON = mockSuperJson().document;
   });
 
   afterAll(async () => {
@@ -44,7 +45,7 @@ describe('IO functions', () => {
   async function resetSuperJson() {
     await OutputStream.writeOnce(
       FIXTURE.superJson,
-      JSON.stringify(INITIAL_SUPER_JSON.document, undefined, 2)
+      JSON.stringify(INITIAL_SUPER_JSON, undefined, 2)
     );
   }
 

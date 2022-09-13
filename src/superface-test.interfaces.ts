@@ -1,22 +1,17 @@
 import {
+  NonPrimitive,
+  Primitive,
   Profile,
   Provider,
   Result,
-  SuperfaceClient,
   UseCase,
 } from '@superfaceai/one-sdk';
-import {
-  NonPrimitive,
-  Primitive,
-} from '@superfaceai/one-sdk/dist/internal/interpreter/variables';
 import { Definition } from 'nock/types';
 
-export interface SuperfaceTestConfigPayload {
-  client?: SuperfaceClient;
+export interface SuperfaceTestConfig {
   profile?: Profile | string;
   provider?: Provider | string;
   useCase?: UseCase | string;
-  testInstance?: unknown;
 }
 
 export type InputVariables = Record<string, Primitive>;
@@ -26,20 +21,7 @@ export interface HashOptions {
   testName?: string;
 }
 
-export type SuperfaceTestRun = Omit<
-  SuperfaceTestConfigPayload,
-  'testInstance'
-> &
-  HashOptions;
-
-export interface SuperfaceTestConfig {
-  client?: SuperfaceClient;
-  profile?: Profile;
-  provider?: Provider;
-  useCase?: UseCase;
-}
-
-export type CompleteSuperfaceTestConfig = Required<SuperfaceTestConfig>;
+export type SuperfaceTestRun = SuperfaceTestConfig & HashOptions;
 
 export type TestingReturn = Result<unknown, string>;
 
@@ -47,6 +29,7 @@ export interface NockConfig {
   path?: string;
   fixture?: string;
   enableReqheadersRecording?: boolean;
+  testInstance?: unknown;
 }
 
 export type RecordingDefinition = Definition & {

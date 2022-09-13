@@ -3,7 +3,8 @@ import {
   ComponentUndefinedError,
   InstanceMissingError,
   MapUndefinedError,
-  ProviderUndefinedError,
+  ProfileUndefinedError,
+  ProviderJsonUndefinedError,
   RecordingPathUndefinedError,
   SuperJsonNotFoundError,
   UnexpectedError,
@@ -24,6 +25,24 @@ describe('errors', () => {
     });
   });
 
+  describe('when throwing ProfileUndefinedError', () => {
+    const error = new ProfileUndefinedError('profile');
+
+    it('throws in correct format', () => {
+      expect(() => {
+        throw error;
+      }).toThrow(
+        'Profile "profile" does not exist.\nUse `superface create --profile --profileId profile` to create it.'
+      );
+    });
+
+    it('returns correct format', () => {
+      expect(error.toString()).toEqual(
+        'ProfileUndefinedError: Profile "profile" does not exist.\nUse `superface create --profile --profileId profile` to create it.'
+      );
+    });
+  });
+
   describe('when throwing MapUndefinedError', () => {
     const error = new MapUndefinedError('profile', 'provider');
 
@@ -31,31 +50,31 @@ describe('errors', () => {
       expect(() => {
         throw error;
       }).toThrow(
-        'Map for profile and provider does not exist.\nUse `superface create --map --profileId profile --providerName provider` to create it.'
+        'Map for "profile" and "provider" does not exist.\nUse `superface create --map --profileId profile --providerName provider` to create it.'
       );
     });
 
     it('returns correct format', () => {
       expect(error.toString()).toEqual(
-        'MapUndefinedError: Map for profile and provider does not exist.\nUse `superface create --map --profileId profile --providerName provider` to create it.'
+        'MapUndefinedError: Map for "profile" and "provider" does not exist.\nUse `superface create --map --profileId profile --providerName provider` to create it.'
       );
     });
   });
 
-  describe('when throwing ProviderUndefinedError', () => {
-    const error = new ProviderUndefinedError('provider');
+  describe('when throwing ProviderJsonUndefinedError', () => {
+    const error = new ProviderJsonUndefinedError('provider');
 
     it('throws in correct format', () => {
       expect(() => {
         throw error;
       }).toThrow(
-        `Provider provider does not exist.\nUse \`superface create --provider --providerName provider\` to create it.`
+        'Provider for "provider" does not exist.\nUse `superface create --provider --providerName provider` to create it.'
       );
     });
 
     it('returns correct format', () => {
       expect(error.toString()).toEqual(
-        'ProviderUndefinedError: Provider provider does not exist.\nUse `superface create --provider --providerName provider` to create it.'
+        'ProviderJsonUndefinedError: Provider for "provider" does not exist.\nUse `superface create --provider --providerName provider` to create it.'
       );
     });
   });
