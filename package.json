@@ -49,6 +49,6 @@
   },
   "peerDependencies": {
     "@superfaceai/one-sdk": "^2.0",
-    "@superfaceai/parser": "1.2.0"
+    "@superfaceai/parser": "^1.2.0"
   }
 }
