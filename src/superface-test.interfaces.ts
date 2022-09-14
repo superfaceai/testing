@@ -1,26 +1,23 @@
 import {
-  PerformError,
-  Profile,
-  Provider,
-  Result,
-  SuperfaceClient,
-  UseCase,
-} from '@superfaceai/one-sdk';
-import {
+  MapInterpreterError,
   NonPrimitive,
   Primitive,
-} from '@superfaceai/one-sdk/dist/internal/interpreter/variables';
+  Profile,
+  ProfileParameterError,
+  Provider,
+  Result,
+  UnexpectedError,
+  UseCase,
+} from '@superfaceai/one-sdk';
 import { Definition } from 'nock/types';
 
 import { MatchImpact } from './nock/analyzer';
 import { ErrorCollection, MatchError } from './nock/matcher.errors';
 
-export interface SuperfaceTestConfigPayload {
-  client?: SuperfaceClient;
+export interface SuperfaceTestConfig {
   profile?: Profile | string;
   provider?: Provider | string;
   useCase?: UseCase | string;
-  testInstance?: unknown;
 }
 
 export type InputVariables = Record<string, Primitive>;
@@ -32,27 +29,19 @@ export interface HashOptions {
 
 export type AlertFunction = (report: TestReport) => unknown | Promise<unknown>;
 
-export type SuperfaceTestRun = Omit<
-  SuperfaceTestConfigPayload,
-  'testInstance'
-> &
-  HashOptions;
+export type SuperfaceTestRun = SuperfaceTestConfig & HashOptions;
 
-export interface SuperfaceTestConfig {
-  client?: SuperfaceClient;
-  profile?: Profile;
-  provider?: Provider;
-  useCase?: UseCase;
-}
-
-export type CompleteSuperfaceTestConfig = Required<SuperfaceTestConfig>;
-
+export type PerformError =
+  | ProfileParameterError
+  | MapInterpreterError
+  | UnexpectedError;
 export type TestingReturn = Result<unknown, PerformError | string>;
 
 export interface NockConfig {
   path?: string;
   fixture?: string;
   enableReqheadersRecording?: boolean;
+  testInstance?: unknown;
 }
 
 export type RecordingDefinition = Definition & {
@@ -72,10 +61,16 @@ export interface RecordingProcessOptions {
   fullError?: boolean;
 }
 
-export interface AnalysisResult {
-  impact: MatchImpact;
+export interface NoImpactResult {
+  impact: MatchImpact.NONE;
+}
+
+export interface ImpactResult {
+  impact: MatchImpact.MAJOR | MatchImpact.MINOR | MatchImpact.PATCH;
   errors: ErrorCollection<MatchError>;
 }
+
+export type AnalysisResult = NoImpactResult | ImpactResult;
 
 export type TestAnalysis = Omit<AnalysisResult, 'errors'> & {
   profileId: string;

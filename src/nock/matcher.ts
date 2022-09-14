@@ -4,10 +4,16 @@ import { createSchema } from 'genson-js/dist';
 import { ReplyBody } from 'nock/types';
 import { inspect } from 'util';
 
+import { UnexpectedError } from '../common/errors';
+import { exists, readFileQuiet } from '../common/io';
+import { writeRecordings } from '../common/output-stream';
 import {
+  AnalysisResult,
   RecordingDefinition,
   RecordingDefinitions,
 } from '../superface-test.interfaces';
+import { parseBooleanEnv } from '../superface-test.utils';
+import { analyzeChangeImpact, MatchImpact } from './analyzer';
 import { ErrorCollector } from './error-collector';
 import {
   ErrorCollection,
@@ -29,6 +35,7 @@ import {
   getResponseHeader,
   parseBody,
 } from './matcher.utils';
+import { composeRecordingPath, writeDecodedRecordings } from './recorder';
 
 export interface MatchHeaders {
   old?: string;
@@ -399,5 +406,57 @@ export class Matcher {
     } else if (oldPayload !== newPayload) {
       this.errorCollector.add(ErrorType.CHANGE, error);
     }
+  }
+}
+
+export async function matchTraffic(
+  oldRecordingPath: string,
+  newTraffic: RecordingDefinitions
+): Promise<AnalysisResult> {
+  // recording file exist -> record and compare new traffic
+  const oldRecording = await readFileQuiet(
+    composeRecordingPath(oldRecordingPath)
+  );
+  const oldRecordingDecodedPath = composeRecordingPath(oldRecordingPath, {
+    decoded: true,
+  });
+
+  if (oldRecording === undefined) {
+    throw new UnexpectedError('Reading old recording file failed');
+  }
+
+  const oldRecordingDefs = JSON.parse(oldRecording) as RecordingDefinitions;
+
+  // Match new HTTP traffic to saved for breaking changes
+  const match = await Matcher.match(oldRecordingDefs, newTraffic);
+
+  if (match.valid) {
+    // do not save new recording as there were no breaking changes found
+    // only write recordings with decoded responses if they do not exist
+    if (
+      parseBooleanEnv(process.env.DECODE_RESPONSE) &&
+      !(await exists(oldRecordingDecodedPath))
+    ) {
+      await writeDecodedRecordings(oldRecordingPath, newTraffic);
+    }
+
+    return { impact: MatchImpact.NONE };
+  } else {
+    const impact = analyzeChangeImpact(match.errors);
+
+    // Save new traffic
+    await writeRecordings(
+      composeRecordingPath(oldRecording, { version: 'new' }),
+      newTraffic
+    );
+
+    // save new traffic with decoded response
+    if (parseBooleanEnv(process.env.DECODE_RESPONSE)) {
+      await writeDecodedRecordings(oldRecordingPath, newTraffic, {
+        version: 'new',
+      });
+    }
+
+    return { impact, errors: match.errors };
   }
 }

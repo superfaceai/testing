@@ -1,13 +1,14 @@
-import { NonPrimitive } from '@superfaceai/one-sdk/dist/internal/interpreter/variables';
+import { NonPrimitive } from '@superfaceai/one-sdk';
 import createDebug from 'debug';
 import { join as joinPath } from 'path';
 
 import { CoverageFileNotFoundError } from './common/errors';
+import { getFixtureName } from './common/format';
 import { exists, readFileQuiet, readFilesInDir, rimraf } from './common/io';
 import { OutputStream } from './common/output-stream';
 import { ErrorCollection, MatchError } from './nock/matcher.errors';
 import {
-  AnalysisResult,
+  ImpactResult,
   TestAnalysis,
   TestingReturn,
   TestReport,
@@ -24,7 +25,6 @@ const debug = createDebug('superface:testing:reporter');
 export async function saveReport({
   input,
   result,
-  path,
   hash,
   analysis,
   recordingPath,
@@ -34,10 +34,9 @@ export async function saveReport({
 }: {
   input: NonPrimitive;
   result: TestingReturn;
-  path: string;
   hash: string;
   recordingPath: string;
-  analysis: AnalysisResult;
+  analysis: ImpactResult;
   profileId: string;
   providerName: string;
   useCaseName: string;
@@ -45,19 +44,19 @@ export async function saveReport({
   debug('Saving coverage report');
   const coveragePath = joinPath(
     DEFAULT_COVERAGE_PATH,
-    path,
+    getFixtureName(profileId, providerName, useCaseName),
     `coverage-${hash}.json`
   );
 
   const data: TestAnalysis = {
     ...analysis,
-    errors: parseErrors(analysis.errors),
     recordingPath,
     profileId,
     providerName,
     useCaseName,
     input,
     result,
+    errors: parseErrors(analysis.errors),
   };
 
   debug(`Writing report on path "${coveragePath}"`);

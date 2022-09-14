@@ -7,13 +7,13 @@ import { exists, readFileQuiet, readFilesInDir } from './common/io';
 import { OutputStream } from './common/output-stream';
 import { MatchImpact } from './nock/analyzer';
 import { DEFAULT_COVERAGE_PATH, report, saveReport } from './reporter';
-import { TestReport } from './superface-test.interfaces';
+import { ImpactResult, TestReport } from './superface-test.interfaces';
 
 jest.mock('./common/io');
 
 const sampleHash = 'XXX';
 const samplePath = joinPath('profile', 'provider', 'test');
-const sampleAnalysisResult = {
+const sampleAnalysisResult: ImpactResult = {
   errors: { added: [], changed: [], removed: [] },
   impact: MatchImpact.PATCH,
 };
@@ -47,7 +47,6 @@ describe('Reporter module', () => {
         saveReport({
           input: {},
           result: ok(''),
-          path: samplePath,
           hash: sampleHash,
           analysis: sampleAnalysisResult,
           ...sampleTestResult,
@@ -73,7 +72,6 @@ describe('Reporter module', () => {
       await saveReport({
         input: {},
         result: ok(''),
-        path: samplePath,
         hash: sampleHash,
         analysis: sampleAnalysisResult,
         ...sampleTestResult,

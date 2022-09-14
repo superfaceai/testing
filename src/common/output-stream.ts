@@ -3,7 +3,6 @@ import { dirname } from 'path';
 import { Writable } from 'stream';
 
 import { RecordingDefinition } from '..';
-import { decodeResponse, getResponseHeaderValue } from '../nock/matcher.utils';
 import { exists, streamEnd, streamWrite, WritingOptions } from './io';
 
 export class OutputStream {
@@ -57,25 +56,6 @@ export class OutputStream {
 
     return false;
   }
-}
-
-export async function decodeRecordings(
-  recordings: RecordingDefinition[]
-): Promise<RecordingDefinition[]> {
-  return Promise.all(recordings.map(decodeRecordingResponse));
-}
-
-export async function decodeRecordingResponse(
-  recording: RecordingDefinition
-): Promise<RecordingDefinition> {
-  const contentEncoding = getResponseHeaderValue(
-    'Content-Encoding',
-    recording.rawHeaders ?? []
-  );
-
-  const response = await decodeResponse(recording.response, contentEncoding);
-
-  return { ...recording, response };
 }
 
 export async function writeRecordings(
