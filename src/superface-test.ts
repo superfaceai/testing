@@ -1,62 +1,35 @@
-import {
-  BoundProfileProvider,
-  err,
-  ok,
-  PerformError,
-  SuperfaceClient,
-} from '@superfaceai/one-sdk';
+import { err, ok, Result } from '@superfaceai/one-sdk';
 import createDebug from 'debug';
-import {
-  activate as activateNock,
-  define as loadRecordingDefinitions,
-  disableNetConnect,
-  enableNetConnect,
-  isActive as isNockActive,
-  recorder,
-  restore as restoreRecordings,
-} from 'nock';
-import { basename, dirname, join as joinPath } from 'path';
+import { enableNetConnect, recorder, restore as restoreRecordings } from 'nock';
+import { join as joinPath } from 'path';
 
-import {
-  BaseURLNotFoundError,
-  ComponentUndefinedError,
-  FixturesPathUndefinedError,
-  RecordingPathUndefinedError,
-  RecordingsNotFoundError,
-  UnexpectedError,
-} from './common/errors';
+import { UnexpectedError } from './common/errors';
 import { getFixtureName, matchWildCard } from './common/format';
-import { exists, mkdirQuiet, readFileQuiet, rename } from './common/io';
-import { writeRecordings } from './common/output-stream';
 import { IGenerator } from './generate-hash';
-import { analyzeChangeImpact } from './nock/analyzer';
-import { Matcher } from './nock/matcher';
+import { MatchImpact } from './nock/analyzer';
+import {
+  canUpdateTraffic,
+  endRecording,
+  loadRecording,
+  startRecording,
+  updateTraffic,
+} from './nock/recorder';
 import { report, saveReport } from './reporter';
+import { prepareSuperface } from './superface/config';
 import {
   AlertFunction,
   AnalysisResult,
-  InputVariables,
   NockConfig,
-  ProcessingFunction,
-  RecordingDefinitions,
+  PerformError,
   RecordingProcessOptions,
-  SuperfaceTestConfigPayload,
+  SuperfaceTestConfig,
   SuperfaceTestRun,
   TestingReturn,
 } from './superface-test.interfaces';
 import {
-  assertBoundProfileProvider,
-  assertsDefinitionsAreNotStrings,
-  assertsPreparedConfig,
-  checkSensitiveInformation,
   getGenerator,
-  getProfileId,
-  getSecurityValues,
-  getSuperJson,
-  isProfileProviderLocal,
   mapError,
   parseBooleanEnv,
-  replaceCredentials,
   searchValues,
 } from './superface-test.utils';
 
@@ -65,20 +38,15 @@ const debugSetup = createDebug('superface:testing:setup');
 const debugHashing = createDebug('superface:testing:hash');
 
 export class SuperfaceTest {
-  private sfConfig: SuperfaceTestConfigPayload;
-  private boundProfileProvider?: BoundProfileProvider;
   private nockConfig?: NockConfig;
-  private fixturesPath?: string;
-  private recordingPath?: string;
   private analysis?: AnalysisResult;
   private generator: IGenerator;
+  public configuration: SuperfaceTestConfig | undefined;
 
-  constructor(sfConfig?: SuperfaceTestConfigPayload, nockConfig?: NockConfig) {
-    this.sfConfig = sfConfig ?? {};
+  constructor(payload?: SuperfaceTestConfig, nockConfig?: NockConfig) {
+    this.configuration = payload;
     this.nockConfig = nockConfig;
-    this.generator = getGenerator(sfConfig?.testInstance);
-
-    this.setupFixturesPath();
+    this.generator = getGenerator(nockConfig?.testInstance);
   }
 
   /**
@@ -89,17 +57,15 @@ export class SuperfaceTest {
     testCase: SuperfaceTestRun,
     options?: RecordingProcessOptions
   ): Promise<TestingReturn> {
-    this.prepareSuperfaceConfig(testCase);
-    await this.setupSuperfaceConfig();
+    const { profile, provider, useCase } = testCase;
+    const testCaseConfig: SuperfaceTestConfig = {
+      profile: profile ?? this.configuration?.profile,
+      provider: provider ?? this.configuration?.provider,
+      useCase: useCase ?? this.configuration?.useCase,
+    };
 
-    assertsPreparedConfig(this.sfConfig);
-    await this.checkForMapInSuperJson();
-
-    this.boundProfileProvider =
-      await this.sfConfig.client.cacheBoundProfileProvider(
-        this.sfConfig.profile.configuration,
-        this.sfConfig.provider.configuration
-      );
+    // Sets everything connected to SDK
+    const sf = await prepareSuperface(testCaseConfig);
 
     // Create a hash for access to recording files
     const { input, testName } = testCase;
@@ -107,38 +73,67 @@ export class SuperfaceTest {
 
     debugHashing('Created hash:', hash);
 
-    this.setupRecordingPath(getFixtureName(this.sfConfig), hash);
+    const recordingPath = this.setupRecordingPath(
+      getFixtureName(sf.profileId, sf.providerName, sf.useCaseName),
+      hash
+    );
+
+    debugSetup('Prepared path to recording:', recordingPath);
 
     // Replace currently supported traffic with new (with changes)
-    if (await this.canUpdateTraffic()) {
-      await this.updateTraffic();
+    if (await canUpdateTraffic(recordingPath)) {
+      await updateTraffic(recordingPath);
     }
 
     // Parse env variable and check if test should be recorded
-    const record = matchWildCard(this.sfConfig, process.env.SUPERFACE_LIVE_API);
+    const record = matchWildCard(
+      sf.profileId,
+      sf.providerName,
+      sf.useCaseName,
+      process.env.SUPERFACE_LIVE_API
+    );
     const processRecordings = options?.processRecordings ?? true;
     const inputVariables = searchValues(testCase.input, options?.hideInput);
 
-    await this.startRecording(
-      record,
-      processRecordings,
-      inputVariables,
-      options?.beforeRecordingLoad
-    );
+    if (record) {
+      await startRecording(this.nockConfig?.enableReqheadersRecording);
+    } else {
+      await loadRecording({
+        recordingPath,
+        inputVariables,
+        config: {
+          boundProfileProvider: sf.boundProfileProvider,
+          providerName: sf.providerName,
+        },
+        options: {
+          processRecordings,
+          beforeRecordingLoad: options?.beforeRecordingLoad,
+        },
+      });
+    }
 
-    let result: TestingReturn;
+    let result: Result<unknown, PerformError>;
     try {
       // Run perform method on specified configuration
-      result = await this.sfConfig.useCase.perform(input, {
-        provider: this.sfConfig.provider,
-      });
+      result = await sf.boundProfileProvider.perform(sf.useCaseName, input);
 
-      await this.endRecording({
-        record,
-        processRecordings,
-        inputVariables,
-        beforeRecordingSave: options?.beforeRecordingSave,
-      });
+      if (record) {
+        this.analysis = await endRecording({
+          recordingPath,
+          processRecordings,
+          inputVariables,
+          config: {
+            boundProfileProvider: sf.boundProfileProvider,
+            providerName: sf.providerName,
+          },
+          beforeRecordingSave: options?.beforeRecordingSave,
+        });
+      } else {
+        restoreRecordings();
+        enableNetConnect();
+
+        debug('Restored HTTP requests and enabled outgoing requests');
+      }
     } catch (error: unknown) {
       restoreRecordings();
       recorder.clear();
@@ -149,17 +144,17 @@ export class SuperfaceTest {
 
     if (
       this.analysis &&
+      this.analysis.impact !== MatchImpact.NONE &&
       !parseBooleanEnv(process.env.DISABLE_PROVIDER_CHANGES_COVERAGE)
     ) {
       await saveReport({
         input,
         result,
-        path: getFixtureName(this.sfConfig),
         hash: this.generator.hash({ input, testName }),
-        recordingPath: this.recordingPath ?? '',
-        profileId: this.sfConfig.profile.configuration.id,
-        providerName: this.sfConfig.provider.configuration.name,
-        useCaseName: this.sfConfig.useCase.name,
+        recordingPath,
+        profileId: sf.profileId,
+        providerName: sf.providerName,
+        useCaseName: sf.useCaseName,
         analysis: this.analysis,
       });
     }
@@ -170,7 +165,7 @@ export class SuperfaceTest {
       debug('Perform failed with error:', result.error.toString());
 
       if (options?.fullError) {
-        return err(mapError(result.error as PerformError));
+        return err(mapError(result.error));
       }
 
       return err(result.error.toString());
@@ -198,422 +193,16 @@ export class SuperfaceTest {
     await report(alert, options);
   }
 
-  private async updateTraffic(): Promise<void> {
-    const pathToCurrent = this.composeRecordingPath();
-    const pathToNew = this.composeRecordingPath('new');
-
-    await mkdirQuiet(joinPath(dirname(pathToCurrent), 'old'));
-
-    // TODO: compose version based on used map
-    let i = 0;
-    while (await exists(this.composeRecordingPath(`${i}`))) {
-      i++;
-    }
-
-    await rename(pathToCurrent, this.composeRecordingPath(`${i}`));
-    await rename(pathToNew, pathToCurrent);
-  }
-
-  private async canUpdateTraffic(): Promise<boolean> {
-    const updateTraffic = parseBooleanEnv(process.env.UPDATE_TRAFFIC);
-
-    if (updateTraffic && (await exists(this.composeRecordingPath('new')))) {
-      return true;
-    }
-
-    return false;
-  }
-
-  /**
-   * Starts recording or loads recording fixture if exists.
-   *
-   * It will also process recording definitions before creating mocked requests
-   * to match against constructed request and enable mocking them. This is needed
-   * because stored recording fixture is possibly processed and contains placeholders
-   * instead of original secrets.
-   *
-   * Recordings do not get processed if user specifies parameter `processRecordings` as false.
-   */
-  private async startRecording(
-    record: boolean,
-    processRecordings: boolean,
-    inputVariables?: InputVariables,
-    beforeRecordingLoad?: ProcessingFunction
-  ): Promise<void> {
-    if (record) {
-      const enable_reqheaders_recording =
-        this.nockConfig?.enableReqheadersRecording ?? false;
-
-      recorder.rec({
-        dont_print: true,
-        output_objects: true,
-        use_separator: false,
-        enable_reqheaders_recording,
-      });
-
-      debug('Recording HTTP traffic started');
-    } else {
-      await this.loadRecordings(
-        processRecordings,
-        inputVariables,
-        beforeRecordingLoad
-      );
-    }
-  }
-
-  private async loadRecordings(
-    processRecordings: boolean,
-    inputVariables?: InputVariables,
-    beforeRecordingLoad?: ProcessingFunction
-  ): Promise<void> {
-    const definitions = await this.getRecordings();
-
-    assertsPreparedConfig(this.sfConfig);
-    assertBoundProfileProvider(this.boundProfileProvider);
-
-    const { configuration } = this.boundProfileProvider;
-    const integrationParameters = configuration.parameters ?? {};
-    const securitySchemes = configuration.security;
-    const superJson = this.sfConfig.client?.superJson ?? (await getSuperJson());
-
-    const securityValues = getSecurityValues(
-      this.sfConfig.provider.configuration.name,
-      superJson.normalized
-    );
-
-    const baseUrl = configuration.services.getUrl();
-
-    if (baseUrl === undefined) {
-      throw new BaseURLNotFoundError(this.sfConfig.provider.configuration.name);
-    }
-
-    if (processRecordings) {
-      replaceCredentials({
-        definitions,
-        securitySchemes,
-        securityValues,
-        integrationParameters,
-        inputVariables,
-        baseUrl,
-        beforeSave: false,
-      });
-    }
-
-    if (beforeRecordingLoad) {
-      debug(
-        "Calling custom 'beforeRecordingLoad' hook on loaded recording definitions"
-      );
-
-      await beforeRecordingLoad(definitions);
-    }
-
-    loadRecordingDefinitions(definitions);
-
-    debug('Loaded and mocked recorded traffic based on recording fixture');
-
-    disableNetConnect();
-
-    if (!isNockActive()) {
-      activateNock();
-    }
-  }
-
-  async getRecordings(): Promise<RecordingDefinitions> {
-    const useNewTraffic = parseBooleanEnv(process.env.USE_NEW_TRAFFIC);
-    const newRecordingPath = this.composeRecordingPath('new');
-
-    if (useNewTraffic && (await exists(newRecordingPath))) {
-      return await this.parseRecordings(newRecordingPath);
-    }
-
-    const currentRecordingPath = this.composeRecordingPath();
-    const recordingExists = await exists(currentRecordingPath);
-
-    if (!recordingExists) {
-      throw new RecordingsNotFoundError(currentRecordingPath);
-    }
-
-    return await this.parseRecordings(currentRecordingPath);
-  }
-
-  private async parseRecordings(path: string): Promise<RecordingDefinitions> {
-    const definitionFile = await readFileQuiet(path);
-
-    if (definitionFile === undefined) {
-      throw new UnexpectedError('Reading new recording file failed');
-    }
-
-    debug(`Parsing recording file at: "${path}"`);
-
-    return JSON.parse(definitionFile) as RecordingDefinitions;
-  }
-
-  /**
-   * Checks if recording started and if yes, it ends recording and
-   * saves recording to file configured based on nock configuration from constructor.
-   *
-   * It will also process the recording definitions and hide sensitive information
-   * based on security schemes and integration parameters defined in provider.json,
-   * unless user pass in false for parameter `processRecordings`.
-   */
-  private async endRecording({
-    record,
-    processRecordings,
-    inputVariables,
-    beforeRecordingSave,
-  }: {
-    record: boolean;
-    processRecordings: boolean;
-    inputVariables?: InputVariables;
-    beforeRecordingSave?: ProcessingFunction;
-  }): Promise<void> {
-    if (record) {
-      const definitions = recorder.play();
-      recorder.clear();
-      restoreRecordings();
-
-      debug(
-        'Recording ended - Restored HTTP requests and cleared recorded traffic'
-      );
-
-      if (definitions.length === 0) {
-        await writeRecordings(this.composeRecordingPath(), []);
-
-        return;
-      }
-
-      assertsDefinitionsAreNotStrings(definitions);
-      assertsPreparedConfig(this.sfConfig);
-      assertBoundProfileProvider(this.boundProfileProvider);
-
-      const { configuration } = this.boundProfileProvider;
-      const superJson =
-        this.sfConfig.client?.superJson ?? (await getSuperJson());
-
-      const securityValues = getSecurityValues(
-        this.sfConfig.provider.configuration.name,
-        superJson.normalized
-      );
-
-      const securitySchemes = configuration.security;
-      const integrationParameters = configuration.parameters ?? {};
-
-      if (processRecordings) {
-        const baseUrl = configuration.services.getUrl();
-
-        if (baseUrl === undefined) {
-          throw new BaseURLNotFoundError(
-            this.sfConfig.provider.configuration.name
-          );
-        }
-
-        replaceCredentials({
-          definitions,
-          securitySchemes,
-          securityValues,
-          integrationParameters,
-          inputVariables,
-          baseUrl,
-          beforeSave: true,
-        });
-      }
-
-      if (beforeRecordingSave) {
-        debug(
-          "Calling custom 'beforeRecordingSave' hook on recorded definitions"
-        );
-
-        await beforeRecordingSave(definitions);
-      }
-
-      if (
-        securitySchemes.length > 0 ||
-        securityValues.length > 0 ||
-        (integrationParameters &&
-          Object.values(integrationParameters).length > 0)
-      ) {
-        checkSensitiveInformation(
-          definitions,
-          securitySchemes,
-          securityValues,
-          integrationParameters
-        );
-      }
-
-      const recordingExists = await exists(this.composeRecordingPath());
-
-      if (recordingExists) {
-        await this.matchTraffic(definitions);
-      } else {
-        // recording file does not exist -> record new traffic
-        await writeRecordings(this.composeRecordingPath(), definitions);
-      }
-
-      debug('Recorded definitions written');
-    } else {
-      restoreRecordings();
-      enableNetConnect();
-
-      debug('Restored HTTP requests and enabled outgoing requests');
-
-      return;
-    }
-  }
-
-  private async matchTraffic(newTraffic: RecordingDefinitions) {
-    // recording file exist -> record and compare new traffic
-    const oldRecording = await readFileQuiet(this.composeRecordingPath());
-
-    if (oldRecording === undefined) {
-      throw new UnexpectedError('Reading old recording file failed');
-    }
-
-    const oldRecordingDefs = JSON.parse(oldRecording) as RecordingDefinitions;
-
-    // Match new HTTP traffic to saved for breaking changes
-    const match = await Matcher.match(oldRecordingDefs, newTraffic);
-
-    if (match.valid) {
-      // do not save new recording as there were no breaking changes found
-    } else {
-      const impact = analyzeChangeImpact(match.errors);
-
-      this.analysis = {
-        impact,
-        errors: match.errors,
-      };
-
-      // Save new traffic
-      await writeRecordings(this.composeRecordingPath('new'), newTraffic);
-    }
-  }
-
-  private composeRecordingPath(version?: string): string {
-    if (!this.recordingPath) {
-      throw new RecordingPathUndefinedError();
-    }
-
-    if (version === 'new') {
-      return `${this.recordingPath}-new.json`;
-    }
-
-    if (version !== undefined) {
-      const baseDir = dirname(this.recordingPath);
-      const hash = basename(this.recordingPath);
-
-      return joinPath(baseDir, 'old', `${hash}_${version}.json`);
-    }
-
-    return `${this.recordingPath}.json`;
-  }
-
-  /**
-   * Sets up path to all fixtures.
-   */
-  private setupFixturesPath(): void {
-    const { path } = this.nockConfig ?? {};
-
-    if (this.fixturesPath === undefined) {
-      this.fixturesPath = path ?? joinPath(process.cwd(), 'nock');
-    }
-
-    debugSetup('Prepare path to recording fixtures:', this.fixturesPath);
-  }
-
   /**
    * Sets up path to recording, depends on current Superface configuration and test case input.
    */
-  private setupRecordingPath(fixtureName: string, inputHash: string) {
-    if (!this.fixturesPath) {
-      throw new FixturesPathUndefinedError();
-    }
+  private setupRecordingPath(fixtureName: string, inputHash: string): string {
+    const { path, fixture } = this.nockConfig ?? {};
 
-    this.recordingPath = joinPath(
-      this.fixturesPath,
+    return joinPath(
+      path ?? joinPath(process.cwd(), 'nock'),
       fixtureName,
-      `${this.nockConfig?.fixture ?? 'recording'}-${inputHash}`
-    );
-
-    debugSetup('Prepare path to recording:', this.recordingPath);
-  }
-
-  /**
-   * Sets up entered payload to current Superface configuration
-   */
-  private prepareSuperfaceConfig(payload: SuperfaceTestConfigPayload): void {
-    if (payload.client !== undefined) {
-      this.sfConfig.client = payload.client;
-    }
-
-    if (payload.profile !== undefined) {
-      this.sfConfig.profile = payload.profile;
-    }
-
-    if (payload.provider !== undefined) {
-      this.sfConfig.provider = payload.provider;
-    }
-
-    if (payload.useCase !== undefined) {
-      this.sfConfig.useCase = payload.useCase;
-    }
-
-    debugSetup('Superface configuration prepared:', this.sfConfig);
-  }
-
-  /**
-   * Sets up current configuration - transforms every component
-   * that is represented by string to instance of that corresponding component.
-   */
-  private async setupSuperfaceConfig(): Promise<void> {
-    if (!this.sfConfig.client) {
-      this.sfConfig.client = new SuperfaceClient();
-
-      debugSetup('Superface client initialized:', this.sfConfig.client);
-    }
-
-    if (typeof this.sfConfig.profile === 'string') {
-      this.sfConfig.profile = await this.sfConfig.client.getProfile(
-        this.sfConfig.profile
-      );
-
-      debugSetup('Superface Profile transformed:', this.sfConfig.profile);
-    }
-
-    if (typeof this.sfConfig.provider === 'string') {
-      this.sfConfig.provider = await this.sfConfig.client.getProvider(
-        this.sfConfig.provider
-      );
-
-      debugSetup('Superface Provider transformed:', this.sfConfig.provider);
-    }
-
-    if (typeof this.sfConfig.useCase === 'string') {
-      if (this.sfConfig.profile === undefined) {
-        throw new ComponentUndefinedError('Profile');
-      }
-
-      this.sfConfig.useCase = this.sfConfig.profile.getUseCase(
-        this.sfConfig.useCase
-      );
-
-      debugSetup('Superface UseCase transformed:', this.sfConfig.useCase);
-    }
-  }
-
-  /**
-   * Checks whether current components in sfConfig
-   * are locally linked in super.json.
-   */
-  private async checkForMapInSuperJson(): Promise<void> {
-    assertsPreparedConfig(this.sfConfig);
-
-    const profileId = getProfileId(this.sfConfig.profile);
-    const superJson = this.sfConfig.client?.superJson ?? (await getSuperJson());
-
-    isProfileProviderLocal(
-      this.sfConfig.provider,
-      profileId,
-      superJson.normalized
+      `${fixture ?? 'recording'}-${inputHash}`
     );
   }
 }

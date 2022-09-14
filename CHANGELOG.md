@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- New dev and peer dependency - Superface Parser [v1.2.0](https://github.com/superfaceai/parser/releases/tag/v1.2.0)
+- New module for preparing files necessary for `perform` (SuperJson, ProfileAST, MapAST, ProviderJson)
+- New module for mocking necessary files for `perform`
+- Support hiding of credentials used with new security scheme Digest
 - New parameter `fullError` in method `run()` to enable returning whole `PerformError` instead of string
 - Module `matcher` for comparing old and new HTTP traffic
 - Module `analyzer` for determining impact of provider changes
@@ -19,11 +23,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Error `CoverageFileNotFoundError` for correct reporting
 
 ### Removed
+- Parameter `client` from constructor and method `run`
 - Function for omitting timestamp from perform error `removeTimestamp`
 
 ### Changed
+- **BREAKING CHANGE:** Updated One-SDK to [v2.0.0](https://github.com/superfaceai/one-sdk-js/releases/tag/v2.0.0)
+- **BREAKING CHANGE:** Use `BoundProfileProvider` instead of using client and use-case to run `perform` -> Local use only
+- Move functions used for recording in `SuperfaceTest` to seperate module
+- Use `SecurityConfiguration` (containing merged `SecurityValue` and `SecurityScheme` interfaces) instead of using them separately
+- Move parameter `testInstance` from superface components to second parameter in constructor
 - Return value from method `run` to `PerformError | string`
-- Does not overwrite HTTP traffic recording when in record mode, instead save next to old one with suffix `-new`
+- Does not overwrite HTTP traffic recording when in record mode, instead save new one next to old one with suffix `-new`
 
 ## [2.0.3] - 2022-02-15
 ### Changed

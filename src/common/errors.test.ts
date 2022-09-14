@@ -6,7 +6,7 @@ import {
   InstanceMissingError,
   MapUndefinedError,
   ProfileUndefinedError,
-  ProviderUndefinedError,
+  ProviderJsonUndefinedError,
   RecordingPathUndefinedError,
   RecordingsNotFoundError,
   SuperJsonNotFoundError,
@@ -28,42 +28,6 @@ describe('errors', () => {
     });
   });
 
-  describe('when throwing MapUndefinedError', () => {
-    const error = new MapUndefinedError('profile', 'provider');
-
-    it('throws in correct format', () => {
-      expect(() => {
-        throw error;
-      }).toThrow(
-        'Map for profile and provider does not exist.\nUse `superface create --map --profileId profile --providerName provider` to create it.'
-      );
-    });
-
-    it('returns correct format', () => {
-      expect(error.toString()).toEqual(
-        'MapUndefinedError: Map for profile and provider does not exist.\nUse `superface create --map --profileId profile --providerName provider` to create it.'
-      );
-    });
-  });
-
-  describe('when throwing ProviderUndefinedError', () => {
-    const error = new ProviderUndefinedError('provider');
-
-    it('throws in correct format', () => {
-      expect(() => {
-        throw error;
-      }).toThrow(
-        `Provider provider does not exist.\nUse \`superface create --provider --providerName provider\` to create it.`
-      );
-    });
-
-    it('returns correct format', () => {
-      expect(error.toString()).toEqual(
-        'ProviderUndefinedError: Provider provider does not exist.\nUse `superface create --provider --providerName provider` to create it.'
-      );
-    });
-  });
-
   describe('when throwing ProfileUndefinedError', () => {
     const error = new ProfileUndefinedError('profile');
 
@@ -71,13 +35,49 @@ describe('errors', () => {
       expect(() => {
         throw error;
       }).toThrow(
-        'Profile profile does not exist.\nUse `superface create --profile --profileId profile` to create it.'
+        'Profile "profile" does not exist.\nUse `superface create --profile --profileId profile` to create it.'
       );
     });
 
     it('returns correct format', () => {
       expect(error.toString()).toEqual(
-        'ProfileUndefinedError: Profile profile does not exist.\nUse `superface create --profile --profileId profile` to create it.'
+        'ProfileUndefinedError: Profile "profile" does not exist.\nUse `superface create --profile --profileId profile` to create it.'
+      );
+    });
+  });
+
+  describe('when throwing MapUndefinedError', () => {
+    const error = new MapUndefinedError('profile', 'provider');
+
+    it('throws in correct format', () => {
+      expect(() => {
+        throw error;
+      }).toThrow(
+        'Map for "profile" and "provider" does not exist.\nUse `superface create --map --profileId profile --providerName provider` to create it.'
+      );
+    });
+
+    it('returns correct format', () => {
+      expect(error.toString()).toEqual(
+        'MapUndefinedError: Map for "profile" and "provider" does not exist.\nUse `superface create --map --profileId profile --providerName provider` to create it.'
+      );
+    });
+  });
+
+  describe('when throwing ProviderJsonUndefinedError', () => {
+    const error = new ProviderJsonUndefinedError('provider');
+
+    it('throws in correct format', () => {
+      expect(() => {
+        throw error;
+      }).toThrow(
+        'Provider for "provider" does not exist.\nUse `superface create --provider --providerName provider` to create it.'
+      );
+    });
+
+    it('returns correct format', () => {
+      expect(error.toString()).toEqual(
+        'ProviderJsonUndefinedError: Provider for "provider" does not exist.\nUse `superface create --provider --providerName provider` to create it.'
       );
     });
   });
@@ -255,13 +255,13 @@ describe('errors', () => {
       expect(() => {
         throw error;
       }).toThrow(
-        'No base URL was found for provider provider, configure a service in provider.json.'
+        'No base URL was found for provider "provider", configure a service in provider.json.'
       );
     });
 
     it('returns correct format', () => {
       expect(error.toString()).toEqual(
-        'BaseURLNotFoundError: No base URL was found for provider provider, configure a service in provider.json.'
+        'BaseURLNotFoundError: No base URL was found for provider "provider", configure a service in provider.json.'
       );
     });
   });

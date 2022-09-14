@@ -42,7 +42,7 @@ export class MapUndefinedError extends ErrorBase {
   constructor(profile: string, provider: string) {
     super(
       'MapUndefinedError',
-      `Map for ${profile} and ${provider} does not exist.\nUse \`superface create --map --profileId ${profile} --providerName ${provider}\` to create it.`
+      `Map for "${profile}" and "${provider}" does not exist.\nUse \`superface create --map --profileId ${profile} --providerName ${provider}\` to create it.`
     );
   }
 }
@@ -51,7 +51,16 @@ export class ProfileUndefinedError extends ErrorBase {
   constructor(profile: string) {
     super(
       'ProfileUndefinedError',
-      `Profile ${profile} does not exist.\nUse \`superface create --profile --profileId ${profile}\` to create it.`
+      `Profile "${profile}" does not exist.\nUse \`superface create --profile --profileId ${profile}\` to create it.`
+    );
+  }
+}
+
+export class ProviderJsonUndefinedError extends ErrorBase {
+  constructor(provider: string) {
+    super(
+      'ProviderJsonUndefinedError',
+      `Provider for "${provider}" does not exist.\nUse \`superface create --provider --providerName ${provider}\` to create it.`
     );
   }
 }
@@ -96,7 +105,7 @@ export class SuperJsonNotFoundError extends ErrorBase {
 export class SuperJsonLoadingFailedError extends ErrorBase {
   constructor(originalError: SDKExecutionError) {
     super(
-      'SuperJsonNotFoundError',
+      'SuperJsonLoadingFailedError',
       `Loading super.json failed.\n${originalError.toString()}`
     );
   }
@@ -115,7 +124,7 @@ export class BaseURLNotFoundError extends ErrorBase {
   constructor(provider: string) {
     super(
       'BaseURLNotFoundError',
-      `No base URL was found for provider ${provider}, configure a service in provider.json.`
+      `No base URL was found for provider "${provider}", configure a service in provider.json.`
     );
   }
 }

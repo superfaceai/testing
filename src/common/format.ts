@@ -1,15 +1,11 @@
 import { join as joinPath } from 'path';
 
-import { CompleteSuperfaceTestConfig } from '..';
-
-export function getFixtureName(sfConfig: CompleteSuperfaceTestConfig): string {
-  const { profile, provider, useCase } = sfConfig;
-
-  return joinPath(
-    profile.configuration.id,
-    provider.configuration.name,
-    useCase.name
-  );
+export function getFixtureName(
+  profileId: string,
+  providerName: string,
+  usecaseName: string
+): string {
+  return joinPath(profileId, providerName, usecaseName);
 }
 
 function isValidPayload(payload: string, match: string): boolean {
@@ -50,31 +46,32 @@ function isValidPayload(payload: string, match: string): boolean {
  * SUPERFACE_LIVE_API="scope/profile:provider:usecase*"
  */
 export function matchWildCard(
-  sfConfig: CompleteSuperfaceTestConfig,
+  profileId: string,
+  providerName: string,
+  usecaseName: string,
   superfaceEnv: string | undefined
 ): boolean {
   if (superfaceEnv === undefined || superfaceEnv === '') {
     return false;
   }
 
-  const { profile, provider, useCase } = sfConfig;
   const [profilePayload, providerPayload, usecasePayload] =
     superfaceEnv.split(':');
 
   if (profilePayload && profilePayload !== '') {
-    if (!isValidPayload(profilePayload, profile.configuration.id)) {
+    if (!isValidPayload(profilePayload, profileId)) {
       return false;
     }
   }
 
   if (providerPayload && providerPayload !== '') {
-    if (!isValidPayload(providerPayload, provider.configuration.name)) {
+    if (!isValidPayload(providerPayload, providerName)) {
       return false;
     }
   }
 
   if (usecasePayload && usecasePayload !== '') {
-    if (!isValidPayload(usecasePayload, useCase.name)) {
+    if (!isValidPayload(usecasePayload, usecaseName)) {
       return false;
     }
   }
