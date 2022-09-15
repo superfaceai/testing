@@ -239,7 +239,7 @@ superface.run(
 );
 ```
 
-You can also enter your own processing functions along side `processRecordings` parameter. Both have same function signature and are called either before load or before save of recordings (see [this sequence diagram](./docs/sequence_diagram))
+You can also enter your own processing functions along side `processRecordings` parameter. Both have same function signature and are called either before load or before save of recordings (see [this sequence diagram](./docs/sequence_diagram.png))
 
 ```typescript
 import { RecordingDefinitions, SuperfaceTest } from '@superfaceai/testing';
