@@ -89,15 +89,16 @@ const superface = new SuperfaceTest(
     path: 'nock-recordings',
     fixture: 'my-recording',
     enableReqheadersRecording: true,
+    testInstance: expect
   }
 );
 ```
 
-Given nock configuration is also stored in class. Property `path` and `fixture` is used to configure location of recordings and property `enableReqheadersRecording` is used to enable/disable recording of request headers (This is turned off by default).
+Since it uses `nock` to record HTTP traffic during perform, second parameter in SuperfaceTest constructor is nock configuration containing `path` and `fixture` to configure location of recordings, property `enableReqheadersRecording` to enable/disable recording of request headers (This is turned off by default) and also property `testInstance` to enable testing library accessing current test names to generate unique hashes for recordings (currently supported only Jest and Mocha).
 
 ### Running
 
-To test your capabilities, use method `run()`, which encapsulates nock recording and UseCase perform. It expects test configuration (similar to initializing `SuperfaceTest` class) and input. You don't need to specify `profile`, `provider` or `useCase` if you already specified them when initializing `SuperfaceTest` class.
+To test your capabilities, use method `run()`, which encapsulates `nock` recording and `BoundProfileProvider` perform. It expects test configuration (similar to initializing `SuperfaceTest` class) and input. You don't need to specify `profile`, `provider` or `useCase` if you already specified them when initializing `SuperfaceTest` class.
 
 ```typescript
 import { SuperfaceTest } from '@superfaceai/testing';
@@ -123,16 +124,17 @@ import { SuperfaceTest } from '@superfaceai/testing';
 describe('test', () => {
   let superface: SuperfaceTest;
 
-  afterEach(() => {
-    superface = new SuperfaceTest();
+  beforeAll(() => {
+    superface = new SuperfaceTest({
+      profile: 'profile',
+      provider: 'provider',
+      useCase: 'useCase',
+    });
   });
 
   it('performs corretly', async () => {
     await expect(
       superface.run({
-        profile: 'profile',
-        provider: 'provider',
-        useCase: 'useCase',
         input: {
           some: 'input',
         },
@@ -142,13 +144,34 @@ describe('test', () => {
 });
 ```
 
-Method `run()` will initialize Superface client, transform all components that are represented by string to corresponding instances, check whether map is locally present based on super.json, runs perform for given usecase and returns **result** or **error** value from perform (More about perform in [One-SDK docs](https://github.com/superfaceai/one-sdk-js#performing-the-use-case)).
+Method `run()` initializes `BoundProfileProvider` class, runs perform for given usecase and returns **result** or **error** value from perform (More about perform in [One-SDK docs](https://github.com/superfaceai/one-sdk-js#performing-the-use-case)). Since testing library don't use `SuperfaceClient` anymore, it is **limited to local use only**. 
+
+[OneSDK 2.0](https://github.com/superfaceai/one-sdk-js/releases/tag/v2.0.0) does not contain parser anymore, so it looks for compiled files `.ast.json` next to original ones. To support this, parser was added to testing library and can be used to parse files when no AST is found.
+
+Method `run` also have second parameter, containing parameters to setup processing of recordings described bellow in [Recording](#recording).
+Only one parameter from this group processes result of method `run` and that is `fullError`. It enables method `run` to return full error from OneSDK instead of string.
+
+```typescript
+superface.run(
+  {
+    profile: 'profile',
+    provider: 'provider',
+    useCase: 'useCase',
+    input: {
+      some: 'input',
+    },
+  },
+  {
+    fullError: true,
+  }
+);
+```
 
 You can then use this return value to test your capabilities (We recommend you to use jest [snapshot testing](https://jestjs.io/docs/snapshot-testing) as seen in example above).
 
 ### Recording
 
-Method `run()` also records HTTP traffic with `nock` library during UseCase perform and saves recorded traffic to json file. Before perform, library will decide to record HTTP traffic based on environmental variable `SUPERFACE_LIVE_API` and current test configuration.
+Method `run()` also records HTTP traffic as we mentioned above and saves recorded traffic to json file. Before perform, library will decide to record HTTP traffic based on environmental variable `SUPERFACE_LIVE_API` and current test configuration.
 
 Variable `SUPERFACE_LIVE_API` specifies configuration which needs to be matched to record HTTP traffic.
 
@@ -216,7 +239,7 @@ superface.run(
 );
 ```
 
-You can also enter your own processing functions along side `processRecordings` parameter. Both have same function signature and are called either before load or before save of recordings.
+You can also enter your own processing functions along side `processRecordings` parameter. Both have same function signature and are called either before load or before save of recordings (see [this sequence diagram](./docs/sequence_diagram.png))
 
 ```typescript
 import { RecordingDefinitions, SuperfaceTest } from '@superfaceai/testing';
@@ -252,17 +275,54 @@ superface.run(
 );
 ```
 
+## Continuous testing
+
+Testing library supports continuous testing with live provider's traffic. This means that you can run testing library in record mode without worrying that old recording of traffic gets rewritten. Testing library compares old recording with new one and determines changes. If it find changes, it will save new traffic next to old one with suffix `-new`. 
+
+This recording represents new traffic and you can test your capabilities with it. First time it records new traffic, it also uses it for map and therefore you can see if map works with it, but we can also setup environment variable `USE_NEW_TRAFFIC=true` to mock new traffic instead of old one when not in record mode (it looks for recording with suffix `-new` next to old one).
+
+When you think the new recording is safe to use for testing, you can set it up as default with env variable `UPDATE_TRAFFIC=true`.
+
+## Reporting
+
+To report found changes in traffic, you can implement your own function for reporting and pass it to `SuperfaceTest.report()`. It's signiture should be:
+
+```typescript
+type TestReport = {
+  impact: MatchImpact;
+  profileId: string;
+  providerName: string;
+  useCaseName: string;
+  recordingPath: string;
+  input: NonPrimitive;
+  result: TestingReturn;
+  errors: ErrorCollection<string>;
+}[];
+
+type AlertFunction = (report: TestReport) => unknown | Promise<unknown>;
+```
+
+To disable collecting and also reporting these information, you can setup environment variable `DISABLE_PROVIDER_CHANGES_COVERAGE=true`.
+
 ## Debug
 
 You can use enviroment variable `DEBUG` to enable logging throughout testing process.
 
-`DEBUG="superface:testing*"` will enable all logging
+- `DEBUG="superface:testing*"` will enable all logging
+- `DEBUG="superface:testing"` will enable logging of: 
+  - perform results
+  - start and end of recording/mocking HTTP traffic
+  - start of `beforeRecordingLoad` and `beforeRecordingSave` functions
+- `DEBUG=superface:testing:setup*` will enable logging of:
+  - setup of recording paths and superface components (profile, provider, usecase)
+  - setup of super.json and local map
+- `DEBUG=superface:testing:hash*` will enable logging of hashing recordings
+- `DEBUG="superface:testing:recordings"` will enable logging of processing sensitive information in recordings
+- `DEBUG="superface:testing:recordings*"` or `DEBUG="superface:testing:recordings:sensitive"` will also enable logging of replacing actual credentials
+- `DEBUG=superface:testing:matching*` enables logging of matching recordings
+- `DEBUG=superface:testing:reporter*` enables logging of reporting
 
-`DEBUG="superface:testing"` will enable logging in `SuperfaceTest` class, its methods and utility functions
-
-`DEBUG="superface:testing:recordings"` will enable logging of processing sensitive information in recordings
-
-`DEBUG="superface:testing:recordings*"` or `DEBUG="superface:testing:recordings:sensitive"` will enable logging of replacing actual credentials
+You can encounter `NetworkError` or `SdkExecutionError` during testing with mocked traffic, it usually means that request didn’t get through. If nock (used for loading mocked traffic) can’t match recording, request is denied. You can debug nock matching of recordings with `DEBUG=nock*` to see what went wrong.
 
 ## Known Limitations
 
@@ -270,7 +330,8 @@ You can use enviroment variable `DEBUG` to enable logging throughout testing pro
 
 Recordings make it possible to run tests without calling the live API. This works by trying to match a request to the requests in the existing recordings. If a match is found, the recorded response is returned. However, since the testing client saves recording for each test run in a single file, it means multiple matching requests for the same use-case and input will overwrite each other.
 
-A workaround is to use different inputs for each each test.
+To solve this, you can enter test instance (`expect` from jest) or specify custom hash phrase to differentiate between runs.
+Also a workaround is to use different inputs for each each test.
 
 ## Support
 

@@ -49,7 +49,7 @@ describe('prepare superface module', () => {
       ).resolves.toEqual({
         profileId: 'profile',
         providerName: 'provider',
-        usecaseName: 'test',
+        useCaseName: 'test',
         files: expectedFiles,
         boundProfileProvider: expectedBoundProfileProvider,
       });

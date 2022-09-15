@@ -26,7 +26,7 @@ export interface SuperfaceConfiguration {
   boundProfileProvider: BoundProfileProvider;
   profileId: string;
   providerName: string;
-  usecaseName: string;
+  useCaseName: string;
   files: {
     superJson: NormalizedSuperJsonDocument;
     profileAst: ProfileDocumentNode;
@@ -54,13 +54,13 @@ export async function prepareSuperface(
     fileSystem: options?.fileSystem,
   });
 
-  const usecaseName =
+  const useCaseName =
     payload.useCase instanceof UseCase ? payload.useCase.name : payload.useCase;
 
   return {
     profileId: profileAstId(files.profileAst),
     providerName: files.providerJson.name,
-    usecaseName,
+    useCaseName,
     files,
     boundProfileProvider: createBoundProfileProvider({
       ...files,

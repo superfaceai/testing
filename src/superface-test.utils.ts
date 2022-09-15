@@ -10,7 +10,6 @@ import {
 } from '@superfaceai/one-sdk';
 import createDebug from 'debug';
 
-import { InputVariables, RecordingDefinition, RecordingDefinitions } from '.';
 import {
   IGenerator,
   InputGenerateHash,
@@ -22,8 +21,14 @@ import {
   replaceInputInDefinition,
   replaceParameterInDefinition,
 } from './nock';
+import {
+  InputVariables,
+  PerformError,
+  RecordingDefinition,
+  RecordingDefinitions,
+} from './superface-test.interfaces';
 
-const debug = createDebug('superface:testing');
+const debugRecording = createDebug('superface:testing:recordings');
 
 export function assertsDefinitionsAreNotStrings(
   definitions: string[] | RecordingDefinition[]
@@ -36,7 +41,7 @@ export function assertsDefinitionsAreNotStrings(
 }
 
 export function resolveCredential(securityValue: SecurityValues): string {
-  debug('Resolving security value:', securityValue.id);
+  debugRecording('Resolving security value:', securityValue.id);
 
   if ('apikey' in securityValue) {
     if (securityValue.apikey.startsWith('$')) {
@@ -135,11 +140,11 @@ export function replaceCredentials({
   beforeSave: boolean;
   baseUrl: string;
 }): void {
-  debug('Replacing credentials from recording definitions');
+  debugRecording('Replacing credentials from recording definitions');
 
   for (const definition of definitions) {
     for (const securityConfig of security) {
-      debug(
+      debugRecording(
         `Going through scheme with id: '${securityConfig.id}' and type: '${securityConfig.type}'`
       );
 
@@ -157,7 +162,7 @@ export function replaceCredentials({
     }
 
     for (const [name, value] of Object.entries(integrationParameters)) {
-      debug('Going through integration parameter:', name);
+      debugRecording('Going through integration parameter:', name);
 
       replaceParameterInDefinition({
         definition,
@@ -168,7 +173,7 @@ export function replaceCredentials({
 
     if (inputVariables) {
       for (const [name, value] of Object.entries(inputVariables)) {
-        debug('Going through input property:', name);
+        debugRecording('Going through input property:', name);
 
         replaceInputInDefinition({
           definition,
@@ -335,4 +340,30 @@ export function getGenerator(testInstance: unknown): IGenerator {
   }
 
   return new InputGenerateHash();
+}
+
+export function parseBooleanEnv(variable: string | undefined): boolean {
+  if (variable === 'true') {
+    return true;
+  }
+
+  if (variable === 'false') {
+    return false;
+  }
+
+  return false;
+}
+
+/**
+ * @param error - error returned from perform
+ * @returns perform error without ast metadata
+ */
+export function mapError(error: PerformError): PerformError {
+  const result = error;
+
+  if ('metadata' in result) {
+    delete result.metadata;
+  }
+
+  return result;
 }

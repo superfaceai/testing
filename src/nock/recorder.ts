@@ -2,21 +2,23 @@ import { BoundProfileProvider } from '@superfaceai/one-sdk';
 import createDebug from 'debug';
 import {
   activate as activateNock,
-  define,
+  define as loadRecordingDefinitions,
   disableNetConnect,
   isActive as isNockActive,
   recorder,
   restore as restoreRecordings,
 } from 'nock';
+import { basename, dirname, join as joinPath } from 'path';
 
 import {
   BaseURLNotFoundError,
   RecordingsNotFoundError,
   UnexpectedError,
 } from '../common/errors';
-import { exists, readFileQuiet } from '../common/io';
+import { exists, mkdirQuiet, readFileQuiet, rename } from '../common/io';
 import { writeRecordings } from '../common/output-stream';
 import {
+  AnalysisResult,
   InputVariables,
   ProcessingFunction,
   RecordingDefinitions,
@@ -24,8 +26,10 @@ import {
 import {
   assertsDefinitionsAreNotStrings,
   checkSensitiveInformation,
+  parseBooleanEnv,
   replaceCredentials,
 } from '../superface-test.utils';
+import { matchTraffic } from './matcher';
 
 const debug = createDebug('superface:testing');
 
@@ -74,6 +78,7 @@ export async function loadRecording({
     beforeRecordingLoad?: ProcessingFunction;
   };
 }): Promise<void> {
+  const definitions = await getRecordings(recordingPath);
   const { parameters, security, services } = boundProfileProvider.configuration;
   const integrationParameters = parameters ?? {};
   const baseUrl = services.getUrl();
@@ -81,20 +86,6 @@ export async function loadRecording({
   if (baseUrl === undefined) {
     throw new BaseURLNotFoundError(providerName);
   }
-
-  const recordingExists = await exists(recordingPath);
-
-  if (!recordingExists) {
-    throw new RecordingsNotFoundError();
-  }
-
-  const definitionFile = await readFileQuiet(recordingPath);
-
-  if (definitionFile === undefined) {
-    throw new UnexpectedError('Reading recording file failed');
-  }
-
-  const definitions = JSON.parse(definitionFile) as RecordingDefinitions;
 
   if (options?.processRecordings) {
     //Use security configuration only
@@ -116,7 +107,7 @@ export async function loadRecording({
     await options.beforeRecordingLoad(definitions);
   }
 
-  define(definitions);
+  loadRecordingDefinitions(definitions);
 
   debug('Loaded and mocked recorded traffic based on recording fixture');
 
@@ -150,7 +141,7 @@ export async function endRecording({
   };
   inputVariables?: InputVariables;
   beforeRecordingSave?: ProcessingFunction;
-}): Promise<void> {
+}): Promise<AnalysisResult | undefined> {
   const definitions = recorder.play();
   recorder.clear();
   restoreRecordings();
@@ -160,9 +151,9 @@ export async function endRecording({
   );
 
   if (definitions === undefined || definitions.length === 0) {
-    await writeRecordings(recordingPath, []);
+    await writeRecordings(composeRecordingPath(recordingPath), []);
 
-    return;
+    return undefined;
   }
 
   assertsDefinitionsAreNotStrings(definitions);
@@ -196,12 +187,105 @@ export async function endRecording({
 
   if (
     security.length > 0 ||
-    // securityValues.length > 0 ||
     (integrationParameters && Object.values(integrationParameters).length > 0)
   ) {
     checkSensitiveInformation(definitions, security, integrationParameters);
   }
 
-  await writeRecordings(recordingPath, definitions);
+  const recordingExists = await exists(composeRecordingPath(recordingPath));
+
+  if (recordingExists) {
+    return await matchTraffic(recordingPath, definitions);
+  }
+
+  // recording file does not exist -> record new traffic
+  await writeRecordings(composeRecordingPath(recordingPath), definitions);
   debug('Recorded definitions written');
+
+  return undefined;
+}
+
+export function composeRecordingPath(
+  recordingPath: string,
+  version?: string
+): string {
+  if (version === 'new') {
+    return `${recordingPath}-new.json`;
+  }
+
+  if (version !== undefined) {
+    const baseDir = dirname(recordingPath);
+    const hash = basename(recordingPath);
+
+    return joinPath(baseDir, 'old', `${hash}_${version}.json`);
+  }
+
+  return `${recordingPath}.json`;
+}
+
+export async function getRecordings(
+  recordingPath: string
+): Promise<RecordingDefinitions> {
+  // try to get new recordings if environment variable is set
+  const useNewTraffic = parseBooleanEnv(process.env.USE_NEW_TRAFFIC);
+  const newRecordingPath = composeRecordingPath(recordingPath, 'new');
+
+  if (useNewTraffic && (await exists(newRecordingPath))) {
+    return await parseRecordings(newRecordingPath);
+  }
+
+  // otherwise use default ones
+  const currentRecordingPath = composeRecordingPath(recordingPath);
+  const recordingExists = await exists(currentRecordingPath);
+
+  if (!recordingExists) {
+    throw new RecordingsNotFoundError(currentRecordingPath);
+  }
+
+  return await parseRecordings(currentRecordingPath);
+}
+
+export async function parseRecordings(
+  path: string
+): Promise<RecordingDefinitions> {
+  const definitionFile = await readFileQuiet(path);
+
+  if (definitionFile === undefined) {
+    throw new UnexpectedError('Reading new recording file failed');
+  }
+
+  debug(`Parsing recording file at: "${path}"`);
+
+  return JSON.parse(definitionFile) as RecordingDefinitions;
+}
+
+export async function updateTraffic(recordingPath: string): Promise<void> {
+  const pathToCurrent = composeRecordingPath(recordingPath);
+  const pathToNew = composeRecordingPath(recordingPath, 'new');
+
+  await mkdirQuiet(joinPath(dirname(pathToCurrent), 'old'));
+
+  // TODO: compose version based on used map
+  let i = 0;
+  while (await exists(composeRecordingPath(recordingPath, `${i}`))) {
+    i++;
+  }
+
+  await rename(pathToCurrent, composeRecordingPath(recordingPath, `${i}`));
+  await rename(pathToNew, pathToCurrent);
+}
+
+export async function canUpdateTraffic(
+  recordingPath: string
+): Promise<boolean> {
+  const updateTraffic = parseBooleanEnv(process.env.UPDATE_TRAFFIC);
+
+  if (
+    updateTraffic &&
+    (await exists(composeRecordingPath(recordingPath, 'new')))
+  ) {
+    return true;
+  }
+
+  return false;
 }

@@ -1,32 +1,37 @@
-import {
-  err,
-  MapInterpreterError,
-  ok,
-  ProfileParameterError,
-  Result,
-  UnexpectedError,
-} from '@superfaceai/one-sdk';
+import { err, ok, Result } from '@superfaceai/one-sdk';
 import createDebug from 'debug';
 import { enableNetConnect, recorder, restore as restoreRecordings } from 'nock';
 import { join as joinPath } from 'path';
 
-import { RecordingProcessOptions } from '.';
-import { UnexpectedError as UnexpectedErrorTesting } from './common/errors';
-import {
-  getFixtureName,
-  matchWildCard,
-  removeTimestamp,
-} from './common/format';
+import { UnexpectedError } from './common/errors';
+import { getFixtureName, matchWildCard } from './common/format';
 import { IGenerator } from './generate-hash';
-import { endRecording, loadRecording, startRecording } from './nock/recorder';
+import { MatchImpact } from './nock/analyzer';
+import {
+  canUpdateTraffic,
+  endRecording,
+  loadRecording,
+  startRecording,
+  updateTraffic,
+} from './nock/recorder';
+import { report, saveReport } from './reporter';
 import { prepareSuperface } from './superface/config';
 import {
+  AlertFunction,
+  AnalysisResult,
   NockConfig,
+  PerformError,
+  RecordingProcessOptions,
   SuperfaceTestConfig,
   SuperfaceTestRun,
   TestingReturn,
 } from './superface-test.interfaces';
-import { getGenerator, searchValues } from './superface-test.utils';
+import {
+  getGenerator,
+  mapError,
+  parseBooleanEnv,
+  searchValues,
+} from './superface-test.utils';
 
 const debug = createDebug('superface:testing');
 const debugSetup = createDebug('superface:testing:setup');
@@ -34,6 +39,7 @@ const debugHashing = createDebug('superface:testing:hash');
 
 export class SuperfaceTest {
   private nockConfig?: NockConfig;
+  private analysis?: AnalysisResult;
   private generator: IGenerator;
   public configuration: SuperfaceTestConfig | undefined;
 
@@ -68,17 +74,22 @@ export class SuperfaceTest {
     debugHashing('Created hash:', hash);
 
     const recordingPath = this.setupRecordingPath(
-      getFixtureName(sf.profileId, sf.providerName, sf.usecaseName),
+      getFixtureName(sf.profileId, sf.providerName, sf.useCaseName),
       hash
     );
 
     debugSetup('Prepared path to recording:', recordingPath);
 
+    // Replace currently supported traffic with new (with changes)
+    if (await canUpdateTraffic(recordingPath)) {
+      await updateTraffic(recordingPath);
+    }
+
     // Parse env variable and check if test should be recorded
     const record = matchWildCard(
       sf.profileId,
       sf.providerName,
-      sf.usecaseName,
+      sf.useCaseName,
       process.env.SUPERFACE_LIVE_API
     );
     const processRecordings = options?.processRecordings ?? true;
@@ -101,16 +112,13 @@ export class SuperfaceTest {
       });
     }
 
-    let result: Result<
-      unknown,
-      ProfileParameterError | MapInterpreterError | UnexpectedError
-    >;
+    let result: Result<unknown, PerformError>;
     try {
       // Run perform method on specified configuration
-      result = await sf.boundProfileProvider.perform(sf.usecaseName, input);
+      result = await sf.boundProfileProvider.perform(sf.useCaseName, input);
 
       if (record) {
-        await endRecording({
+        this.analysis = await endRecording({
           recordingPath,
           processRecordings,
           inputVariables,
@@ -134,10 +142,33 @@ export class SuperfaceTest {
       throw error;
     }
 
+    if (
+      this.analysis &&
+      this.analysis.impact !== MatchImpact.NONE &&
+      !parseBooleanEnv(process.env.DISABLE_PROVIDER_CHANGES_COVERAGE)
+    ) {
+      await saveReport({
+        input,
+        result,
+        hash: this.generator.hash({ input, testName }),
+        recordingPath,
+        profileId: sf.profileId,
+        providerName: sf.providerName,
+        useCaseName: sf.useCaseName,
+        analysis: this.analysis,
+      });
+    }
+
+    this.analysis = undefined;
+
     if (result.isErr()) {
       debug('Perform failed with error:', result.error.toString());
 
-      return err(removeTimestamp(result.error.toString()));
+      if (options?.fullError) {
+        return err(mapError(result.error));
+      }
+
+      return err(result.error.toString());
     }
 
     if (result.isOk()) {
@@ -146,7 +177,20 @@ export class SuperfaceTest {
       return ok(result.value);
     }
 
-    throw new UnexpectedErrorTesting('Unexpected result object');
+    throw new UnexpectedError('Unexpected result object');
+  }
+
+  // static async collectData(): Promise<void> {
+  //   await collect();
+  // }
+
+  static async report(
+    alert: AlertFunction,
+    options?: {
+      onlyFailedTests?: boolean;
+    }
+  ): Promise<void> {
+    await report(alert, options);
   }
 
   /**
@@ -158,7 +202,7 @@ export class SuperfaceTest {
     return joinPath(
       path ?? joinPath(process.cwd(), 'nock'),
       fixtureName,
-      `${fixture ?? 'recording'}-${inputHash}.json`
+      `${fixture ?? 'recording'}-${inputHash}`
     );
   }
 }

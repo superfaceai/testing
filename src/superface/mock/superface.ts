@@ -78,7 +78,7 @@ export const mockSuperface = (options?: {
     },
     profileId: options?.profile?.name ?? 'profile',
     providerName: options?.provider?.name ?? 'provider',
-    usecaseName: options?.useCaseName ?? 'test',
+    useCaseName: options?.useCaseName ?? 'test',
     boundProfileProvider,
   };
 };
