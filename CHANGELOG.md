@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - New module for mocking necessary files for `perform`
 - Support hiding of credentials used with new security scheme Digest
 - New parameter `fullError` in method `run()` to enable returning whole `PerformError` instead of string
+- New static function `report` in `SuperfaceTest` to report found provider changes
 - Module `matcher` for comparing old and new HTTP traffic
 - Module `analyzer` for determining impact of provider changes
 - Module `reporter` for reporting provider changes throughout tests
