@@ -72,7 +72,8 @@ export interface ImpactResult {
 
 export type AnalysisResult = NoImpactResult | ImpactResult;
 
-export type TestAnalysis = Omit<AnalysisResult, 'errors'> & {
+export type TestAnalysis = {
+  impact: MatchImpact;
   profileId: string;
   providerName: string;
   useCaseName: string;

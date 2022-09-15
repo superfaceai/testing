@@ -135,7 +135,10 @@ export async function report(
   await rimraf(DEFAULT_COVERAGE_PATH);
 
   debug(`Alerting test analysis report. Analysis Count: ${report.length}`);
-  await alert(report);
+
+  if (report.length > 0) {
+    await alert(report);
+  }
 }
 
 // TODO: collect coverage for completed test, put them into batch and add info about test result
