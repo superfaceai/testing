@@ -10,6 +10,7 @@ import {
   UseCase,
 } from '@superfaceai/one-sdk';
 import { Definition } from 'nock/types';
+import { IOverview, IRecordingOverview } from './factory';
 
 import { MatchImpact } from './nock/analyzer';
 import { ErrorCollection, MatchError } from './nock/matcher.errors';
@@ -42,6 +43,10 @@ export interface NockConfig {
   fixture?: string;
   enableReqheadersRecording?: boolean;
   testInstance?: unknown;
+  stateKeepers?: {
+    recording?: IRecordingOverview;
+    result?: IOverview;
+  };
 }
 
 export type RecordingDefinition = Definition & {

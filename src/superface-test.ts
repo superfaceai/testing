@@ -78,6 +78,11 @@ export class SuperfaceTest {
       hash
     );
 
+    // keep state about recordings
+    if (this.nockConfig?.stateKeepers?.recording) {
+      this.nockConfig.stateKeepers.recording.run(recordingPath);
+    }
+
     debugSetup('Prepared path to recording:', recordingPath);
 
     // Replace currently supported traffic with new (with changes)
