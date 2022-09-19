@@ -7,7 +7,6 @@ import {
   ProfileDocumentNode,
 } from '@superfaceai/ast';
 import { IFileSystem, Profile } from '@superfaceai/one-sdk';
-import { parseMap, parseProfile, Source } from '@superfaceai/parser';
 import createDebug from 'debug';
 import { resolve as resolvePath } from 'path';
 
@@ -108,6 +107,10 @@ async function getProfileDocument(
 
     debugSetup('Trying to parse profile:', path);
 
+    const { parseProfile, Source } = await import(
+      '@superfaceai/parser'
+    );
+
     return parseProfile(new Source(content.value, path));
   } else {
     throw new UnexpectedError(`Specified path is invalid:\n${path}`);
@@ -138,6 +141,10 @@ async function getMapDocument(
     }
 
     debugSetup('Trying to parse map:', path);
+
+    const { parseMap, Source } = await import(
+      '@superfaceai/parser'
+    );
 
     return parseMap(new Source(content.value, path));
   } else {
