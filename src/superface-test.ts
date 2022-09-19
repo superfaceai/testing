@@ -2,6 +2,7 @@ import { err, ok, Result } from '@superfaceai/one-sdk';
 import createDebug from 'debug';
 import { enableNetConnect, recorder, restore as restoreRecordings } from 'nock';
 import { join as joinPath } from 'path';
+import { inspect } from 'util';
 
 import { UnexpectedError } from './common/errors';
 import { getFixtureName, matchWildCard } from './common/format';
@@ -95,9 +96,11 @@ export class SuperfaceTest {
     const processRecordings = options?.processRecordings ?? true;
     const inputVariables = searchValues(testCase.input, options?.hideInput);
 
-    if (record) {
-      await startRecording(this.nockConfig?.enableReqheadersRecording);
-    } else {
+    const enforcePassingTests = parseBooleanEnv(
+      process.env.ENFORCE_PASSING_TESTS
+    );
+
+    if (enforcePassingTests) {
       await loadRecording({
         recordingPath,
         inputVariables,
@@ -110,14 +113,32 @@ export class SuperfaceTest {
           beforeRecordingLoad: options?.beforeRecordingLoad,
         },
       });
+    } else {
+      if (record) {
+        await startRecording(this.nockConfig?.enableReqheadersRecording);
+      } else {
+        await loadRecording({
+          recordingPath,
+          inputVariables,
+          config: {
+            boundProfileProvider: sf.boundProfileProvider,
+            providerName: sf.providerName,
+          },
+          options: {
+            processRecordings,
+            beforeRecordingLoad: options?.beforeRecordingLoad,
+          },
+        });
+      }
     }
 
+    // FIRST PERFORM: return this result
     let result: Result<unknown, PerformError>;
     try {
       // Run perform method on specified configuration
       result = await sf.boundProfileProvider.perform(sf.useCaseName, input);
 
-      if (record) {
+      if (!enforcePassingTests && record) {
         this.analysis = await endRecording({
           recordingPath,
           processRecordings,
@@ -140,6 +161,40 @@ export class SuperfaceTest {
       enableNetConnect();
 
       throw error;
+    }
+
+    // SECOND PERFORM - record and compare new traffic
+    if (enforcePassingTests) {
+      await startRecording(this.nockConfig?.enableReqheadersRecording);
+
+      try {
+        // Run perform method on specified configuration
+        const newResult = await sf.boundProfileProvider.perform(
+          sf.useCaseName,
+          input
+        );
+
+        this.analysis = await endRecording({
+          recordingPath,
+          processRecordings,
+          inputVariables,
+          config: {
+            boundProfileProvider: sf.boundProfileProvider,
+            providerName: sf.providerName,
+          },
+          beforeRecordingSave: options?.beforeRecordingSave,
+        });
+
+        if (newResult.isOk()) {
+          console.warn(inspect(newResult.value, true, 10));
+        }
+      } catch (error: unknown) {
+        restoreRecordings();
+        recorder.clear();
+        enableNetConnect();
+
+        throw error;
+      }
     }
 
     if (
