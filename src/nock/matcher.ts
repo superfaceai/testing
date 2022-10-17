@@ -3,9 +3,6 @@ import createDebug from 'debug';
 import { createSchema } from 'genson-js/dist';
 import { inspect } from 'util';
 
-import { UnexpectedError } from '../common/errors';
-import { readFileQuiet } from '../common/io';
-import { writeRecordings } from '../common/output-stream';
 import {
   AnalysisResult,
   RecordingDefinition,
@@ -33,7 +30,6 @@ import {
   getResponseHeader,
   parseBody,
 } from './matcher.utils';
-import { composeRecordingPath } from './recorder';
 
 export interface MatchHeaders {
   old?: string;
@@ -408,34 +404,17 @@ export class Matcher {
 }
 
 export async function matchTraffic(
-  oldRecordingPath: string,
+  oldTraffic: RecordingDefinitions,
   newTraffic: RecordingDefinitions
 ): Promise<AnalysisResult> {
-  // recording file exist -> record and compare new traffic
-  const oldRecording = await readFileQuiet(
-    composeRecordingPath(oldRecordingPath)
-  );
-
-  if (oldRecording === undefined) {
-    throw new UnexpectedError('Reading old recording file failed');
-  }
-
-  const oldRecordingDefs = JSON.parse(oldRecording) as RecordingDefinitions;
-
   // Match new HTTP traffic to saved for breaking changes
-  const match = await Matcher.match(oldRecordingDefs, newTraffic);
+  const match = await Matcher.match(oldTraffic, newTraffic);
 
   if (match.valid) {
     // do not save new recording as there were no breaking changes found
     return { impact: MatchImpact.NONE };
   } else {
     const impact = analyzeChangeImpact(match.errors);
-
-    // Save new traffic
-    await writeRecordings(
-      composeRecordingPath(oldRecordingPath, 'new'),
-      newTraffic
-    );
 
     return { impact, errors: match.errors };
   }

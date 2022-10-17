@@ -54,6 +54,8 @@ export type ProcessingFunction = (
 ) => Promise<void> | void;
 
 export interface RecordingProcessOptions {
+  prepare?: boolean;
+  teardown?: boolean;
   processRecordings?: boolean;
   beforeRecordingSave?: ProcessingFunction;
   beforeRecordingLoad?: ProcessingFunction;
@@ -77,7 +79,7 @@ export type TestAnalysis = {
   profileId: string;
   providerName: string;
   useCaseName: string;
-  recordingPath: string;
+  recordingsPath: string;
   input: NonPrimitive;
   result: TestingReturn;
   errors: ErrorCollection<string>;

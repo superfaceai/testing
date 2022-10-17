@@ -268,6 +268,13 @@ function hasProperty<K extends PropertyKey>(
   return !!obj && propKey in obj;
 }
 
+const getProperty: <K extends PropertyKey>(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  obj: any,
+  propKey: K
+) => unknown = (obj, propKey) =>
+  hasProperty(obj, propKey) ? obj[propKey] : undefined;
+
 function isFunction<R extends unknown>(
   value: unknown,
   returnType?: R
@@ -281,12 +288,15 @@ function isFunction<R extends unknown>(
 
 /**
  * Checks for structural typing of specified `testInstance` and returns
- * corresponding instance of hash generator
+ * corresponding instance of hash generator and function to get current path.
  *
  * It checks for jest's `expect` instance and mocha's `this` instance,
  * otherwise it generates hash according to specified `testName` or `input` in test run
  */
-export function getGenerator(testInstance: unknown): IGenerator {
+export function parseTestInstance(testInstance: unknown): {
+  generator: IGenerator;
+  getTestFilePath: () => string | undefined;
+} {
   // jest instance of `expect` contains function `getState()` which should contain `currentTestName`
   if (testInstance && isFunction(testInstance)) {
     if (
@@ -294,9 +304,21 @@ export function getGenerator(testInstance: unknown): IGenerator {
       isFunction(testInstance.getState)
     ) {
       const state = testInstance.getState();
+      const generator = new JestGenerateHash(
+        getProperty(state, 'currentTestName')
+      );
+
+      const getTestFilePath = () => {
+        const testPath = getProperty(state, 'testPath');
+
+        return typeof testPath === 'string' ? testPath : undefined;
+      };
 
       if (state) {
-        return new JestGenerateHash(state as { currentTestName?: unknown });
+        return {
+          generator,
+          getTestFilePath,
+        };
       }
     }
   }
@@ -317,7 +339,10 @@ export function getGenerator(testInstance: unknown): IGenerator {
             const value = testInstance.currentTest.fullTitle();
 
             if (typeof value === 'string') {
-              return new MochaGenerateHash(value);
+              return {
+                generator: new MochaGenerateHash(value),
+                getTestFilePath: () => undefined,
+              };
             }
           }
         }
@@ -332,14 +357,20 @@ export function getGenerator(testInstance: unknown): IGenerator {
           const value = testInstance.test.fullTitle();
 
           if (typeof value === 'string') {
-            return new MochaGenerateHash(value);
+            return {
+              generator: new MochaGenerateHash(value),
+              getTestFilePath: () => undefined,
+            };
           }
         }
       }
     }
   }
 
-  return new InputGenerateHash();
+  return {
+    generator: new InputGenerateHash(),
+    getTestFilePath: () => undefined,
+  };
 }
 
 export function parseBooleanEnv(variable: string | undefined): boolean {

@@ -21,7 +21,6 @@ import {
   AnalysisResult,
   InputVariables,
   ProcessingFunction,
-  RecordingDefinitions,
 } from '../superface-test.interfaces';
 import {
   assertsDefinitionsAreNotStrings,
@@ -29,7 +28,13 @@ import {
   parseBooleanEnv,
   replaceCredentials,
 } from '../superface-test.utils';
+import { MatchImpact } from './analyzer';
 import { matchTraffic } from './matcher';
+import {
+  RecordingType,
+  RecordingWithDecodedResponse,
+  TestRecordings,
+} from './recording.interfaces';
 
 const debug = createDebug('superface:testing');
 
@@ -62,23 +67,34 @@ export async function startRecording(
  * Recordings do not get processed if user specifies parameter `processRecordings` as false.
  */
 export async function loadRecording({
-  recordingPath,
+  recordingsPath,
+  recordingsType,
+  recordingsKey,
+  recordingsHash,
   inputVariables,
   config: { boundProfileProvider, providerName },
   options,
 }: {
-  recordingPath: string;
-  inputVariables?: InputVariables;
+  recordingsPath: string;
+  recordingsType: RecordingType;
+  recordingsKey: string;
+  recordingsHash: string;
   config: {
     boundProfileProvider: BoundProfileProvider;
     providerName: string;
   };
+  inputVariables?: InputVariables;
   options?: {
     processRecordings?: boolean;
     beforeRecordingLoad?: ProcessingFunction;
   };
 }): Promise<void> {
-  const definitions = await getRecordings(recordingPath);
+  const definitions = await getRecordings(
+    recordingsPath,
+    recordingsType,
+    recordingsKey,
+    recordingsHash
+  );
   const { parameters, security, services } = boundProfileProvider.configuration;
   const integrationParameters = parameters ?? {};
   const baseUrl = services.getUrl();
@@ -118,6 +134,80 @@ export async function loadRecording({
   }
 }
 
+type UpdateResult =
+  | { kind: 'default'; file: TestRecordings }
+  | {
+      kind: 'new';
+      file: TestRecordings;
+      oldRecordings: RecordingWithDecodedResponse[];
+    };
+
+async function updateRecordings(
+  recordingsFile: TestRecordings,
+  newRecordingsFilePath: string,
+  recordingsIndex: string,
+  recordingsHash: string,
+  recordings: RecordingWithDecodedResponse[]
+): Promise<UpdateResult | undefined> {
+  let newRecordingsFile: TestRecordings | undefined;
+
+  const targetRecordings = findRecordings(
+    recordingsFile,
+    recordingsIndex,
+    recordingsHash
+  );
+
+  // if there already exist recordings for specified hash with empty list
+  // do not overwrite - return
+  if (
+    targetRecordings !== undefined &&
+    targetRecordings.length === 0 &&
+    recordings.length === 0
+  ) {
+    return undefined;
+  }
+
+  // if there already exist recordings for specified hash with some recordings
+  // save new traffic to new file
+  // TODO: add argument to opt in
+  if (targetRecordings !== undefined) {
+    if (await exists(newRecordingsFilePath)) {
+      newRecordingsFile = await parseRecordingsFile(newRecordingsFilePath);
+
+      newRecordingsFile = {
+        ...newRecordingsFile,
+        [recordingsIndex]: {
+          ...newRecordingsFile[recordingsIndex],
+          [recordingsHash]: recordings,
+        },
+      };
+    } else {
+      newRecordingsFile = {
+        [recordingsIndex]: {
+          [recordingsHash]: recordings,
+        },
+      };
+    }
+
+    return {
+      kind: 'new',
+      file: newRecordingsFile,
+      oldRecordings: targetRecordings,
+    };
+  }
+
+  // otherwise store specified recordings to default file
+  recordingsFile = {
+    ...recordingsFile,
+    [recordingsIndex]: {
+      ...recordingsFile[recordingsIndex],
+      [recordingsHash]: recordings,
+    },
+  };
+
+  return { kind: 'default', file: recordingsFile };
+}
+
 /**
  * Checks if recording started and if yes, it ends recording and
  * saves recording to file configured based on nock configuration from constructor.
@@ -127,13 +217,19 @@ export async function loadRecording({
  * unless user pass in false for parameter `processRecordings`.
  */
 export async function endRecording({
-  recordingPath,
+  recordingsPath,
+  recordingsType,
+  recordingsKey,
+  recordingsHash,
   processRecordings,
   config: { boundProfileProvider, providerName },
   inputVariables,
   beforeRecordingSave,
 }: {
-  recordingPath: string;
+  recordingsPath: string;
+  recordingsType: RecordingType;
+  recordingsKey: string;
+  recordingsHash: string;
   processRecordings: boolean;
   config: {
     boundProfileProvider: BoundProfileProvider;
@@ -143,6 +239,7 @@ export async function endRecording({
   beforeRecordingSave?: ProcessingFunction;
 }): Promise<AnalysisResult | undefined> {
   const definitions = recorder.play();
+
   recorder.clear();
   restoreRecordings();
 
@@ -150,8 +247,48 @@ export async function endRecording({
     'Recording ended - Restored HTTP requests and cleared recorded traffic'
   );
 
+  const path = composeRecordingPath(recordingsPath);
+  const newRecordingsFilePath = composeRecordingPath(recordingsPath, 'new');
+  let recordingsFile: TestRecordings;
+
+  const recordingsIndex =
+    recordingsType !== RecordingType.MAIN
+      ? `${recordingsType}-${recordingsKey}`
+      : recordingsKey;
+
   if (definitions === undefined || definitions.length === 0) {
-    await writeRecordings(composeRecordingPath(recordingPath), []);
+    let result;
+
+    if (await exists(path)) {
+      recordingsFile = await parseRecordingsFile(path);
+
+      result = await updateRecordings(
+        recordingsFile,
+        newRecordingsFilePath,
+        recordingsIndex,
+        recordingsHash,
+        []
+      );
+    } else {
+      recordingsFile = {
+        [recordingsIndex]: {
+          [recordingsHash]: [],
+        },
+      };
+
+      result = {
+        kind: 'default',
+        file: recordingsFile,
+      };
+    }
+
+    if (result !== undefined) {
+      if (result.kind === 'default') {
+        await writeRecordings(path, result.file);
+      } else if (result.kind === 'new') {
+        await writeRecordings(newRecordingsFilePath, result.file);
+      }
+    }
 
     return undefined;
   }
@@ -192,15 +329,48 @@ export async function endRecording({
     checkSensitiveInformation(definitions, security, integrationParameters);
   }
 
-  const recordingExists = await exists(composeRecordingPath(recordingPath));
+  let result;
+  if (await exists(path)) {
+    recordingsFile = await parseRecordingsFile(path);
 
-  if (recordingExists) {
-    return await matchTraffic(recordingPath, definitions);
+    result = await updateRecordings(
+      recordingsFile,
+      newRecordingsFilePath,
+      recordingsIndex,
+      recordingsHash,
+      definitions as RecordingWithDecodedResponse[]
+    );
+  } else {
+    recordingsFile = {
+      [recordingsIndex]: {
+        [recordingsHash]: definitions as RecordingWithDecodedResponse[],
+      },
+    };
+
+    result = {
+      kind: 'default',
+      file: recordingsFile,
+    };
   }
 
-  // recording file does not exist -> record new traffic
-  await writeRecordings(composeRecordingPath(recordingPath), definitions);
-  debug('Recorded definitions written');
+  if (result !== undefined) {
+    if (result.kind === 'default') {
+      await writeRecordings(path, result.file);
+    } else if (result.kind === 'new') {
+      const analysis = await matchTraffic(
+        result.oldRecordings ?? [],
+        definitions
+      );
+
+      if (analysis.impact !== MatchImpact.NONE) {
+        await writeRecordings(newRecordingsFilePath, result.file);
+      }
+
+      return analysis;
+    }
+
+    debug('Recorded definitions written');
+  }
 
   return undefined;
 }
@@ -215,39 +385,75 @@ export function composeRecordingPath(
 
   if (version !== undefined) {
     const baseDir = dirname(recordingPath);
-    const hash = basename(recordingPath);
+    const baseName = basename(recordingPath);
 
-    return joinPath(baseDir, 'old', `${hash}_${version}.json`);
+    return joinPath(baseDir, 'old', `${baseName}_${version}.json`);
   }
 
   return `${recordingPath}.json`;
 }
 
 export async function getRecordings(
-  recordingPath: string
-): Promise<RecordingDefinitions> {
+  recordingsPath: string,
+  recordingsType: RecordingType,
+  recordingsKey: string,
+  recordingsHash: string
+): Promise<RecordingWithDecodedResponse[]> {
   // try to get new recordings if environment variable is set
+  const path = composeRecordingPath(recordingsPath);
+  const recordingsFileExists = await exists(path);
+
+  if (!recordingsFileExists) {
+    throw new RecordingsNotFoundError(path);
+  }
+
   const useNewTraffic = parseBooleanEnv(process.env.USE_NEW_TRAFFIC);
-  const newRecordingPath = composeRecordingPath(recordingPath, 'new');
+  const newRecordingsPath = composeRecordingPath(recordingsPath, 'new');
+  const newRecordingsFileExists = await exists(newRecordingsPath);
 
-  if (useNewTraffic && (await exists(newRecordingPath))) {
-    return await parseRecordings(newRecordingPath);
+  if (useNewTraffic && !newRecordingsFileExists) {
+    throw new RecordingsNotFoundError(newRecordingsPath);
   }
 
-  // otherwise use default ones
-  const currentRecordingPath = composeRecordingPath(recordingPath);
-  const recordingExists = await exists(currentRecordingPath);
+  const finalPath = useNewTraffic ? newRecordingsPath : path;
+  const recordingsIndex =
+    recordingsType !== RecordingType.MAIN
+      ? `${recordingsType}-${recordingsKey}`
+      : recordingsKey;
 
-  if (!recordingExists) {
-    throw new RecordingsNotFoundError(currentRecordingPath);
+  const recordings = (await parseRecordingsFile(finalPath))[recordingsIndex];
+
+  if (recordings === undefined) {
+    throw new Error(
+      `Recording under ${recordingsIndex} can't be found at ${finalPath}.`
+    );
   }
 
-  return await parseRecordings(currentRecordingPath);
+  const finalRecordings = recordings[recordingsHash];
+
+  // TODO: add new specific error
+  if (finalRecordings === undefined) {
+    throw new RecordingsNotFoundError(finalPath);
+  }
+
+  return finalRecordings;
 }
 
-export async function parseRecordings(
+export function findRecordings(
+  recordingsFile: TestRecordings,
+  recordingsIndex: string,
+  recordingsHash: string
+): RecordingWithDecodedResponse[] | undefined {
+  if (recordingsFile[recordingsIndex] === undefined) {
+    return undefined;
+  }
+
+  return recordingsFile[recordingsIndex][recordingsHash];
+}
+
+export async function parseRecordingsFile(
   path: string
-): Promise<RecordingDefinitions> {
+): Promise<TestRecordings> {
   const definitionFile = await readFileQuiet(path);
 
   if (definitionFile === undefined) {
@@ -256,7 +462,7 @@ export async function parseRecordings(
 
   debug(`Parsing recording file at: "${path}"`);
 
-  return JSON.parse(definitionFile) as RecordingDefinitions;
+  return JSON.parse(definitionFile) as TestRecordings;
 }
 
 export async function updateTraffic(recordingPath: string): Promise<void> {

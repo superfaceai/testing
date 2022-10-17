@@ -6,14 +6,13 @@ export type RecordingWithDecodedResponse = RecordingDefinition & {
   decodedResponse: ReplyBody;
 };
 
-export interface TestRecordings {
-  main: Record<string, RecordingWithDecodedResponse[]>;
-  prepare?: Record<string, RecordingWithDecodedResponse[]>;
-  teardown?: Record<string, RecordingWithDecodedResponse[]>;
-}
+export type TestRecordings = Record<
+  string,
+  Record<string, RecordingWithDecodedResponse[]>
+>;
 
 export enum RecordingType {
-  TEST = 'test',
+  MAIN = 'main',
   PREPARE = 'prepare',
   TEARDOWN = 'teardown',
 }
