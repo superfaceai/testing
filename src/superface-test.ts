@@ -219,7 +219,7 @@ export class SuperfaceTest {
 
   /**
    * Sets up path to recording, depends on current Superface configuration and test case input.
-   * It also tries to look for current test file from test instance to save recordings 
+   * It also tries to look for current test file from test instance to save recordings
    * next to test files.
    */
   private setupRecordingPath(
