@@ -15,7 +15,13 @@ import {
   RecordingsNotFoundError,
   UnexpectedError,
 } from '../common/errors';
-import { exists, mkdirQuiet, readFileQuiet, rename } from '../common/io';
+import {
+  exists,
+  mkdirQuiet,
+  readFileQuiet,
+  rename,
+  rimraf,
+} from '../common/io';
 import { writeRecordings } from '../common/output-stream';
 import {
   AnalysisResult,
@@ -433,7 +439,9 @@ export async function getRecordings(
 
   // TODO: add new specific error
   if (finalRecordings === undefined) {
-    throw new RecordingsNotFoundError(finalPath);
+    throw new UnexpectedError(
+      `Recordings under hash ${recordingsHash} are not found. At ${finalPath}`
+    );
   }
 
   return finalRecordings;
@@ -477,8 +485,26 @@ export async function updateTraffic(recordingPath: string): Promise<void> {
     i++;
   }
 
+  const currentTestFile = await parseRecordingsFile(pathToCurrent);
+  const newTestFile = await parseRecordingsFile(pathToNew);
+
+  // loop through new file and merge it with current one
+  for (const [index, recordOfRecordings] of Object.entries(newTestFile)) {
+    if (currentTestFile[index] === undefined) {
+      currentTestFile[index] = recordOfRecordings;
+    } else {
+      for (const [hash, recordings] of Object.entries(recordOfRecordings)) {
+        currentTestFile[index][hash] = recordings;
+      }
+    }
+  }
+
+  // move old current file to directory /old
   await rename(pathToCurrent, composeRecordingPath(recordingPath, `${i}`));
-  await rename(pathToNew, pathToCurrent);
+  // write merged file in place of current file
+  await writeRecordings(pathToCurrent, currentTestFile);
+  // remove new file
+  await rimraf(pathToNew);
 }
 
 export async function canUpdateTraffic(
