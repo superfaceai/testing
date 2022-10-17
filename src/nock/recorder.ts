@@ -255,6 +255,7 @@ export async function endRecording({
 
   const path = composeRecordingPath(recordingsPath);
   const newRecordingsFilePath = composeRecordingPath(recordingsPath, 'new');
+  const canSaveNewTraffic = parseBooleanEnv(process.env.STORE_NEW_TRAFFIC);
   let recordingsFile: TestRecordings;
 
   const recordingsIndex =
@@ -291,7 +292,7 @@ export async function endRecording({
     if (result !== undefined) {
       if (result.kind === 'default') {
         await writeRecordings(path, result.file);
-      } else if (result.kind === 'new') {
+      } else if (result.kind === 'new' && canSaveNewTraffic) {
         await writeRecordings(newRecordingsFilePath, result.file);
       }
     }
@@ -363,16 +364,22 @@ export async function endRecording({
     if (result.kind === 'default') {
       await writeRecordings(path, result.file);
     } else if (result.kind === 'new') {
-      const analysis = await matchTraffic(
-        result.oldRecordings ?? [],
-        definitions
-      );
+      if (canSaveNewTraffic) {
+        const analysis = await matchTraffic(
+          result.oldRecordings ?? [],
+          definitions
+        );
 
-      if (analysis.impact !== MatchImpact.NONE) {
-        await writeRecordings(newRecordingsFilePath, result.file);
+        if (analysis.impact !== MatchImpact.NONE) {
+          await writeRecordings(newRecordingsFilePath, result.file);
+        }
+
+        return analysis;
+      } else {
+        // REWRITING old file
+        console.warn(`Rewriting recording file at ${path}\nRecording index path: ${recordingsIndex}.${recordingsHash}`)
+        await writeRecordings(path, result.file);
       }
-
-      return analysis;
     }
 
     debug('Recorded definitions written');
