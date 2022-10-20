@@ -43,6 +43,7 @@ import {
 } from './recording.interfaces';
 
 const debug = createDebug('superface:testing');
+const debugRecordings = createDebug('superface:testing:recordings');
 
 /**
  * Starts recording HTTP traffic.
@@ -148,13 +149,21 @@ type UpdateResult =
       oldRecordings: RecordingWithDecodedResponse[];
     };
 
-async function updateRecordings(
-  recordingsFile: TestRecordings,
-  newRecordingsFilePath: string,
-  recordingsIndex: string,
-  recordingsHash: string,
-  recordings: RecordingWithDecodedResponse[]
-): Promise<UpdateResult | undefined> {
+async function updateRecordings({
+  recordingsFile,
+  recordings,
+  newRecordingsFilePath,
+  recordingsIndex,
+  recordingsHash,
+  canSaveNewTraffic,
+}: {
+  recordingsFile: TestRecordings;
+  recordings: RecordingWithDecodedResponse[];
+  newRecordingsFilePath: string;
+  recordingsIndex: string;
+  recordingsHash: string;
+  canSaveNewTraffic: boolean;
+}): Promise<UpdateResult | undefined> {
   let newRecordingsFile: TestRecordings | undefined;
 
   const targetRecordings = findRecordings(
@@ -175,8 +184,7 @@ async function updateRecordings(
 
   // if there already exist recordings for specified hash with some recordings
   // save new traffic to new file
-  // TODO: add argument to opt in
-  if (targetRecordings !== undefined) {
+  if (canSaveNewTraffic && targetRecordings !== undefined) {
     if (await exists(newRecordingsFilePath)) {
       newRecordingsFile = await parseRecordingsFile(newRecordingsFilePath);
 
@@ -263,19 +271,22 @@ export async function endRecording({
       ? `${recordingsType}-${recordingsKey}`
       : recordingsKey;
 
+  debugRecordings(`Recordings location: ${recordingsIndex}.${recordingsHash}`);
+
   if (definitions === undefined || definitions.length === 0) {
     let result;
 
     if (await exists(path)) {
       recordingsFile = await parseRecordingsFile(path);
 
-      result = await updateRecordings(
+      result = await updateRecordings({
         recordingsFile,
+        recordings: [],
         newRecordingsFilePath,
         recordingsIndex,
         recordingsHash,
-        []
-      );
+        canSaveNewTraffic,
+      });
     } else {
       recordingsFile = {
         [recordingsIndex]: {
@@ -292,7 +303,7 @@ export async function endRecording({
     if (result !== undefined) {
       if (result.kind === 'default') {
         await writeRecordings(path, result.file);
-      } else if (result.kind === 'new' && canSaveNewTraffic) {
+      } else if (result.kind === 'new') {
         await writeRecordings(newRecordingsFilePath, result.file);
       }
     }
@@ -339,14 +350,16 @@ export async function endRecording({
   let result;
   if (await exists(path)) {
     recordingsFile = await parseRecordingsFile(path);
+    debugRecordings('parsed file:', recordingsFile);
 
-    result = await updateRecordings(
+    result = await updateRecordings({
       recordingsFile,
+      recordings: definitions as RecordingWithDecodedResponse[],
       newRecordingsFilePath,
       recordingsIndex,
       recordingsHash,
-      definitions as RecordingWithDecodedResponse[]
-    );
+      canSaveNewTraffic,
+    });
   } else {
     recordingsFile = {
       [recordingsIndex]: {
@@ -362,24 +375,26 @@ export async function endRecording({
 
   if (result !== undefined) {
     if (result.kind === 'default') {
+      debugRecordings('Writing to current recordings file', result.file);
+
       await writeRecordings(path, result.file);
     } else if (result.kind === 'new') {
-      if (canSaveNewTraffic) {
-        const analysis = await matchTraffic(
-          result.oldRecordings ?? [],
-          definitions
-        );
+      const analysis = await matchTraffic(
+        result.oldRecordings ?? [],
+        definitions
+      );
 
-        if (analysis.impact !== MatchImpact.NONE) {
-          await writeRecordings(newRecordingsFilePath, result.file);
-        }
+      debugRecordings('Matched incoming traffic with old one', analysis);
 
-        return analysis;
-      } else {
-        // REWRITING old file
-        console.warn(`Rewriting recording file at ${path}\nRecording index path: ${recordingsIndex}.${recordingsHash}`)
-        await writeRecordings(path, result.file);
+      if (analysis.impact !== MatchImpact.NONE) {
+        debugRecordings('Writing to new recordings file', result.file);
+
+        await writeRecordings(newRecordingsFilePath, result.file);
       }
+
+      debugRecordings('No impact, incoming traffic is not stored');
+
+      return analysis;
     }
 
     debug('Recorded definitions written');
@@ -495,6 +510,9 @@ export async function updateTraffic(recordingPath: string): Promise<void> {
   const currentTestFile = await parseRecordingsFile(pathToCurrent);
   const newTestFile = await parseRecordingsFile(pathToNew);
 
+  debugRecordings('Current recordings file:', currentTestFile);
+  debugRecordings('New recordings file:', newTestFile);
+
   // loop through new file and merge it with current one
   for (const [index, recordOfRecordings] of Object.entries(newTestFile)) {
     if (currentTestFile[index] === undefined) {
@@ -505,6 +523,8 @@ export async function updateTraffic(recordingPath: string): Promise<void> {
       }
     }
   }
+
+  debugRecordings('Current recordings file after merge:', currentTestFile);
 
   // move old current file to directory /old
   await rename(pathToCurrent, composeRecordingPath(recordingPath, `${i}`));

@@ -7,7 +7,13 @@ import { UnexpectedError } from './common/errors';
 import { getFixtureName, matchWildCard } from './common/format';
 import { IGenerator } from './generate-hash';
 import { MatchImpact } from './nock/analyzer';
-import { endRecording, loadRecording, startRecording } from './nock/recorder';
+import {
+  canUpdateTraffic,
+  endRecording,
+  loadRecording,
+  startRecording,
+  updateTraffic,
+} from './nock/recorder';
 import { RecordingType } from './nock/recording.interfaces';
 import { report, saveReport } from './reporter';
 import { prepareSuperface } from './superface/config';
@@ -82,11 +88,17 @@ export class SuperfaceTest {
     );
 
     debugSetup('Prepared path to recording:', recordingsPath);
+    debugSetup(
+      'Current recordings located at:',
+      `${recordingsKey}.${recordingsHash}`
+    );
 
-    // Replace currently supported traffic with new (with changes)
-    // if (await canUpdateTraffic(recordingsPath)) {
-    //   await updateTraffic(recordingsPath);
-    // }
+    // Merge currently supported traffic with new (with changes)
+    if (await canUpdateTraffic(recordingsPath)) {
+      debug('Updating current recordings file with new recordings file.');
+
+      await updateTraffic(recordingsPath);
+    }
 
     // Parse env variable and check if test should be recorded
     const record = matchWildCard(
