@@ -11,7 +11,7 @@ import {
 import {
   assertsDefinitionsAreNotStrings,
   checkSensitiveInformation,
-  getGenerator,
+  parseTestInstance,
 } from './superface-test.utils';
 
 describe('SuperfaceTest Utils', () => {
@@ -92,19 +92,35 @@ describe('SuperfaceTest Utils', () => {
     });
   });
 
-  describe('getGenerator', () => {
+  describe('parseTestInstance', () => {
     describe('when specified testInstance is jest expect instance', () => {
       it('returns JestGenerateHash instance', () => {
         const mockExpect = ((): void => {
-          console.log('simulating expect');
+          console.log('simulating jest expect');
         }) as any;
 
         mockExpect.getState = () => ({
           currentTestName: 'test name',
         });
 
-        expect(getGenerator(mockExpect)).toBeInstanceOf(JestGenerateHash);
+        const parsedTestInstance = parseTestInstance(mockExpect);
+
+        expect(parsedTestInstance.generator).toBeInstanceOf(JestGenerateHash);
       });
+
+      it('returns `getTestFilePath` function', () => {
+        const mockExpect = ((): void => {
+          console.log('simulating jest expect');
+        }) as any;
+
+        mockExpect.getState = () => ({
+          testPath: '/path/to/test/file.test.ts'
+        });
+
+        const parsedTestInstance = parseTestInstance(mockExpect);
+
+        expect(parsedTestInstance.getTestFilePath()).toBe('/path/to/test/file.test.ts')
+      })
     });
 
     describe('when specified testInstance is mocha instance', () => {
@@ -119,7 +135,11 @@ describe('SuperfaceTest Utils', () => {
             },
           };
 
-          expect(getGenerator(mockMocha)).toBeInstanceOf(MochaGenerateHash);
+          const parsedTestInstance = parseTestInstance(mockMocha);
+
+          expect(parsedTestInstance.generator).toBeInstanceOf(
+            MochaGenerateHash
+          );
         });
       });
 
@@ -132,8 +152,21 @@ describe('SuperfaceTest Utils', () => {
             },
           };
 
-          expect(getGenerator(mockMocha)).toBeInstanceOf(MochaGenerateHash);
+          const parsedTestInstance = parseTestInstance(mockMocha);
+
+          expect(parsedTestInstance.generator).toBeInstanceOf(
+            MochaGenerateHash
+          );
         });
+
+        // TODO: extend parsing of mocha to return path to test file
+        it('returns `getTestFilePath` function', () => {
+          const mockMocha = {}
+  
+          const parsedTestInstance = parseTestInstance(mockMocha);
+  
+          expect(parsedTestInstance.getTestFilePath()).toBeUndefined()
+        })
       });
     });
 
@@ -141,10 +174,20 @@ describe('SuperfaceTest Utils', () => {
       it('returns InputGenerateHash instance', () => {
         const mockTestInstance = undefined;
 
-        expect(getGenerator(mockTestInstance)).toBeInstanceOf(
+        const parsedTestInstance = parseTestInstance(mockTestInstance);
+
+        expect(parsedTestInstance.generator).toBeInstanceOf(
           InputGenerateHash
         );
       });
+
+      it('returns `getTestFilePath` function', () => {
+        const mockTestInstance = undefined
+
+        const parsedTestInstance = parseTestInstance(mockTestInstance);
+
+        expect(parsedTestInstance.getTestFilePath()).toBeUndefined()
+      })
     });
   });
 });
