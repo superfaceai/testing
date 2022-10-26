@@ -167,13 +167,19 @@ function replaceCredentialInBody({
   }
 }
 
+enum TargetResponse {
+  default = 'response',
+  decoded = 'decodedResponse',
+}
+
 function replaceCredentialInResponse({
   definition,
   credential,
   placeholder,
   contentEncoding,
 }: ReplaceOptions & { contentEncoding?: string }): void {
-  let response: string | undefined;
+  let response: string | undefined,
+    targetResponse: TargetResponse = TargetResponse.default;
 
   if (contentEncoding === undefined) {
     if (definition.response) {
@@ -182,6 +188,7 @@ function replaceCredentialInResponse({
   } else {
     if (definition.decodedResponse) {
       response = JSON.stringify(definition.decodedResponse);
+      targetResponse = TargetResponse.decoded;
     }
   }
 
@@ -196,7 +203,7 @@ function replaceCredentialInResponse({
         placeholder,
       });
 
-      definition.response = JSON.parse(response) as ReplyBody;
+      definition[targetResponse] = JSON.parse(response) as ReplyBody;
     }
   }
 }
