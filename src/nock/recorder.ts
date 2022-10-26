@@ -1,14 +1,17 @@
 import { BoundProfileProvider } from '@superfaceai/one-sdk';
 import createDebug from 'debug';
+import { decodeBuffer } from 'http-encoding';
 import {
   activate as activateNock,
   define as loadRecordingDefinitions,
   disableNetConnect,
   isActive as isNockActive,
   recorder,
+  ReplyBody,
   restore as restoreRecordings,
 } from 'nock';
 import { basename, dirname, join as joinPath } from 'path';
+import { URLSearchParams } from 'url';
 
 import {
   BaseURLNotFoundError,
@@ -31,7 +34,6 @@ import {
   replaceCredentials,
 } from '../superface-test.utils';
 import { matchTraffic } from './matcher';
-import { decodeResponse, getResponseHeaderValue } from './matcher.utils';
 
 const debug = createDebug('superface:testing');
 
@@ -144,7 +146,7 @@ export async function endRecording({
   inputVariables?: InputVariables;
   beforeRecordingSave?: ProcessingFunction;
 }): Promise<AnalysisResult | undefined> {
-  const definitions = recorder.play();
+  let definitions = recorder.play();
   recorder.clear();
   restoreRecordings();
 
@@ -154,20 +156,19 @@ export async function endRecording({
 
   const recordingExists = await exists(composeRecordingPath(recordingPath));
   if (definitions === undefined || definitions.length === 0) {
-    await writeRecordings(
-      composeRecordingPath(
-        recordingPath,
-        recordingExists ? { version: 'new' } : undefined
-      ),
-      []
+    const path = composeRecordingPath(
+      recordingPath,
+      recordingExists ? { version: 'new' } : undefined
     );
+
+    await writeRecordings(path, []);
 
     return undefined;
   }
 
   assertsDefinitionsAreNotStrings(definitions);
 
-  // const securityValues = provider.configuration.security;
+  definitions = await decodeRecordings(definitions);
   const { security, parameters, services } = boundProfileProvider.configuration;
   const integrationParameters = parameters ?? {};
 
@@ -196,9 +197,16 @@ export async function endRecording({
 
   if (
     security.length > 0 ||
-    (integrationParameters && Object.values(integrationParameters).length > 0)
+    (integrationParameters &&
+      Object.values(integrationParameters).length > 0) ||
+    (inputVariables && Object.values(inputVariables).length > 0)
   ) {
-    checkSensitiveInformation(definitions, security, integrationParameters);
+    checkSensitiveInformation(
+      definitions,
+      security,
+      integrationParameters,
+      inputVariables
+    );
   }
 
   if (recordingExists) {
@@ -206,11 +214,9 @@ export async function endRecording({
   }
 
   // recording file does not exist -> record new traffic
-  await writeRecordings(composeRecordingPath(recordingPath), definitions);
-  // save recording with decoded response
-  if (parseBooleanEnv(process.env.DECODE_RESPONSE)) {
-    await writeDecodedRecordings(recordingPath, definitions);
-  }
+  const path = composeRecordingPath(recordingPath);
+
+  await writeRecordings(path, definitions);
 
   debug('Recorded definitions written');
 
@@ -316,27 +322,6 @@ export async function canUpdateTraffic(
   return false;
 }
 
-export async function writeDecodedRecordings(
-  recordingPath: string,
-  recordings: RecordingDefinitions,
-  pathConfig?: { version?: string }
-): Promise<void> {
-  const encodedRecordings = recordings.filter(def =>
-    Array.isArray(def.response)
-  );
-
-  if (encodedRecordings.length === 0) {
-    return;
-  }
-
-  const decodedRecs = await decodeRecordings(encodedRecordings);
-
-  await writeRecordings(
-    composeRecordingPath(recordingPath, { ...pathConfig, decoded: true }),
-    decodedRecs
-  );
-}
-
 export async function decodeRecordings(
   recordings: RecordingDefinition[]
 ): Promise<RecordingDefinition[]> {
@@ -351,7 +336,87 @@ export async function decodeRecordingResponse(
     recording.rawHeaders ?? []
   );
 
-  const response = await decodeResponse(recording.response, contentEncoding);
+  recording.decodedResponse = await decodeResponse(recording.response, contentEncoding);
 
-  return { ...recording, response };
+  return recording;
+}
+
+export function getResponseHeaderValue(
+  headerName: string,
+  payload: string[]
+): string | undefined {
+  for (let i = 0; i < payload.length; i += 2) {
+    if (payload[i].toLowerCase() === headerName.toLowerCase()) {
+      return payload[i + 1];
+    }
+  }
+
+  return undefined;
+}
+
+/* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+function composeBuffer(response: any[]): Buffer {
+  return Buffer.concat(response.map(res => Buffer.from(res, 'hex')));
+}
+
+export async function decodeResponse(
+  response: ReplyBody | undefined,
+  contentEncoding?: string
+): Promise<ReplyBody | undefined> {
+  if (response === undefined || contentEncoding === undefined) {
+    return response;
+  }
+
+  if (!Array.isArray(response)) {
+    throw new UnexpectedError(
+      `Response is encoded by "${contentEncoding}" and is not an array`
+    );
+  }
+
+  const buffer = composeBuffer(response);
+
+  if (contentEncoding.toLowerCase() === 'gzip') {
+    return JSON.parse(
+      (await decodeBuffer(buffer, contentEncoding)).toString()
+    ) as ReplyBody;
+  } else {
+    throw new UnexpectedError(
+      `Content encoding ${contentEncoding} is not supported`
+    );
+  }
+}
+
+/**
+ * Expect something like `To=%2Bxxx&From=%2Bxxx&Body=Hello+World%21`
+ * and want back: `{ To: "+xxx", From: "+xxx", Body: "Hello World!" }`
+ *
+ * Limitation:
+ *  since URLSearchParams always transform params to string we can't
+ *  generate correct schema for this if it contains numbers or booleans
+ */
+export function parseBody(
+  body: string,
+  _accept?: string
+): Record<string, unknown> | undefined {
+  if (body === '') {
+    return undefined;
+  }
+
+  const parsedBody = decodeURIComponent(body);
+  const result: Record<string, unknown> = {};
+  const params = new URLSearchParams(parsedBody);
+
+  for (const [key, value] of params.entries()) {
+    // parse value
+    let parsedValue: unknown;
+    if (value.startsWith('{') || value.startsWith('[')) {
+      parsedValue = JSON.parse(value);
+    } else {
+      parsedValue = value;
+    }
+
+    result[key] = parsedValue;
+  }
+
+  return result;
 }
