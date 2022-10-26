@@ -102,7 +102,7 @@ async function updateNewRecordingFile(
   return newRecordingsFile;
 }
 
-export async function updateRecordings({
+async function updateRecordings({
   recordingsFile,
   recordings,
   newRecordingsFilePath,
@@ -158,6 +158,48 @@ export async function updateRecordings({
   };
 
   return { kind: 'default', file: recordingsFile };
+}
+
+export async function handleRecordings({
+  recordingsFilePath,
+  newRecordingsFilePath,
+  recordingsIndex,
+  recordingsHash,
+  recordings,
+  canSaveNewTraffic,
+}: {
+  recordingsFilePath: string;
+  newRecordingsFilePath: string;
+  recordingsIndex: string;
+  recordingsHash: string;
+  recordings: RecordingDefinitions;
+  canSaveNewTraffic: boolean;
+}): Promise<UpdateResult | undefined> {
+  let recordingsFile: TestRecordings;
+
+  if (await exists(recordingsFilePath)) {
+    recordingsFile = await parseRecordingsFile(recordingsFilePath);
+
+    return await updateRecordings({
+      recordingsFile,
+      recordings: recordings,
+      newRecordingsFilePath,
+      recordingsIndex,
+      recordingsHash,
+      canSaveNewTraffic,
+    });
+  }
+
+  recordingsFile = {
+    [recordingsIndex]: {
+      [recordingsHash]: recordings,
+    },
+  };
+
+  return {
+    kind: 'default',
+    file: recordingsFile,
+  };
 }
 
 export function composeRecordingPath(

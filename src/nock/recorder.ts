@@ -10,7 +10,6 @@ import {
 } from 'nock';
 
 import { BaseURLNotFoundError } from '../common/errors';
-import { exists } from '../common/io';
 import { writeRecordings } from '../common/output-stream';
 import {
   AnalysisResult,
@@ -28,10 +27,9 @@ import { matchTraffic } from './matcher';
 import {
   composeRecordingPath,
   getRecordings,
-  parseRecordingsFile,
-  updateRecordings,
+  handleRecordings,
 } from './recorder.utils';
-import { RecordingType, TestRecordings } from './recording.interfaces';
+import { RecordingType } from './recording.interfaces';
 
 const debug = createDebug('superface:testing');
 const debugRecordings = createDebug('superface:testing:recordings');
@@ -175,7 +173,6 @@ export async function endRecording({
   const path = composeRecordingPath(recordingsPath);
   const newRecordingsFilePath = composeRecordingPath(recordingsPath, 'new');
   const canSaveNewTraffic = parseBooleanEnv(process.env.STORE_NEW_TRAFFIC);
-  let recordingsFile: TestRecordings;
 
   const recordingsIndex =
     recordingsType !== RecordingType.MAIN
@@ -185,31 +182,14 @@ export async function endRecording({
   debugRecordings(`Recordings location: ${recordingsIndex}.${recordingsHash}`);
 
   if (definitions === undefined || definitions.length === 0) {
-    let result;
-
-    if (await exists(path)) {
-      recordingsFile = await parseRecordingsFile(path);
-
-      result = await updateRecordings({
-        recordingsFile,
-        recordings: [],
-        newRecordingsFilePath,
-        recordingsIndex,
-        recordingsHash,
-        canSaveNewTraffic,
-      });
-    } else {
-      recordingsFile = {
-        [recordingsIndex]: {
-          [recordingsHash]: [],
-        },
-      };
-
-      result = {
-        kind: 'default',
-        file: recordingsFile,
-      };
-    }
+    const result = await handleRecordings({
+      recordingsFilePath: path,
+      newRecordingsFilePath,
+      recordingsIndex,
+      recordingsHash,
+      canSaveNewTraffic,
+      recordings: [],
+    });
 
     if (result !== undefined) {
       if (result.kind === 'default') {
@@ -258,31 +238,14 @@ export async function endRecording({
     checkSensitiveInformation(definitions, security, integrationParameters);
   }
 
-  let result;
-  if (await exists(path)) {
-    recordingsFile = await parseRecordingsFile(path);
-    debugRecordings('parsed file:', recordingsFile);
-
-    result = await updateRecordings({
-      recordingsFile,
-      recordings: definitions,
-      newRecordingsFilePath,
-      recordingsIndex,
-      recordingsHash,
-      canSaveNewTraffic,
-    });
-  } else {
-    recordingsFile = {
-      [recordingsIndex]: {
-        [recordingsHash]: definitions,
-      },
-    };
-
-    result = {
-      kind: 'default',
-      file: recordingsFile,
-    };
-  }
+  const result = await handleRecordings({
+    recordingsFilePath: path,
+    newRecordingsFilePath,
+    recordingsIndex,
+    recordingsHash,
+    canSaveNewTraffic,
+    recordings: definitions,
+  });
 
   if (result !== undefined) {
     if (result.kind === 'default') {
