@@ -1,16 +1,6 @@
 import { MatchHeaders } from './matcher';
-import { getResponseHeaderValue } from './recorder';
+import { getRequestHeaderValue, getResponseHeaderValue } from './recorder';
 
-export function getRequestHeaderValue(
-  headerName: string,
-  payload: Record<string, string | string[]>
-): string | string[] | undefined {
-  const headerKey = Object.keys(payload).find(
-    key => key.toLowerCase() === headerName.toLowerCase()
-  );
-
-  return headerKey ? payload[headerKey] : undefined;
-}
 
 export function getRequestHeader(
   oldHeaders: Record<string, string | string[]>,

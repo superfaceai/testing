@@ -336,9 +336,25 @@ export async function decodeRecordingResponse(
     recording.rawHeaders ?? []
   );
 
-  recording.decodedResponse = await decodeResponse(recording.response, contentEncoding);
+  if (contentEncoding) {
+    recording.decodedResponse = await decodeResponse(
+      recording.response,
+      contentEncoding
+    );
+  }
 
   return recording;
+}
+
+export function getRequestHeaderValue(
+  headerName: string,
+  payload: Record<string, string | string[]>
+): string | string[] | undefined {
+  const headerKey = Object.keys(payload).find(
+    key => key.toLowerCase() === headerName.toLowerCase()
+  );
+
+  return headerKey ? payload[headerKey] : undefined;
 }
 
 export function getResponseHeaderValue(
@@ -361,9 +377,9 @@ function composeBuffer(response: any[]): Buffer {
 
 export async function decodeResponse(
   response: ReplyBody | undefined,
-  contentEncoding?: string
+  contentEncoding: string
 ): Promise<ReplyBody | undefined> {
-  if (response === undefined || contentEncoding === undefined) {
+  if (response === undefined) {
     return response;
   }
 
