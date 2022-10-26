@@ -13,6 +13,7 @@ import { ReplyBody, RequestBodyMatcher } from 'nock/types';
 import { URL } from 'url';
 
 import { RecordingDefinition } from '..';
+import { getResponseHeaderValue } from './recorder';
 
 interface ReplaceOptions {
   definition: RecordingDefinition;
@@ -170,10 +171,21 @@ function replaceCredentialInResponse({
   definition,
   credential,
   placeholder,
-}: ReplaceOptions): void {
-  if (definition.response) {
-    let response = JSON.stringify(definition.response);
+  contentEncoding,
+}: ReplaceOptions & { contentEncoding?: string }): void {
+  let response: string | undefined;
 
+  if (contentEncoding === undefined) {
+    if (definition.response) {
+      response = JSON.stringify(definition.response);
+    }
+  } else {
+    if (definition.decodedResponse) {
+      response = JSON.stringify(definition.decodedResponse);
+    }
+  }
+
+  if (response) {
     if (includes(response, credential)) {
       debug('Replacing credentials in response');
       debugSensitive('Response:', response);
@@ -487,6 +499,10 @@ export function replaceCredentialInDefinition({
     credential,
     placeholder,
   };
+  const contentEncoding = getResponseHeaderValue(
+    'Content-Encoding',
+    definition.rawHeaders ?? []
+  );
 
   if (security.type === SecurityType.APIKEY) {
     replaceApiKey({ ...options, security, baseUrl });
@@ -510,7 +526,7 @@ export function replaceCredentialInDefinition({
     replaceCredentialInRawHeaders({ ...options, security });
   }
 
-  replaceCredentialInResponse(options);
+  replaceCredentialInResponse({ ...options, contentEncoding });
 }
 
 /**
@@ -542,11 +558,15 @@ export function replaceParameterInDefinition({
     credential,
     placeholder,
   };
+  const contentEncoding = getResponseHeaderValue(
+    'Content-Encoding',
+    definition.rawHeaders ?? []
+  );
 
   replaceCredentialInHeaders(options);
   replaceCredentialInRawHeaders(options);
   replaceCredentialInBody(options);
-  replaceCredentialInResponse(options);
+  replaceCredentialInResponse({ ...options, contentEncoding });
   replaceCredentialInScope(options);
   replaceCredentialInPath({ ...options, baseUrl });
   replaceCredentialInQuery({ ...options, baseUrl });
@@ -580,11 +600,15 @@ export function replaceInputInDefinition({
     credential,
     placeholder,
   };
+  const contentEncoding = getResponseHeaderValue(
+    'Content-Encoding',
+    definition.rawHeaders ?? []
+  );
 
   replaceCredentialInHeaders(options);
   replaceCredentialInRawHeaders(options);
   replaceCredentialInBody(options);
-  replaceCredentialInResponse(options);
+  replaceCredentialInResponse({ ...options, contentEncoding });
   replaceCredentialInPath({ ...options, baseUrl });
   replaceCredentialInQuery({ ...options, baseUrl });
 }
