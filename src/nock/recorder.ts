@@ -8,20 +8,9 @@ import {
   recorder,
   restore as restoreRecordings,
 } from 'nock';
-import { basename, dirname, join as joinPath } from 'path';
 
-import {
-  BaseURLNotFoundError,
-  RecordingsNotFoundError,
-  UnexpectedError,
-} from '../common/errors';
-import {
-  exists,
-  mkdirQuiet,
-  readFileQuiet,
-  rename,
-  rimraf,
-} from '../common/io';
+import { BaseURLNotFoundError } from '../common/errors';
+import { exists } from '../common/io';
 import { writeRecordings } from '../common/output-stream';
 import {
   AnalysisResult,
@@ -37,10 +26,12 @@ import {
 import { MatchImpact } from './analyzer';
 import { matchTraffic } from './matcher';
 import {
-  RecordingType,
-  RecordingWithDecodedResponse,
-  TestRecordings,
-} from './recording.interfaces';
+  composeRecordingPath,
+  getRecordings,
+  parseRecordingsFile,
+  updateRecordings,
+} from './recorder.utils';
+import { RecordingType, TestRecordings } from './recording.interfaces';
 
 const debug = createDebug('superface:testing');
 const debugRecordings = createDebug('superface:testing:recordings');
@@ -86,11 +77,11 @@ export async function loadRecording({
   recordingsType: RecordingType;
   recordingsKey: string;
   recordingsHash: string;
+  inputVariables?: InputVariables;
   config: {
     boundProfileProvider: BoundProfileProvider;
     providerName: string;
   };
-  inputVariables?: InputVariables;
   options?: {
     processRecordings?: boolean;
     beforeRecordingLoad?: ProcessingFunction;
@@ -141,87 +132,6 @@ export async function loadRecording({
   }
 }
 
-type UpdateResult =
-  | { kind: 'default'; file: TestRecordings }
-  | {
-      kind: 'new';
-      file: TestRecordings;
-      oldRecordings: RecordingWithDecodedResponse[];
-    };
-
-async function updateRecordings({
-  recordingsFile,
-  recordings,
-  newRecordingsFilePath,
-  recordingsIndex,
-  recordingsHash,
-  canSaveNewTraffic,
-}: {
-  recordingsFile: TestRecordings;
-  recordings: RecordingWithDecodedResponse[];
-  newRecordingsFilePath: string;
-  recordingsIndex: string;
-  recordingsHash: string;
-  canSaveNewTraffic: boolean;
-}): Promise<UpdateResult | undefined> {
-  let newRecordingsFile: TestRecordings | undefined;
-
-  const targetRecordings = findRecordings(
-    recordingsFile,
-    recordingsIndex,
-    recordingsHash
-  );
-
-  // if there already exist recordings for specified hash with empty list
-  // do not overwrite - return
-  if (
-    targetRecordings !== undefined &&
-    targetRecordings.length === 0 &&
-    recordings.length === 0
-  ) {
-    return undefined;
-  }
-
-  // if there already exist recordings for specified hash with some recordings
-  // save new traffic to new file
-  if (canSaveNewTraffic && targetRecordings !== undefined) {
-    if (await exists(newRecordingsFilePath)) {
-      newRecordingsFile = await parseRecordingsFile(newRecordingsFilePath);
-
-      newRecordingsFile = {
-        ...newRecordingsFile,
-        [recordingsIndex]: {
-          ...newRecordingsFile[recordingsIndex],
-          [recordingsHash]: recordings,
-        },
-      };
-    } else {
-      newRecordingsFile = {
-        [recordingsIndex]: {
-          [recordingsHash]: recordings,
-        },
-      };
-    }
-
-    return {
-      kind: 'new',
-      file: newRecordingsFile,
-      oldRecordings: targetRecordings,
-    };
-  }
-
-  // otherwise store specified recordings to default file
-  recordingsFile = {
-    ...recordingsFile,
-    [recordingsIndex]: {
-      ...recordingsFile[recordingsIndex],
-      [recordingsHash]: recordings,
-    },
-  };
-
-  return { kind: 'default', file: recordingsFile };
-}
-
 /**
  * Checks if recording started and if yes, it ends recording and
  * saves recording to file configured based on nock configuration from constructor.
@@ -235,22 +145,23 @@ export async function endRecording({
   recordingsType,
   recordingsKey,
   recordingsHash,
-  processRecordings,
   config: { boundProfileProvider, providerName },
   inputVariables,
-  beforeRecordingSave,
+  options,
 }: {
   recordingsPath: string;
   recordingsType: RecordingType;
   recordingsKey: string;
   recordingsHash: string;
-  processRecordings: boolean;
+  inputVariables?: InputVariables;
   config: {
     boundProfileProvider: BoundProfileProvider;
     providerName: string;
   };
-  inputVariables?: InputVariables;
-  beforeRecordingSave?: ProcessingFunction;
+  options?: {
+    processRecordings?: boolean;
+    beforeRecordingSave?: ProcessingFunction;
+  };
 }): Promise<AnalysisResult | undefined> {
   const definitions = recorder.play();
 
@@ -317,7 +228,7 @@ export async function endRecording({
   const { security, parameters, services } = boundProfileProvider.configuration;
   const integrationParameters = parameters ?? {};
 
-  if (processRecordings) {
+  if (options?.processRecordings) {
     const baseUrl = services.getUrl();
 
     if (baseUrl === undefined) {
@@ -334,10 +245,10 @@ export async function endRecording({
     });
   }
 
-  if (beforeRecordingSave) {
+  if (options?.beforeRecordingSave) {
     debug("Calling custom 'beforeRecordingSave' hook on recorded definitions");
 
-    await beforeRecordingSave(definitions);
+    await options.beforeRecordingSave(definitions);
   }
 
   if (
@@ -354,7 +265,7 @@ export async function endRecording({
 
     result = await updateRecordings({
       recordingsFile,
-      recordings: definitions as RecordingWithDecodedResponse[],
+      recordings: definitions,
       newRecordingsFilePath,
       recordingsIndex,
       recordingsHash,
@@ -363,7 +274,7 @@ export async function endRecording({
   } else {
     recordingsFile = {
       [recordingsIndex]: {
-        [recordingsHash]: definitions as RecordingWithDecodedResponse[],
+        [recordingsHash]: definitions,
       },
     };
 
@@ -401,150 +312,4 @@ export async function endRecording({
   }
 
   return undefined;
-}
-
-export function composeRecordingPath(
-  recordingPath: string,
-  version?: string
-): string {
-  if (version === 'new') {
-    return `${recordingPath}-new.json`;
-  }
-
-  if (version !== undefined) {
-    const baseDir = dirname(recordingPath);
-    const baseName = basename(recordingPath);
-
-    return joinPath(baseDir, 'old', `${baseName}_${version}.json`);
-  }
-
-  return `${recordingPath}.json`;
-}
-
-export async function getRecordings(
-  recordingsPath: string,
-  recordingsType: RecordingType,
-  recordingsKey: string,
-  recordingsHash: string
-): Promise<RecordingWithDecodedResponse[]> {
-  // try to get new recordings if environment variable is set
-  const path = composeRecordingPath(recordingsPath);
-  const recordingsFileExists = await exists(path);
-
-  if (!recordingsFileExists) {
-    throw new RecordingsNotFoundError(path);
-  }
-
-  const useNewTraffic = parseBooleanEnv(process.env.USE_NEW_TRAFFIC);
-  const newRecordingsPath = composeRecordingPath(recordingsPath, 'new');
-  const newRecordingsFileExists = await exists(newRecordingsPath);
-
-  if (useNewTraffic && !newRecordingsFileExists) {
-    throw new RecordingsNotFoundError(newRecordingsPath);
-  }
-
-  const finalPath = useNewTraffic ? newRecordingsPath : path;
-  const recordingsIndex =
-    recordingsType !== RecordingType.MAIN
-      ? `${recordingsType}-${recordingsKey}`
-      : recordingsKey;
-
-  const recordings = (await parseRecordingsFile(finalPath))[recordingsIndex];
-
-  if (recordings === undefined) {
-    throw new Error(
-      `Recording under ${recordingsIndex} can't be found at ${finalPath}.`
-    );
-  }
-
-  const finalRecordings = recordings[recordingsHash];
-
-  // TODO: add new specific error
-  if (finalRecordings === undefined) {
-    throw new UnexpectedError(
-      `Recordings under hash ${recordingsHash} are not found. At ${finalPath}`
-    );
-  }
-
-  return finalRecordings;
-}
-
-export function findRecordings(
-  recordingsFile: TestRecordings,
-  recordingsIndex: string,
-  recordingsHash: string
-): RecordingWithDecodedResponse[] | undefined {
-  if (recordingsFile[recordingsIndex] === undefined) {
-    return undefined;
-  }
-
-  return recordingsFile[recordingsIndex][recordingsHash];
-}
-
-export async function parseRecordingsFile(
-  path: string
-): Promise<TestRecordings> {
-  const definitionFile = await readFileQuiet(path);
-
-  if (definitionFile === undefined) {
-    throw new UnexpectedError('Reading new recording file failed');
-  }
-
-  debug(`Parsing recording file at: "${path}"`);
-
-  return JSON.parse(definitionFile) as TestRecordings;
-}
-
-export async function updateTraffic(recordingPath: string): Promise<void> {
-  const pathToCurrent = composeRecordingPath(recordingPath);
-  const pathToNew = composeRecordingPath(recordingPath, 'new');
-
-  await mkdirQuiet(joinPath(dirname(pathToCurrent), 'old'));
-
-  // TODO: compose version based on used map
-  let i = 0;
-  while (await exists(composeRecordingPath(recordingPath, `${i}`))) {
-    i++;
-  }
-
-  const currentTestFile = await parseRecordingsFile(pathToCurrent);
-  const newTestFile = await parseRecordingsFile(pathToNew);
-
-  debugRecordings('Current recordings file:', currentTestFile);
-  debugRecordings('New recordings file:', newTestFile);
-
-  // loop through new file and merge it with current one
-  for (const [index, recordOfRecordings] of Object.entries(newTestFile)) {
-    if (currentTestFile[index] === undefined) {
-      currentTestFile[index] = recordOfRecordings;
-    } else {
-      for (const [hash, recordings] of Object.entries(recordOfRecordings)) {
-        currentTestFile[index][hash] = recordings;
-      }
-    }
-  }
-
-  debugRecordings('Current recordings file after merge:', currentTestFile);
-
-  // move old current file to directory /old
-  await rename(pathToCurrent, composeRecordingPath(recordingPath, `${i}`));
-  // write merged file in place of current file
-  await writeRecordings(pathToCurrent, currentTestFile);
-  // remove new file
-  await rimraf(pathToNew);
-}
-
-export async function canUpdateTraffic(
-  recordingPath: string
-): Promise<boolean> {
-  const updateTraffic = parseBooleanEnv(process.env.UPDATE_TRAFFIC);
-
-  if (
-    updateTraffic &&
-    (await exists(composeRecordingPath(recordingPath, 'new')))
-  ) {
-    return true;
-  }
-
-  return false;
 }
