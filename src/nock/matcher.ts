@@ -5,14 +5,13 @@ import { ReplyBody } from 'nock/types';
 import { inspect } from 'util';
 
 import { UnexpectedError } from '../common/errors';
-import { exists, readFileQuiet } from '../common/io';
+import { readFileQuiet } from '../common/io';
 import { writeRecordings } from '../common/output-stream';
 import {
   AnalysisResult,
   RecordingDefinition,
   RecordingDefinitions,
 } from '../superface-test.interfaces';
-import { parseBooleanEnv } from '../superface-test.utils';
 import { analyzeChangeImpact, MatchImpact } from './analyzer';
 import { ErrorCollector } from './error-collector';
 import {
@@ -29,13 +28,8 @@ import {
   MatchErrorResponseHeaders,
   MatchErrorStatus,
 } from './matcher.errors';
-import {
-  decodeResponse,
-  getRequestHeader,
-  getResponseHeader,
-  parseBody,
-} from './matcher.utils';
-import { composeRecordingPath, writeDecodedRecordings } from './recorder';
+import { getRequestHeader, getResponseHeader } from './matcher.utils';
+import { composeRecordingPath, parseBody } from './recorder';
 
 export interface MatchHeaders {
   old?: string;
@@ -180,7 +174,7 @@ export class Matcher {
     );
 
     // response headers
-    const { contentEncoding } = this.matchResponseHeaders(
+    this.matchResponseHeaders(
       oldTraffic.rawHeaders ?? [],
       newTraffic.rawHeaders ?? []
     );
@@ -191,9 +185,8 @@ export class Matcher {
     // response
     if (oldTraffic.response !== undefined) {
       await this.matchResponse(
-        oldTraffic.response,
-        newTraffic.response,
-        contentEncoding
+        oldTraffic.decodedResponse ?? oldTraffic.response,
+        newTraffic.decodedResponse ?? newTraffic.response
       );
     }
   }
@@ -339,30 +332,10 @@ export class Matcher {
   }
 
   private static async matchResponse(
-    oldRes: ReplyBody | undefined,
-    newRes: ReplyBody | undefined,
-    contentEncoding?: MatchHeaders
+    oldResponse: ReplyBody | undefined,
+    newResponse: ReplyBody | undefined
   ): Promise<void> {
     debugMatching('\tresponse');
-    let oldResponse = oldRes,
-      newResponse = newRes;
-
-    // if responses are encoded - decode them
-    if (contentEncoding?.old !== undefined) {
-      debugMatching(
-        `Decoding old response based on ${contentEncoding.old} encoding`
-      );
-
-      oldResponse = await decodeResponse(oldRes, contentEncoding.old);
-    }
-
-    if (contentEncoding?.new !== undefined) {
-      debugMatching(
-        `Decoding new response based on ${contentEncoding.new} encoding`
-      );
-
-      newResponse = await decodeResponse(newRes, contentEncoding.new);
-    }
 
     // validate responses
     const valid = this.createAndValidateSchema(oldResponse, newResponse);
@@ -417,9 +390,6 @@ export async function matchTraffic(
   const oldRecording = await readFileQuiet(
     composeRecordingPath(oldRecordingPath)
   );
-  const oldRecordingDecodedPath = composeRecordingPath(oldRecordingPath, {
-    decoded: true,
-  });
 
   if (oldRecording === undefined) {
     throw new UnexpectedError('Reading old recording file failed');
@@ -432,30 +402,14 @@ export async function matchTraffic(
 
   if (match.valid) {
     // do not save new recording as there were no breaking changes found
-    // only write recordings with decoded responses if they do not exist
-    if (
-      parseBooleanEnv(process.env.DECODE_RESPONSE) &&
-      !(await exists(oldRecordingDecodedPath))
-    ) {
-      await writeDecodedRecordings(oldRecordingPath, newTraffic);
-    }
 
     return { impact: MatchImpact.NONE };
   } else {
     const impact = analyzeChangeImpact(match.errors);
+    const path = composeRecordingPath(oldRecording, { version: 'new' });
 
     // Save new traffic
-    await writeRecordings(
-      composeRecordingPath(oldRecording, { version: 'new' }),
-      newTraffic
-    );
-
-    // save new traffic with decoded response
-    if (parseBooleanEnv(process.env.DECODE_RESPONSE)) {
-      await writeDecodedRecordings(oldRecordingPath, newTraffic, {
-        version: 'new',
-      });
-    }
+    await writeRecordings(path, newTraffic);
 
     return { impact, errors: match.errors };
   }
