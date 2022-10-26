@@ -110,13 +110,6 @@ describe('SuperfaceTest', () => {
         await superfaceTest.run({ input: defaultInput });
 
         expect(recorderSpy).toHaveBeenCalledTimes(1);
-        expect(recorderSpy).toHaveBeenCalledWith({
-          dont_print: true,
-          output_objects: true,
-          use_separator: false,
-          enable_reqheaders_recording: false,
-        });
-
         expect(playSpy).toHaveBeenCalledTimes(1);
         expect(endRecSpy).toHaveBeenCalledTimes(1);
 
@@ -151,12 +144,6 @@ describe('SuperfaceTest', () => {
         await superfaceTest.run({ input: defaultInput });
 
         expect(recorderSpy).toHaveBeenCalledTimes(1);
-        expect(recorderSpy).toHaveBeenCalledWith({
-          dont_print: true,
-          output_objects: true,
-          use_separator: false,
-          enable_reqheaders_recording: false,
-        });
 
         expect(writeRecordingsSpy).toHaveBeenCalledWith(
           expect.stringMatching(DEFAULT_RECORDING_PATH),
