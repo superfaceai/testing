@@ -18,7 +18,7 @@ const sampleAnalysisResult: ImpactResult = {
   impact: MatchImpact.PATCH,
 };
 const sampleTestResult = {
-  recordingPath: '',
+  recordingsPath: 'path/to/recording.json',
   profileId: 'profile',
   providerName: 'provider',
   useCaseName: 'test',
@@ -47,7 +47,7 @@ describe('Reporter module', () => {
         saveReport({
           input: {},
           result: ok(''),
-          hash: sampleHash,
+          recordingsHash: sampleHash,
           analysis: sampleAnalysisResult,
           ...sampleTestResult,
         })
@@ -72,7 +72,7 @@ describe('Reporter module', () => {
       await saveReport({
         input: {},
         result: ok(''),
-        hash: sampleHash,
+        recordingsHash: sampleHash,
         analysis: sampleAnalysisResult,
         ...sampleTestResult,
       });

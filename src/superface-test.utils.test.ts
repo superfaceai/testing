@@ -114,13 +114,15 @@ describe('SuperfaceTest Utils', () => {
         }) as any;
 
         mockExpect.getState = () => ({
-          testPath: '/path/to/test/file.test.ts'
+          testPath: '/path/to/test/file.test.ts',
         });
 
         const parsedTestInstance = parseTestInstance(mockExpect);
 
-        expect(parsedTestInstance.getTestFilePath()).toBe('/path/to/test/file.test.ts')
-      })
+        expect(parsedTestInstance.getTestFilePath()).toBe(
+          '/path/to/test/file.test.ts'
+        );
+      });
     });
 
     describe('when specified testInstance is mocha instance', () => {
@@ -161,12 +163,12 @@ describe('SuperfaceTest Utils', () => {
 
         // TODO: extend parsing of mocha to return path to test file
         it('returns `getTestFilePath` function', () => {
-          const mockMocha = {}
-  
+          const mockMocha = {};
+
           const parsedTestInstance = parseTestInstance(mockMocha);
-  
-          expect(parsedTestInstance.getTestFilePath()).toBeUndefined()
-        })
+
+          expect(parsedTestInstance.getTestFilePath()).toBeUndefined();
+        });
       });
     });
 
@@ -176,18 +178,16 @@ describe('SuperfaceTest Utils', () => {
 
         const parsedTestInstance = parseTestInstance(mockTestInstance);
 
-        expect(parsedTestInstance.generator).toBeInstanceOf(
-          InputGenerateHash
-        );
+        expect(parsedTestInstance.generator).toBeInstanceOf(InputGenerateHash);
       });
 
       it('returns `getTestFilePath` function', () => {
-        const mockTestInstance = undefined
+        const mockTestInstance = undefined;
 
         const parsedTestInstance = parseTestInstance(mockTestInstance);
 
-        expect(parsedTestInstance.getTestFilePath()).toBeUndefined()
-      })
+        expect(parsedTestInstance.getTestFilePath()).toBeUndefined();
+      });
     });
   });
 });
