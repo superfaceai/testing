@@ -7,13 +7,8 @@ import { UnexpectedError } from './common/errors';
 import { getFixtureName, matchWildCard } from './common/format';
 import { IGenerator } from './generate-hash';
 import { MatchImpact } from './nock/analyzer';
-import {
-  canUpdateTraffic,
-  endRecording,
-  loadRecording,
-  startRecording,
-  updateTraffic,
-} from './nock/recorder';
+import { endRecording, loadRecording, startRecording } from './nock/recorder';
+import { canUpdateTraffic, updateTraffic } from './nock/recorder.utils';
 import { RecordingType } from './nock/recording.interfaces';
 import { report, saveReport } from './reporter';
 import { prepareSuperface } from './superface/config';
@@ -156,13 +151,15 @@ export class SuperfaceTest {
           recordingsType,
           recordingsHash,
           recordingsKey,
-          processRecordings,
           inputVariables,
           config: {
             boundProfileProvider: sf.boundProfileProvider,
             providerName: sf.providerName,
           },
-          beforeRecordingSave: options?.beforeRecordingSave,
+          options: {
+            processRecordings,
+            beforeRecordingSave: options?.beforeRecordingSave,
+          },
         });
       } else {
         restoreRecordings();
