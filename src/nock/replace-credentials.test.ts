@@ -248,7 +248,7 @@ describe('replaceCredentials', () => {
     });
 
     it('replaces apikey in decoded response', () => {
-      const secret = 'secret'
+      const secret = 'secret';
       const definition: RecordingDefinition = {
         scope: BASE_URL,
         path: '/get?text=123',
@@ -261,10 +261,7 @@ describe('replaceCredentials', () => {
           some: 'data',
           auth: { my_api_key: secret },
         },
-        rawHeaders:[
-          'Content-Encoding',
-          'gzip'
-        ]
+        rawHeaders: ['Content-Encoding', 'gzip'],
       };
 
       replaceCredentialInDefinition({
@@ -293,10 +290,7 @@ describe('replaceCredentials', () => {
           some: 'data',
           auth: { my_api_key: TMP_PLACEHOLDER },
         },
-        rawHeaders:[
-          'Content-Encoding',
-          'gzip'
-        ]
+        rawHeaders: ['Content-Encoding', 'gzip'],
       });
     });
   });

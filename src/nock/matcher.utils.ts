@@ -1,7 +1,6 @@
 import { MatchHeaders } from './matcher';
 import { getRequestHeaderValue, getResponseHeaderValue } from './recorder';
 
-
 export function getRequestHeader(
   oldHeaders: Record<string, string | string[]>,
   newHeaders: Record<string, string | string[]>,

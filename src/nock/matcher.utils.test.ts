@@ -1,7 +1,4 @@
-import {
-  getRequestHeader,
-  getResponseHeader,
-} from './matcher.utils';
+import { getRequestHeader, getResponseHeader } from './matcher.utils';
 
 describe('Matcher utils', () => {
   describe('getResponseHeader', () => {
