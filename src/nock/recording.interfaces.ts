@@ -1,14 +1,8 @@
-import { ReplyBody } from 'nock/types';
-
-import { RecordingDefinition } from '../superface-test.interfaces';
-
-export type RecordingWithDecodedResponse = RecordingDefinition & {
-  decodedResponse: ReplyBody;
-};
+import { RecordingDefinitions } from '../superface-test.interfaces';
 
 export type TestRecordings = Record<
   string,
-  Record<string, RecordingWithDecodedResponse[]>
+  Record<string, RecordingDefinitions>
 >;
 
 export enum RecordingType {
