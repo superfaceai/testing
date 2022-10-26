@@ -246,6 +246,59 @@ describe('replaceCredentials', () => {
         },
       });
     });
+
+    it('replaces apikey in decoded response', () => {
+      const secret = 'secret'
+      const definition: RecordingDefinition = {
+        scope: BASE_URL,
+        path: '/get?text=123',
+        method: 'GET',
+        status: 200,
+        body: {
+          my_api_key: secret,
+        },
+        decodedResponse: {
+          some: 'data',
+          auth: { my_api_key: secret },
+        },
+        rawHeaders:[
+          'Content-Encoding',
+          'gzip'
+        ]
+      };
+
+      replaceCredentialInDefinition({
+        definition,
+        security: {
+          id: 'api-key',
+          type: SecurityType.APIKEY,
+          in: ApiKeyPlacement.BODY,
+          name: 'api_key',
+          apikey: secret,
+        },
+        baseUrl: BASE_URL,
+        credential: secret,
+        placeholder: TMP_PLACEHOLDER,
+      });
+
+      expect(definition).toEqual({
+        scope: BASE_URL,
+        path: '/get?text=123',
+        method: 'GET',
+        status: 200,
+        body: {
+          my_api_key: TMP_PLACEHOLDER,
+        },
+        decodedResponse: {
+          some: 'data',
+          auth: { my_api_key: TMP_PLACEHOLDER },
+        },
+        rawHeaders:[
+          'Content-Encoding',
+          'gzip'
+        ]
+      });
+    });
   });
 
   describe('when replacing basic auth credentials', () => {

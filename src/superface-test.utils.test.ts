@@ -48,7 +48,7 @@ describe('SuperfaceTest Utils', () => {
       },
     ];
     const params: Record<string, string> = {
-      my_param: 'SECRET',
+      my_param: 'SECRET_PARAM',
     };
 
     beforeEach(() => {
@@ -66,6 +66,7 @@ describe('SuperfaceTest Utils', () => {
           scope: 'https//api.hubapi.SECRET.com:443',
           method: 'POST',
           path: '/SECRET',
+          decodedResponse: { val: 'SECRET_PARAM' },
         },
       ];
 
