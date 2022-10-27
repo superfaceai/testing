@@ -73,6 +73,18 @@ export type UpdateResult =
       oldRecordings: RecordingDefinitions;
     };
 
+function findRecordings(
+  recordingsFile: TestRecordings,
+  recordingsIndex: string,
+  recordingsHash: string
+): RecordingDefinitions | undefined {
+  if (recordingsFile[recordingsIndex] === undefined) {
+    return undefined;
+  }
+
+  return recordingsFile[recordingsIndex][recordingsHash];
+}
+
 async function updateNewRecordingFile(
   newRecordingsFilePath: string,
   recordingsIndex: string,
@@ -103,20 +115,21 @@ async function updateNewRecordingFile(
 }
 
 async function updateRecordings({
-  recordingsFile,
   recordings,
+  recordingsFilePath,
   newRecordingsFilePath,
   recordingsIndex,
   recordingsHash,
   canSaveNewTraffic,
 }: {
-  recordingsFile: TestRecordings;
   recordings: RecordingDefinitions;
+  recordingsFilePath: string;
   newRecordingsFilePath: string;
   recordingsIndex: string;
   recordingsHash: string;
   canSaveNewTraffic: boolean;
 }): Promise<UpdateResult | undefined> {
+  const recordingsFile = await parseRecordingsFile(recordingsFilePath);
   const targetRecordings = findRecordings(
     recordingsFile,
     recordingsIndex,
@@ -149,15 +162,16 @@ async function updateRecordings({
   }
 
   // otherwise store specified recordings to default file
-  recordingsFile = {
-    ...recordingsFile,
-    [recordingsIndex]: {
-      ...recordingsFile[recordingsIndex],
-      [recordingsHash]: recordings,
+  return {
+    kind: 'default',
+    file: {
+      ...recordingsFile,
+      [recordingsIndex]: {
+        ...recordingsFile[recordingsIndex],
+        [recordingsHash]: recordings,
+      },
     },
   };
-
-  return { kind: 'default', file: recordingsFile };
 }
 
 export async function handleRecordings({
@@ -175,14 +189,10 @@ export async function handleRecordings({
   recordings: RecordingDefinitions;
   canSaveNewTraffic: boolean;
 }): Promise<UpdateResult | undefined> {
-  let recordingsFile: TestRecordings;
-
   if (await exists(recordingsFilePath)) {
-    recordingsFile = await parseRecordingsFile(recordingsFilePath);
-
     return await updateRecordings({
-      recordingsFile,
-      recordings: recordings,
+      recordings,
+      recordingsFilePath,
       newRecordingsFilePath,
       recordingsIndex,
       recordingsHash,
@@ -190,15 +200,13 @@ export async function handleRecordings({
     });
   }
 
-  recordingsFile = {
-    [recordingsIndex]: {
-      [recordingsHash]: recordings,
-    },
-  };
-
   return {
     kind: 'default',
-    file: recordingsFile,
+    file: {
+      [recordingsIndex]: {
+        [recordingsHash]: recordings,
+      },
+    },
   };
 }
 
@@ -218,18 +226,6 @@ export function composeRecordingPath(
   }
 
   return `${recordingPath}.json`;
-}
-
-function findRecordings(
-  recordingsFile: TestRecordings,
-  recordingsIndex: string,
-  recordingsHash: string
-): RecordingDefinitions | undefined {
-  if (recordingsFile[recordingsIndex] === undefined) {
-    return undefined;
-  }
-
-  return recordingsFile[recordingsIndex][recordingsHash];
 }
 
 export async function parseRecordingsFile(
