@@ -1,6 +1,7 @@
 import Ajv from 'ajv';
 import createDebug from 'debug';
 import { createSchema } from 'genson-js/dist';
+import { ReplyBody } from 'nock/types';
 import { inspect } from 'util';
 
 import {
@@ -24,12 +25,8 @@ import {
   MatchErrorResponseHeaders,
   MatchErrorStatus,
 } from './matcher.errors';
-import {
-  decodeResponse,
-  getRequestHeader,
-  getResponseHeader,
-  parseBody,
-} from './matcher.utils';
+import { getRequestHeader, getResponseHeader } from './matcher.utils';
+import { parseBody } from './recorder.utils';
 
 export interface MatchHeaders {
   old?: string;
@@ -174,7 +171,7 @@ export class Matcher {
     );
 
     // response headers
-    const { contentEncoding } = this.matchResponseHeaders(
+    this.matchResponseHeaders(
       oldTraffic.rawHeaders ?? [],
       newTraffic.rawHeaders ?? []
     );
@@ -185,9 +182,8 @@ export class Matcher {
     // response
     if (oldTraffic.response !== undefined) {
       await this.matchResponse(
-        oldTraffic.response,
-        newTraffic.response,
-        contentEncoding
+        oldTraffic.decodedResponse ?? oldTraffic.response,
+        newTraffic.decodedResponse ?? newTraffic.response
       );
     }
   }
@@ -333,30 +329,10 @@ export class Matcher {
   }
 
   private static async matchResponse(
-    oldRes: unknown,
-    newRes: unknown,
-    contentEncoding?: MatchHeaders
+    oldResponse: ReplyBody | undefined,
+    newResponse: ReplyBody | undefined
   ): Promise<void> {
     debugMatching('\tresponse');
-    let oldResponse = oldRes,
-      newResponse = newRes;
-
-    // if responses are encoded - decode them
-    if (contentEncoding?.old !== undefined) {
-      debugMatching(
-        `Decoding old response based on ${contentEncoding.old} encoding`
-      );
-
-      oldResponse = await decodeResponse(oldRes, contentEncoding.old);
-    }
-
-    if (contentEncoding?.new !== undefined) {
-      debugMatching(
-        `Decoding new response based on ${contentEncoding.new} encoding`
-      );
-
-      newResponse = await decodeResponse(newRes, contentEncoding.new);
-    }
 
     // validate responses
     const valid = this.createAndValidateSchema(oldResponse, newResponse);
@@ -412,6 +388,7 @@ export async function matchTraffic(
 
   if (match.valid) {
     // do not save new recording as there were no breaking changes found
+
     return { impact: MatchImpact.NONE };
   } else {
     const impact = analyzeChangeImpact(match.errors);

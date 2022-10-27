@@ -136,9 +136,9 @@ export function replaceCredentials({
   definitions: RecordingDefinition[];
   security: SecurityConfiguration[];
   integrationParameters: Record<string, string>;
-  inputVariables?: Record<string, Primitive>;
   beforeSave: boolean;
   baseUrl: string;
+  inputVariables?: InputVariables;
 }): void {
   debugRecording('Replacing credentials from recording definitions');
 
@@ -193,7 +193,8 @@ export function replaceCredentials({
 export function checkSensitiveInformation(
   definitions: RecordingDefinitions,
   security: SecurityConfiguration[],
-  params: Record<string, string>
+  params: Record<string, string>,
+  inputVariables?: InputVariables
 ): void {
   for (const definition of definitions) {
     const stringifiedDef = JSON.stringify(definition);
@@ -211,6 +212,16 @@ export function checkSensitiveInformation(
         console.warn(
           `Value for integration parameter '${paramName}' was found in recorded HTTP traffic.`
         );
+      }
+    }
+
+    if (inputVariables) {
+      for (const [name, value] of Object.entries(inputVariables)) {
+        if (stringifiedDef.includes(value.toString())) {
+          console.warn(
+            `Value for input variable '${name}' was found in recorded HTTP traffic.`
+          );
+        }
       }
     }
   }
