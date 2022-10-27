@@ -13,6 +13,7 @@ import { Definition, ReplyBody } from 'nock/types';
 
 import { MatchImpact } from './nock/analyzer';
 import { ErrorCollection, MatchError } from './nock/matcher.errors';
+import { RecordingType } from './nock/recording.interfaces';
 
 export interface SuperfaceTestConfig {
   profile?: Profile | string;
@@ -55,8 +56,7 @@ export type ProcessingFunction = (
 ) => Promise<void> | void;
 
 export interface RecordingProcessOptions {
-  prepare?: boolean;
-  teardown?: boolean;
+  recordingType?: RecordingType;
   processRecordings?: boolean;
   beforeRecordingSave?: ProcessingFunction;
   beforeRecordingLoad?: ProcessingFunction;

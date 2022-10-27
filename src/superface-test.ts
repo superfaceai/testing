@@ -104,21 +104,7 @@ export class SuperfaceTest {
     );
     const processRecordings = options?.processRecordings ?? true;
     const inputVariables = searchValues(testCase.input, options?.hideInput);
-    let recordingsType: RecordingType;
-
-    if (options?.prepare && options?.teardown) {
-      throw new UnexpectedError(
-        'Use just one of following parameters, either `prepare` or `teardown`'
-      );
-    }
-
-    if (options?.prepare) {
-      recordingsType = RecordingType.PREPARE;
-    } else if (options?.teardown) {
-      recordingsType = RecordingType.TEARDOWN;
-    } else {
-      recordingsType = RecordingType.MAIN;
-    }
+    const recordingsType = options?.recordingType ?? RecordingType.MAIN;
 
     if (record) {
       await startRecording(this.nockConfig?.enableReqheadersRecording);
