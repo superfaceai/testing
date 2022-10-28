@@ -316,7 +316,7 @@ export function parseTestInstance(testInstance: unknown): {
     ) {
       const state = testInstance.getState();
       const generator = new JestGenerateHash(
-        getProperty(state, 'currentTestName')
+        state as { currentTestName?: unknown }
       );
 
       const getTestFilePath = () => {

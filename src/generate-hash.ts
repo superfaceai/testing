@@ -16,7 +16,7 @@ export const generate = (value: string): string => {
 };
 
 export class JestGenerateHash implements IGenerator {
-  constructor(private readonly currentTestName?: unknown) {
+  constructor(private readonly state: { currentTestName?: unknown }) {
     debugHashing('Returning instance of hash generator for jest test instance');
   }
 
@@ -26,13 +26,13 @@ export class JestGenerateHash implements IGenerator {
     }
 
     if (
-      this.currentTestName === undefined ||
-      typeof this.currentTestName !== 'string'
+      this.state.currentTestName === undefined ||
+      typeof this.state.currentTestName !== 'string'
     ) {
       return generate(JSON.stringify(options.input));
     }
 
-    return generate(this.currentTestName);
+    return generate(this.state.currentTestName);
   }
 }
 
