@@ -5,10 +5,20 @@ import { dirname, join as joinPath } from 'path';
 
 import { UnexpectedError } from './common/errors';
 import { getFixtureName, matchWildCard } from './common/format';
-import { IGenerator } from './generate-hash';
+import { IGenerator, InputGenerateHash } from './generate-hash';
 import { MatchImpact } from './nock/analyzer';
-import { endRecording, loadRecording, startRecording } from './nock/recorder';
-import { canUpdateTraffic, updateTraffic } from './nock/recorder.utils';
+import {
+  canMigrate,
+  endRecording,
+  loadRecording,
+  migrateRecordings,
+  startRecording,
+} from './nock/recorder';
+import {
+  canUpdateTraffic,
+  composeRecordingPath,
+  updateTraffic,
+} from './nock/recorder.utils';
 import { RecordingType } from './nock/recording.interfaces';
 import { report, saveReport } from './reporter';
 import { prepareSuperface } from './superface/config';
@@ -118,6 +128,24 @@ export class SuperfaceTest {
       recordingsType = RecordingType.TEARDOWN;
     } else {
       recordingsType = RecordingType.MAIN;
+    }
+
+    if (canMigrate()) {
+      await migrateRecordings({
+        pathsToOldRecording: [
+          this.setupOldRecordingPath(recordingsKey, recordingsHash),
+          this.setupOldRecordingPath(
+            recordingsKey,
+            new InputGenerateHash().hash({ input, testName })
+          ),
+        ],
+        pathToRecordingsFile: composeRecordingPath(recordingsPath),
+        recordingsIndex:
+          recordingsType !== RecordingType.MAIN
+            ? `${recordingsType}-${recordingsKey}`
+            : recordingsKey,
+        recordingsHash: recordingsHash,
+      });
     }
 
     if (record) {
@@ -251,5 +279,19 @@ export class SuperfaceTest {
         fixtureName
       );
     }
+  }
+
+  private setupOldRecordingPath(
+    recordingsKey: string,
+    recordingsHash: string
+  ): string {
+    const { path, fixture } = this.nockConfig ?? {};
+    const fixtureName = `${fixture ?? 'recording'}-${recordingsHash}.json`;
+
+    return joinPath(
+      path ?? joinPath(process.cwd(), 'nock'),
+      recordingsKey,
+      fixtureName
+    );
   }
 }

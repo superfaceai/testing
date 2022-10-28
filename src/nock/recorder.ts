@@ -9,12 +9,14 @@ import {
   restore as restoreRecordings,
 } from 'nock';
 
-import { BaseURLNotFoundError } from '../common/errors';
+import { BaseURLNotFoundError, UnexpectedError } from '../common/errors';
+import { exists, readFileQuiet } from '../common/io';
 import { writeRecordings } from '../common/output-stream';
 import {
   AnalysisResult,
   InputVariables,
   ProcessingFunction,
+  RecordingDefinitions,
 } from '../superface-test.interfaces';
 import {
   assertsDefinitionsAreNotStrings,
@@ -29,8 +31,9 @@ import {
   decodeRecordings,
   getRecordings,
   handleRecordings,
+  parseRecordingsFile,
 } from './recorder.utils';
-import { RecordingType } from './recording.interfaces';
+import { RecordingType, TestRecordings } from './recording.interfaces';
 
 const debug = createDebug('superface:testing');
 const debugRecordings = createDebug('superface:testing:recordings');
@@ -283,4 +286,75 @@ export async function endRecording({
   }
 
   return undefined;
+}
+
+const migrateDebug = createDebug('superface:testing:migrate');
+
+export async function migrateRecordings({
+  pathsToOldRecording,
+  pathToRecordingsFile,
+  recordingsIndex,
+  recordingsHash,
+}: {
+  pathsToOldRecording: string[];
+  pathToRecordingsFile: string;
+  recordingsIndex: string;
+  recordingsHash: string;
+}): Promise<void> {
+  let newRecordingsFile: TestRecordings | undefined;
+
+  const migrate = async (oldRecordingFile: string): Promise<TestRecordings> => {
+    migrateDebug('Found old recording', oldRecordingFile);
+
+    const oldRecordingDefs = JSON.parse(
+      oldRecordingFile
+    ) as RecordingDefinitions;
+    migrateDebug('Parsed old recording', oldRecordingDefs);
+    const oldRecordings = await decodeRecordings(oldRecordingDefs);
+
+    migrateDebug(`Reading ${pathToRecordingsFile}`);
+    if (await exists(pathToRecordingsFile)) {
+      migrateDebug('Parsing', pathToRecordingsFile);
+      const recordingsFile = await parseRecordingsFile(pathToRecordingsFile);
+
+      return {
+        ...recordingsFile,
+        [recordingsIndex]: {
+          ...recordingsFile[recordingsIndex],
+          [recordingsHash]: oldRecordings,
+        },
+      };
+    } else {
+      return {
+        [recordingsIndex]: {
+          [recordingsHash]: oldRecordings,
+        },
+      };
+    }
+  };
+
+  for (const path of pathsToOldRecording) {
+    if (await exists(path)) {
+      migrateDebug(`Reading ${path}`);
+
+      const oldRecordingFile = await readFileQuiet(path);
+
+      if (oldRecordingFile) {
+        newRecordingsFile = await migrate(oldRecordingFile);
+      } else {
+        throw new UnexpectedError(`Unable to read file at ${path}`);
+      }
+
+      break;
+    }
+  }
+
+  if (newRecordingsFile) {
+    migrateDebug('Writing', newRecordingsFile);
+    await writeRecordings(pathToRecordingsFile, newRecordingsFile);
+  }
+}
+
+export function canMigrate(): boolean {
+  return parseBooleanEnv(process.env.MIGRATE);
 }

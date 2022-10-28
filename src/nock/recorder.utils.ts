@@ -355,6 +355,7 @@ function composeBuffer(response: any[]): Buffer {
   return Buffer.concat(response.map(res => Buffer.from(res, 'hex')));
 }
 
+const migrateDebug = createDebug('superface:testing:migrate');
 export async function decodeResponse(
   response: ReplyBody | undefined,
   contentEncoding: string
@@ -372,9 +373,18 @@ export async function decodeResponse(
   const buffer = composeBuffer(response);
 
   if (contentEncoding.toLowerCase() === 'gzip') {
-    return JSON.parse(
-      (await decodeBuffer(buffer, contentEncoding)).toString()
-    ) as ReplyBody;
+    const parsedResponse = (await decodeBuffer(buffer, contentEncoding)).toString();
+    migrateDebug('response decoded:', parsedResponse);
+
+    try {
+      return JSON.parse(parsedResponse) as ReplyBody;
+    } catch (error) {
+      if (error instanceof SyntaxError) {
+        return parsedResponse;
+      }
+
+      throw error;
+    }
   } else {
     throw new UnexpectedError(
       `Content encoding ${contentEncoding} is not supported`
