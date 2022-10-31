@@ -1,7 +1,12 @@
 import createDebug from 'debug';
 import { basename, dirname, join as joinPath } from 'path';
 
-import { RecordingsNotFoundError, UnexpectedError } from '../common/errors';
+import {
+  RecordingsFileNotFoundError,
+  RecordingsHashNotFoundError,
+  RecordingsIndexNotFoundError,
+  UnexpectedError,
+} from '../common/errors';
 import {
   exists,
   mkdirQuiet,
@@ -28,7 +33,7 @@ export async function getRecordings(
   const recordingsFileExists = await exists(path);
 
   if (!recordingsFileExists) {
-    throw new RecordingsNotFoundError(path);
+    throw new RecordingsFileNotFoundError(path);
   }
 
   const useNewTraffic = parseBooleanEnv(process.env.USE_NEW_TRAFFIC);
@@ -36,7 +41,7 @@ export async function getRecordings(
   const newRecordingsFileExists = await exists(newRecordingsPath);
 
   if (useNewTraffic && !newRecordingsFileExists) {
-    throw new RecordingsNotFoundError(newRecordingsPath);
+    throw new RecordingsFileNotFoundError(newRecordingsPath);
   }
 
   const finalPath = useNewTraffic ? newRecordingsPath : path;
@@ -48,17 +53,16 @@ export async function getRecordings(
   const recordings = (await parseRecordingsFile(finalPath))[recordingsIndex];
 
   if (recordings === undefined) {
-    throw new Error(
-      `Recording under ${recordingsIndex} can't be found at ${finalPath}.`
-    );
+    throw new RecordingsIndexNotFoundError(finalPath, recordingsIndex);
   }
 
   const finalRecordings = recordings[recordingsHash];
 
-  // TODO: add new specific error
   if (finalRecordings === undefined) {
-    throw new UnexpectedError(
-      `Recordings under hash ${recordingsHash} are not found. At ${finalPath}`
+    throw new RecordingsHashNotFoundError(
+      finalPath,
+      recordingsIndex,
+      recordingsHash
     );
   }
 
