@@ -253,10 +253,7 @@ export async function endRecording({
 
       await writeRecordings(path, result.file);
     } else if (result.kind === 'new') {
-      const analysis = await matchTraffic(
-        result.oldRecordings ?? [],
-        definitions
-      );
+      const analysis = await matchTraffic(result.oldRecordings, definitions);
 
       debugRecordings('Matched incoming traffic with old one', analysis);
 
