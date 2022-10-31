@@ -89,7 +89,7 @@ const superface = new SuperfaceTest(
     path: 'nock-recordings',
     fixture: 'my-recording',
     enableReqheadersRecording: true,
-    testInstance: expect
+    testInstance: expect,
   }
 );
 ```
@@ -144,7 +144,7 @@ describe('test', () => {
 });
 ```
 
-Method `run()` initializes `BoundProfileProvider` class, runs perform for given usecase and returns **result** or **error** value from perform (More about perform in [One-SDK docs](https://github.com/superfaceai/one-sdk-js#performing-the-use-case)). Since testing library don't use `SuperfaceClient` anymore, it is **limited to local use only**. 
+Method `run()` initializes `BoundProfileProvider` class, runs perform for given usecase and returns **result** or **error** value from perform (More about perform in [One-SDK docs](https://github.com/superfaceai/one-sdk-js#performing-the-use-case)). Since testing library don't use `SuperfaceClient` anymore, it is **limited to local use only**.
 
 [OneSDK 2.0](https://github.com/superfaceai/one-sdk-js/releases/tag/v2.0.0) does not contain parser anymore, so it looks for compiled files `.ast.json` next to original ones. To support this, parser was added to testing library and can be used to parse files when no AST is found.
 
@@ -215,10 +215,10 @@ superface.run(
 );
 ```
 
-To hide sensitive information that are passed in method `run()` as `input`, you can use parameter `hideInput` to point to primitive values which will get replaced in recording fixture. 
+To hide sensitive information that are passed in method `run()` as `input`, you can use parameter `hideInput` to point to primitive values which will get replaced in recording fixture.
 
 ```typescript
-const pass = 'secret'
+const pass = 'secret';
 
 superface.run(
   {
@@ -228,13 +228,13 @@ superface.run(
     input: {
       auth: {
         username: 'user',
-        password: pass
+        password: pass,
       },
     },
   },
   {
     // value found have to be one of following: string, number or boolean
-    hideInput: ['auth.value', 'auth.password']
+    hideInput: ['auth.value', 'auth.password'],
   }
 );
 ```
@@ -275,9 +275,29 @@ superface.run(
 );
 ```
 
+If you want to differentiate between runs that are used for preparation or teardown of test environment in recordings, you can use parameter `recordingsType` and recordings for that run will be grouped in recordings file as `prepare-profile/provider/useCase` or `teardown-profile/provider/useCase`:
+
+```typescript
+import { RecordingsType } from '@superfaceai/testing';
+
+superface.run(
+  {
+    profile: 'profile',
+    provider: 'provider',
+    useCase: 'useCase',
+    input: {
+      some: 'input',
+    },
+  },
+  {
+    recordingsType: RecordingsType.PREPARE,
+  }
+);
+```
+
 ## Continuous testing
 
-Testing library supports continuous testing with live provider's traffic. This means that you can run testing library in record mode without worrying that old recording of traffic gets rewritten. Testing library compares old recording with new one and determines changes. If it find changes, it will save new traffic next to old one with suffix `-new`. 
+Testing library supports continuous testing with live provider's traffic. This means that you can run testing library in record mode without worrying that old recording of traffic gets rewritten. Testing library compares old recording with new one and determines changes. If it find changes, it will save new traffic next to old one with suffix `-new`.
 
 This recording represents new traffic and you can test your capabilities with it. First time it records new traffic, it also uses it for map and therefore you can see if map works with it, but we can also setup environment variable `USE_NEW_TRAFFIC=true` to mock new traffic instead of old one when not in record mode (it looks for recording with suffix `-new` next to old one).
 
@@ -309,7 +329,7 @@ To disable collecting and also reporting these information, you can setup enviro
 You can use enviroment variable `DEBUG` to enable logging throughout testing process.
 
 - `DEBUG="superface:testing*"` will enable all logging
-- `DEBUG="superface:testing"` will enable logging of: 
+- `DEBUG="superface:testing"` will enable logging of:
   - perform results
   - start and end of recording/mocking HTTP traffic
   - start of `beforeRecordingLoad` and `beforeRecordingSave` functions
