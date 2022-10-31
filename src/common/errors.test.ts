@@ -8,7 +8,9 @@ import {
   ProfileUndefinedError,
   ProviderJsonUndefinedError,
   RecordingPathUndefinedError,
-  RecordingsNotFoundError,
+  RecordingsFileNotFoundError,
+  RecordingsHashNotFoundError,
+  RecordingsIndexNotFoundError,
   SuperJsonNotFoundError,
   UnexpectedError,
 } from './errors';
@@ -230,20 +232,63 @@ describe('errors', () => {
     });
   });
 
-  describe('when throwing RecordingsNotFoundError', () => {
-    const error = new RecordingsNotFoundError('path/to/recording.json');
+  describe('when throwing RecordingsFileNotFoundError', () => {
+    const error = new RecordingsFileNotFoundError('path/to/recording.json');
 
     it('throws in correct format', () => {
       expect(() => {
         throw error;
       }).toThrow(
-        'Recordings could not be found for running mocked tests at "path/to/recording.json".\nYou must call the live API first to record API traffic.\nUse the environment variable SUPERFACE_LIVE_API to call the API and record traffic.\nSee https://github.com/superfaceai/testing#recording to learn more.'
+        'Recordings file could not be found for running mocked tests at "path/to/recording.json".\nYou must call the live API first to record API traffic.\nUse the environment variable SUPERFACE_LIVE_API to call the API and record traffic.\nSee https://github.com/superfaceai/testing#recording to learn more.'
       );
     });
 
     it('returns correct format', () => {
       expect(error.toString()).toEqual(
-        'RecordingsNotFoundError: Recordings could not be found for running mocked tests at "path/to/recording.json".\nYou must call the live API first to record API traffic.\nUse the environment variable SUPERFACE_LIVE_API to call the API and record traffic.\nSee https://github.com/superfaceai/testing#recording to learn more.'
+        'RecordingsFileNotFoundError: Recordings file could not be found for running mocked tests at "path/to/recording.json".\nYou must call the live API first to record API traffic.\nUse the environment variable SUPERFACE_LIVE_API to call the API and record traffic.\nSee https://github.com/superfaceai/testing#recording to learn more.'
+      );
+    });
+  });
+
+  describe('when throwing RecordingsIndexNotFoundError', () => {
+    const error = new RecordingsIndexNotFoundError(
+      'path/to/recording.json',
+      'profile/provider/test'
+    );
+
+    it('throws in correct format', () => {
+      expect(() => {
+        throw error;
+      }).toThrow(
+        'Recordings index "profile/provider/test" could not be found in recordings file at "path/to/recording.json".\nYou must call the live API first to record API traffic.\nUse the environment variable SUPERFACE_LIVE_API to call the API and record traffic.\nSee https://github.com/superfaceai/testing#recording to learn more.'
+      );
+    });
+
+    it('returns correct format', () => {
+      expect(error.toString()).toEqual(
+        'RecordingsIndexNotFoundError: Recordings index "profile/provider/test" could not be found in recordings file at "path/to/recording.json".\nYou must call the live API first to record API traffic.\nUse the environment variable SUPERFACE_LIVE_API to call the API and record traffic.\nSee https://github.com/superfaceai/testing#recording to learn more.'
+      );
+    });
+  });
+
+  describe('when throwing RecordingsHashNotFoundError', () => {
+    const error = new RecordingsHashNotFoundError(
+      'path/to/recording.json',
+      'profile/provider/test',
+      '###'
+    );
+
+    it('throws in correct format', () => {
+      expect(() => {
+        throw error;
+      }).toThrow(
+        'Recordings hash "###" under index "profile/provider/test" could not be found in recordings file at "path/to/recording.json".\nYou must call the live API first to record API traffic.\nUse the environment variable SUPERFACE_LIVE_API to call the API and record traffic.\nSee https://github.com/superfaceai/testing#recording to learn more.'
+      );
+    });
+
+    it('returns correct format', () => {
+      expect(error.toString()).toEqual(
+        'RecordingsHashNotFoundError: Recordings hash "###" under index "profile/provider/test" could not be found in recordings file at "path/to/recording.json".\nYou must call the live API first to record API traffic.\nUse the environment variable SUPERFACE_LIVE_API to call the API and record traffic.\nSee https://github.com/superfaceai/testing#recording to learn more.'
       );
     });
   });
