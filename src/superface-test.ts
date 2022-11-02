@@ -78,7 +78,7 @@ export class SuperfaceTest {
       sf.useCaseName
     );
     const recordingsPath = this.setupRecordingPath(
-      recordingsKey,
+      sf.profileId,
       sf.providerName
     );
 
@@ -217,10 +217,7 @@ export class SuperfaceTest {
    * It also tries to look for current test file from test instance to save recordings
    * next to test files.
    */
-  private setupRecordingPath(
-    recordingsKey: string,
-    providerName: string
-  ): string {
+  private setupRecordingPath(profileId: string, providerName: string): string {
     const { path, fixture } = this.nockConfig ?? {};
     const fixtureName = `${providerName}.${fixture ?? 'recording'}`;
     const testFilePath = this.getTestFilePath();
@@ -228,7 +225,7 @@ export class SuperfaceTest {
     if (testFilePath === undefined) {
       return joinPath(
         path ?? joinPath(process.cwd(), 'recordings'),
-        recordingsKey,
+        profileId,
         fixtureName
       );
     } else {
