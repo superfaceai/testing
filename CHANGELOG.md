@@ -30,7 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - **BREAKING CHANGE:** Recording fixtures are grouped by test file or provider
-- **BREAKING CHANGE:** Recording fixtures are stored next to test file OR in `<project>/recordings/<profile>/<provider>.recording.json`
+- **BREAKING CHANGE:** Recording fixtures are stored next to test file OR in `<project-dir>/recordings/<profile>/<provider>.recording.json`
 - **BREAKING CHANGE:** Updated One-SDK to [v2.0.0](https://github.com/superfaceai/one-sdk-js/releases/tag/v2.0.0)
 - **BREAKING CHANGE:** Use `BoundProfileProvider` instead of using client and use-case to run `perform` -> Local use only
 - Move functions used for recording in `SuperfaceTest` to seperate module
