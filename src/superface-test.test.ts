@@ -7,7 +7,7 @@ import {
   ServiceSelector,
 } from '@superfaceai/one-sdk';
 import nock, { pendingMocks, recorder } from 'nock';
-import { join as joinPath, resolve as resolvePath } from 'path';
+import { join as joinPath } from 'path';
 import { mocked } from 'ts-jest/utils';
 
 import { RecordingsFileNotFoundError } from './common/errors';
@@ -73,7 +73,7 @@ const testPayload = {
 const pathToRecordings = joinPath(
   process.cwd(),
   'recordings',
-  ...Object.values(testPayload)
+  testPayload.profile
 );
 
 const DEFAULT_RECORDING_NEXT_TO_TEST_PATH = joinPath(
@@ -645,10 +645,6 @@ describe('SuperfaceTest', () => {
 
       it('throws when recording fixture does not exist', async () => {
         const testName = 'my-test-name';
-        const recordingPath = resolvePath(
-          `recordings/${testPayload.profile}/${testPayload.provider}/${testPayload.useCase}/${testPayload.provider}.recording.json`
-        );
-
         const recorderSpy = jest.spyOn(recorder, 'rec');
         const defineRecordingSpy = jest.spyOn(nock, 'define');
 
@@ -657,7 +653,9 @@ describe('SuperfaceTest', () => {
 
         await expect(
           superfaceTest.run({ input: {}, testName })
-        ).rejects.toThrowError(new RecordingsFileNotFoundError(recordingPath));
+        ).rejects.toThrowError(
+          new RecordingsFileNotFoundError(DEFAULT_RECORDING_PATH)
+        );
 
         expect(recorderSpy).not.toHaveBeenCalled();
         expect(defineRecordingSpy).not.toHaveBeenCalled();
