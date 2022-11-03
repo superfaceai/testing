@@ -336,14 +336,19 @@ export async function decodeRecordingResponse(
     recording.rawHeaders ?? []
   );
 
-  if (contentEncoding) {
-    recording.decodedResponse = await decodeResponse(
-      recording.response,
-      contentEncoding
-    );
+  if (contentEncoding === undefined) {
+    return recording;
   }
 
-  return recording;
+  const decodedResponse = await decodeResponse(
+    recording.response,
+    contentEncoding
+  );
+
+  return {
+    ...recording,
+    decodedResponse,
+  };
 }
 
 export function getRequestHeaderValue(
