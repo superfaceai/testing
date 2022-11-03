@@ -227,25 +227,20 @@ export function composeRecordingPath(
   recordingPath: string,
   options?: {
     version?: string;
-    decoded?: boolean;
   }
 ): string {
   if (options?.version === 'new') {
-    return `${recordingPath}-new${options.decoded ? '.decoded.json' : '.json'}`;
+    return `${recordingPath}-new.json`;
   }
 
   if (options?.version !== undefined) {
     const baseDir = dirname(recordingPath);
     const hash = basename(recordingPath);
 
-    return joinPath(
-      baseDir,
-      'old',
-      `${hash}_${options.version}${options.decoded ? '.decoded.json' : '.json'}`
-    );
+    return joinPath(baseDir, 'old', `${hash}-${options.version}.json`);
   }
 
-  return `${recordingPath}${options?.decoded ? '.decoded.json' : '.json'}`;
+  return `${recordingPath}.json`;
 }
 
 export async function getRecordings(
