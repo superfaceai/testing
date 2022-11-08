@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Environment variable `UPDATE_TRAFFIC` to replace old traffic with new, if present
 - Environment variable `DISABLE_PROVIDER_CHANGES_COVERAGE` to disable collecting of test reports
 - Environment variable `USE_NEW_TRAFFIC` to test with newly recorded traffic
+- Environment variable `DECODE_RESPONSE` to save recordings with decoded response next to original one
 - Errors for module `matcher`
 - Error `CoverageFileNotFoundError` for correct reporting
 

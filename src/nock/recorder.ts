@@ -26,6 +26,7 @@ import { MatchImpact } from './analyzer';
 import { matchTraffic } from './matcher';
 import {
   composeRecordingPath,
+  decodeRecordings,
   getRecordings,
   handleRecordings,
 } from './recorder.utils';
@@ -161,8 +162,7 @@ export async function endRecording({
     beforeRecordingSave?: ProcessingFunction;
   };
 }): Promise<AnalysisResult | undefined> {
-  const definitions = recorder.play();
-
+  let definitions = recorder.play();
   recorder.clear();
   restoreRecordings();
 
@@ -204,7 +204,7 @@ export async function endRecording({
 
   assertsDefinitionsAreNotStrings(definitions);
 
-  // const securityValues = provider.configuration.security;
+  definitions = await decodeRecordings(definitions);
   const { security, parameters, services } = boundProfileProvider.configuration;
   const integrationParameters = parameters ?? {};
 
@@ -233,9 +233,16 @@ export async function endRecording({
 
   if (
     security.length > 0 ||
-    (integrationParameters && Object.values(integrationParameters).length > 0)
+    (integrationParameters &&
+      Object.values(integrationParameters).length > 0) ||
+    (inputVariables && Object.values(inputVariables).length > 0)
   ) {
-    checkSensitiveInformation(definitions, security, integrationParameters);
+    checkSensitiveInformation(
+      definitions,
+      security,
+      integrationParameters,
+      inputVariables
+    );
   }
 
   const result = await handleRecordings({
