@@ -60,7 +60,7 @@ export class OutputStream {
 
 export async function writeRecordings(
   path: string,
-  recordings: string[] | RecordingDefinition[]
+  recordings: RecordingDefinition[]
 ): Promise<void> {
   await OutputStream.writeIfAbsent(path, JSON.stringify(recordings, null, 2), {
     dirs: true,

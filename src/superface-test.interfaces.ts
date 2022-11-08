@@ -9,7 +9,7 @@ import {
   UnexpectedError,
   UseCase,
 } from '@superfaceai/one-sdk';
-import { Definition } from 'nock/types';
+import { Definition, ReplyBody } from 'nock/types';
 
 import { MatchImpact } from './nock/analyzer';
 import { ErrorCollection, MatchError } from './nock/matcher.errors';
@@ -46,6 +46,7 @@ export interface NockConfig {
 
 export type RecordingDefinition = Definition & {
   rawHeaders?: string[];
+  decodedResponse?: ReplyBody;
 };
 export type RecordingDefinitions = RecordingDefinition[];
 

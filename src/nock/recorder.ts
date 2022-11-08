@@ -1,14 +1,17 @@
 import { BoundProfileProvider } from '@superfaceai/one-sdk';
 import createDebug from 'debug';
+import { decodeBuffer } from 'http-encoding';
 import {
   activate as activateNock,
   define as loadRecordingDefinitions,
   disableNetConnect,
   isActive as isNockActive,
   recorder,
+  ReplyBody,
   restore as restoreRecordings,
 } from 'nock';
 import { basename, dirname, join as joinPath } from 'path';
+import { URLSearchParams } from 'url';
 
 import {
   BaseURLNotFoundError,
@@ -21,6 +24,7 @@ import {
   AnalysisResult,
   InputVariables,
   ProcessingFunction,
+  RecordingDefinition,
   RecordingDefinitions,
 } from '../superface-test.interfaces';
 import {
@@ -142,7 +146,7 @@ export async function endRecording({
   inputVariables?: InputVariables;
   beforeRecordingSave?: ProcessingFunction;
 }): Promise<AnalysisResult | undefined> {
-  const definitions = recorder.play();
+  let definitions = recorder.play();
   recorder.clear();
   restoreRecordings();
 
@@ -150,15 +154,21 @@ export async function endRecording({
     'Recording ended - Restored HTTP requests and cleared recorded traffic'
   );
 
+  const recordingExists = await exists(composeRecordingPath(recordingPath));
   if (definitions === undefined || definitions.length === 0) {
-    await writeRecordings(composeRecordingPath(recordingPath), []);
+    const path = composeRecordingPath(
+      recordingPath,
+      recordingExists ? { version: 'new' } : undefined
+    );
+
+    await writeRecordings(path, []);
 
     return undefined;
   }
 
   assertsDefinitionsAreNotStrings(definitions);
 
-  // const securityValues = provider.configuration.security;
+  definitions = await decodeRecordings(definitions);
   const { security, parameters, services } = boundProfileProvider.configuration;
   const integrationParameters = parameters ?? {};
 
@@ -187,19 +197,27 @@ export async function endRecording({
 
   if (
     security.length > 0 ||
-    (integrationParameters && Object.values(integrationParameters).length > 0)
+    (integrationParameters &&
+      Object.values(integrationParameters).length > 0) ||
+    (inputVariables && Object.values(inputVariables).length > 0)
   ) {
-    checkSensitiveInformation(definitions, security, integrationParameters);
+    checkSensitiveInformation(
+      definitions,
+      security,
+      integrationParameters,
+      inputVariables
+    );
   }
-
-  const recordingExists = await exists(composeRecordingPath(recordingPath));
 
   if (recordingExists) {
     return await matchTraffic(recordingPath, definitions);
   }
 
   // recording file does not exist -> record new traffic
-  await writeRecordings(composeRecordingPath(recordingPath), definitions);
+  const path = composeRecordingPath(recordingPath);
+
+  await writeRecordings(path, definitions);
+
   debug('Recorded definitions written');
 
   return undefined;
@@ -207,17 +225,19 @@ export async function endRecording({
 
 export function composeRecordingPath(
   recordingPath: string,
-  version?: string
+  options?: {
+    version?: string;
+  }
 ): string {
-  if (version === 'new') {
+  if (options?.version === 'new') {
     return `${recordingPath}-new.json`;
   }
 
-  if (version !== undefined) {
+  if (options?.version !== undefined) {
     const baseDir = dirname(recordingPath);
     const hash = basename(recordingPath);
 
-    return joinPath(baseDir, 'old', `${hash}_${version}.json`);
+    return joinPath(baseDir, 'old', `${hash}-${options.version}.json`);
   }
 
   return `${recordingPath}.json`;
@@ -228,7 +248,9 @@ export async function getRecordings(
 ): Promise<RecordingDefinitions> {
   // try to get new recordings if environment variable is set
   const useNewTraffic = parseBooleanEnv(process.env.USE_NEW_TRAFFIC);
-  const newRecordingPath = composeRecordingPath(recordingPath, 'new');
+  const newRecordingPath = composeRecordingPath(recordingPath, {
+    version: 'new',
+  });
 
   if (useNewTraffic && (await exists(newRecordingPath))) {
     return await parseRecordings(newRecordingPath);
@@ -261,17 +283,22 @@ export async function parseRecordings(
 
 export async function updateTraffic(recordingPath: string): Promise<void> {
   const pathToCurrent = composeRecordingPath(recordingPath);
-  const pathToNew = composeRecordingPath(recordingPath, 'new');
+  const pathToNew = composeRecordingPath(recordingPath, { version: 'new' });
 
   await mkdirQuiet(joinPath(dirname(pathToCurrent), 'old'));
 
   // TODO: compose version based on used map
   let i = 0;
-  while (await exists(composeRecordingPath(recordingPath, `${i}`))) {
+  while (
+    await exists(composeRecordingPath(recordingPath, { version: `${i}` }))
+  ) {
     i++;
   }
 
-  await rename(pathToCurrent, composeRecordingPath(recordingPath, `${i}`));
+  await rename(
+    pathToCurrent,
+    composeRecordingPath(recordingPath, { version: `${i}` })
+  );
   await rename(pathToNew, pathToCurrent);
 }
 
@@ -282,10 +309,130 @@ export async function canUpdateTraffic(
 
   if (
     updateTraffic &&
-    (await exists(composeRecordingPath(recordingPath, 'new')))
+    (await exists(composeRecordingPath(recordingPath, { version: 'new' })))
   ) {
     return true;
   }
 
   return false;
+}
+
+export async function decodeRecordings(
+  recordings: RecordingDefinition[]
+): Promise<RecordingDefinition[]> {
+  return Promise.all(recordings.map(decodeRecordingResponse));
+}
+
+export async function decodeRecordingResponse(
+  recording: RecordingDefinition
+): Promise<RecordingDefinition> {
+  const contentEncoding = getResponseHeaderValue(
+    'Content-Encoding',
+    recording.rawHeaders ?? []
+  );
+
+  if (contentEncoding === undefined) {
+    return recording;
+  }
+
+  const decodedResponse = await decodeResponse(
+    recording.response,
+    contentEncoding
+  );
+
+  return {
+    ...recording,
+    decodedResponse,
+  };
+}
+
+export function getRequestHeaderValue(
+  headerName: string,
+  payload: Record<string, string | string[]>
+): string | string[] | undefined {
+  const headerKey = Object.keys(payload).find(
+    key => key.toLowerCase() === headerName.toLowerCase()
+  );
+
+  return headerKey ? payload[headerKey] : undefined;
+}
+
+export function getResponseHeaderValue(
+  headerName: string,
+  payload: string[]
+): string | undefined {
+  for (let i = 0; i < payload.length; i += 2) {
+    if (payload[i].toLowerCase() === headerName.toLowerCase()) {
+      return payload[i + 1];
+    }
+  }
+
+  return undefined;
+}
+
+/* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+function composeBuffer(response: any[]): Buffer {
+  return Buffer.concat(response.map(res => Buffer.from(res, 'hex')));
+}
+
+export async function decodeResponse(
+  response: ReplyBody | undefined,
+  contentEncoding: string
+): Promise<ReplyBody | undefined> {
+  if (response === undefined) {
+    return response;
+  }
+
+  if (!Array.isArray(response)) {
+    throw new UnexpectedError(
+      `Response is encoded by "${contentEncoding}" and is not an array`
+    );
+  }
+
+  const buffer = composeBuffer(response);
+
+  if (contentEncoding.toLowerCase() === 'gzip') {
+    return JSON.parse(
+      (await decodeBuffer(buffer, contentEncoding)).toString()
+    ) as ReplyBody;
+  } else {
+    throw new UnexpectedError(
+      `Content encoding ${contentEncoding} is not supported`
+    );
+  }
+}
+
+/**
+ * Expect something like `To=%2Bxxx&From=%2Bxxx&Body=Hello+World%21`
+ * and want back: `{ To: "+xxx", From: "+xxx", Body: "Hello World!" }`
+ *
+ * Limitation:
+ *  since URLSearchParams always transform params to string we can't
+ *  generate correct schema for this if it contains numbers or booleans
+ */
+export function parseBody(
+  body: string,
+  _accept?: string
+): Record<string, unknown> | undefined {
+  if (body === '') {
+    return undefined;
+  }
+
+  const parsedBody = decodeURIComponent(body);
+  const result: Record<string, unknown> = {};
+  const params = new URLSearchParams(parsedBody);
+
+  for (const [key, value] of params.entries()) {
+    // parse value
+    let parsedValue: unknown;
+    if (value.startsWith('{') || value.startsWith('[')) {
+      parsedValue = JSON.parse(value);
+    } else {
+      parsedValue = value;
+    }
+
+    result[key] = parsedValue;
+  }
+
+  return result;
 }
