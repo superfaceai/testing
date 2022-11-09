@@ -1,10 +1,8 @@
-import { ApiKeyPlacement, SecurityType } from '@superfaceai/ast';
 import {
   BoundProfileProvider,
   err,
   MapASTError,
   ok,
-  ServiceSelector,
 } from '@superfaceai/one-sdk';
 import nock, { pendingMocks } from 'nock';
 import { join as joinPath } from 'path';
@@ -86,37 +84,12 @@ const DEFAULT_RECORDING_NEXT_TO_TEST_PATH = joinPath(
   'provider.recording'
 );
 
-const prepareBoundProfileProvider = (options?: {
-  credential?: string;
-  parameter?: string;
-}): BoundProfileProvider => {
-  return mockBoundProfileProvider(ok('value'), {
-    security: options?.credential
-      ? [
-          {
-            id: 'api-key',
-            type: SecurityType.APIKEY,
-            in: ApiKeyPlacement.QUERY,
-            name: 'api_key',
-            apikey: options.credential,
-          },
-        ]
-      : undefined,
-    parameters: options?.parameter ? { param: options.parameter } : undefined,
-    services: new ServiceSelector(
-      [{ id: 'test-service', baseUrl: 'https://localhost' }],
-      'test-service'
-    ),
-  });
-};
-
 interface RecordingsOptions {
   recordingsPath?: string;
   recordingsType?: RecordingType;
   recordingsHash?: string;
   recordingsKey?: string;
   config?: {
-    boundProfileProvider?: Parameters<typeof prepareBoundProfileProvider>;
     providerName?: string;
   };
   processRecordings?: boolean;
@@ -130,48 +103,48 @@ const prepareRecordingsConfig = (options?: RecordingsOptions) => ({
   recordingsKey: options?.recordingsKey ?? recordingsConfig.key,
 });
 
-// const prepareLoadRecordingParameters = (
-//   options?: RecordingsOptions & {
-//     beforeRecordingLoad?: boolean;
-//   }
-// ) => ({
-//   ...prepareRecordingsConfig(options),
-//   inputVariables: options?.inputVariables,
-//   config: {
-//     boundProfileProvider: prepareBoundProfileProvider(
-//       ...(options?.config?.boundProfileProvider ?? [])
-//     ),
-//     providerName: options?.config?.providerName ?? 'provider',
-//   },
-//   options: {
-//     beforeRecordingLoad: options?.beforeRecordingLoad
-//       ? /* eslint-disable-next-line @typescript-eslint/no-empty-function */
-//         (_: RecordingDefinitions) => {}
-//       : undefined,
-//     processRecordings: options?.processRecordings ?? true,
-//   },
-// });
+const prepareLoadRecordingParameters = (
+  options?: RecordingsOptions & {
+    beforeRecordingLoad?: boolean;
+  }
+) => ({
+  ...prepareRecordingsConfig(options),
+  inputVariables: options?.inputVariables,
+  config: {
+    boundProfileProvider: expect.objectContaining(
+      Object.create(BoundProfileProvider)
+    ),
+    providerName: options?.config?.providerName ?? 'provider',
+  },
+  options: {
+    beforeRecordingLoad: options?.beforeRecordingLoad
+      ? /* eslint-disable-next-line @typescript-eslint/no-empty-function */
+        (_: RecordingDefinitions) => {}
+      : undefined,
+    processRecordings: options?.processRecordings ?? true,
+  },
+});
 
 const prepareEndRecordingParameters = (
   options?: RecordingsOptions & {
     beforeRecordingSave?: boolean;
   }
 ) => ({
-    ...prepareRecordingsConfig(options),
-    inputVariables: options?.inputVariables,
-    config: {
-      boundProfileProvider: prepareBoundProfileProvider(
-        ...(options?.config?.boundProfileProvider ?? [])
-      ),
-      providerName: options?.config?.providerName ?? 'provider',
-    },
-    options: {
-      beforeRecordingSave: options?.beforeRecordingSave
-        ? /* eslint-disable-next-line @typescript-eslint/no-empty-function */
-          (_: RecordingDefinitions) => {}
-        : undefined,
-      processRecordings: options?.processRecordings ?? true,
-    },
+  ...prepareRecordingsConfig(options),
+  inputVariables: options?.inputVariables,
+  config: {
+    boundProfileProvider: expect.objectContaining(
+      Object.create(BoundProfileProvider)
+    ),
+    providerName: options?.config?.providerName ?? 'provider',
+  },
+  options: {
+    beforeRecordingSave: options?.beforeRecordingSave
+      ? /* eslint-disable-next-line @typescript-eslint/no-empty-function */
+        (_: RecordingDefinitions) => {}
+      : undefined,
+    processRecordings: options?.processRecordings ?? true,
+  },
 });
 
 describe('SuperfaceTest', () => {
@@ -250,7 +223,6 @@ describe('SuperfaceTest', () => {
     describe('when loading recordings', () => {
       it('loads fixture if it exists, but contains no recordings', async () => {
         const loadRecordingSpy = mocked(loadRecording);
-        const disableNetConnectSpy = jest.spyOn(nock, 'disableNetConnect');
         const enableNetConnectSpy = jest.spyOn(nock, 'enableNetConnect');
         const restoreSpy = jest.spyOn(nock, 'restore');
 
@@ -260,21 +232,11 @@ describe('SuperfaceTest', () => {
         await expect(superfaceTest.run({ input: {} })).resolves.not.toThrow();
 
         expect(loadRecordingSpy).toHaveBeenCalledTimes(1);
-        expect(loadRecordingSpy).toHaveBeenCalledWith({
-          ...prepareRecordingsConfig(),
-          config: {
-            boundProfileProvider: prepareBoundProfileProvider(),
-            providerName: 'provider',
-          },
-          options: {
-            processRecordings: true,
-            beforeRecordingLoad: undefined,
-          },
-          inputVariables: undefined,
-        });
+        expect(loadRecordingSpy).toHaveBeenCalledWith(
+          prepareLoadRecordingParameters()
+        );
         expect(restoreSpy).toHaveBeenCalledTimes(1);
         expect(pendingMocks()).toEqual([]);
-        expect(disableNetConnectSpy).toHaveBeenCalledTimes(1);
         expect(enableNetConnectSpy).toHaveBeenCalledTimes(1);
       });
     });
@@ -336,21 +298,12 @@ describe('SuperfaceTest', () => {
 
         await superfaceTest.run({ input: {} });
 
-        expect(loadRecordingSpy).toHaveBeenCalledWith({
-          ...prepareRecordingsConfig({
+        expect(loadRecordingSpy).toHaveBeenCalledWith(
+          prepareLoadRecordingParameters({
             recordingsPath: DEFAULT_RECORDING_NEXT_TO_TEST_PATH,
             recordingsHash: expectedHash,
-          }),
-          config: {
-            boundProfileProvider: prepareBoundProfileProvider(),
-            providerName: 'provider',
-          },
-          options: {
-            processRecordings: true,
-            beforeRecordingLoad: undefined,
-          },
-          inputVariables: undefined,
-        });
+          })
+        );
       });
 
       it('loads recordings hashed based on parameter testName', async () => {
@@ -363,21 +316,12 @@ describe('SuperfaceTest', () => {
 
         await superfaceTest.run({ input: {}, testName });
 
-        expect(loadRecordingSpy).toHaveBeenCalledWith({
-          ...prepareRecordingsConfig({
+        expect(loadRecordingSpy).toHaveBeenCalledWith(
+          prepareLoadRecordingParameters({
             recordingsPath: DEFAULT_RECORDING_NEXT_TO_TEST_PATH,
             recordingsHash: expectedHash,
-          }),
-          config: {
-            boundProfileProvider: prepareBoundProfileProvider(),
-            providerName: 'provider',
-          },
-          options: {
-            processRecordings: true,
-            beforeRecordingLoad: undefined,
-          },
-          inputVariables: undefined,
-        });
+          })
+        );
       });
 
       it('loads recordings hashed based on input', async () => {
@@ -394,20 +338,11 @@ describe('SuperfaceTest', () => {
 
         await superfaceTest.run({ input, testName: undefined });
 
-        expect(loadRecordingSpy).toHaveBeenCalledWith({
-          ...prepareRecordingsConfig({
+        expect(loadRecordingSpy).toHaveBeenCalledWith(
+          prepareLoadRecordingParameters({
             recordingsHash: expectedHash,
-          }),
-          config: {
-            boundProfileProvider: prepareBoundProfileProvider(),
-            providerName: 'provider',
-          },
-          options: {
-            processRecordings: true,
-            beforeRecordingLoad: undefined,
-          },
-          inputVariables: undefined,
-        });
+          })
+        );
       });
     });
 
