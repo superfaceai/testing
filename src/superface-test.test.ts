@@ -11,10 +11,11 @@ import { join as joinPath } from 'path';
 import { mocked } from 'ts-jest/utils';
 
 import { matchWildCard } from './common/format';
-
 import { generate } from './generate-hash';
+import { MatchImpact } from './nock/analyzer';
 import { MatchErrorLength } from './nock/matcher.errors';
 import { endRecording, loadRecording, startRecording } from './nock/recorder';
+import { canUpdateTraffic, updateTraffic } from './nock/recorder.utils';
 import { RecordingType } from './nock/recording.interfaces';
 import { saveReport } from './reporter';
 import { prepareSuperface } from './superface/config';
@@ -25,8 +26,6 @@ import {
   InputVariables,
   RecordingDefinitions,
 } from './superface-test.interfaces';
-import { MatchImpact } from './nock/analyzer';
-import { canUpdateTraffic, updateTraffic } from './nock/recorder.utils';
 
 /* eslint-disable @typescript-eslint/unbound-method */
 
@@ -81,6 +80,12 @@ const recordingsConfig = {
   hash: defaultExpectedHash,
 };
 
+const DEFAULT_RECORDING_NEXT_TO_TEST_PATH = joinPath(
+  __dirname,
+  'recordings',
+  'provider.recording'
+);
+
 const prepareBoundProfileProvider = (options?: {
   credential?: string;
   parameter?: string;
@@ -110,12 +115,12 @@ interface RecordingsOptions {
   recordingsType?: RecordingType;
   recordingsHash?: string;
   recordingsKey?: string;
-  inputVariables: InputVariables;
   config?: {
     boundProfileProvider?: Parameters<typeof prepareBoundProfileProvider>;
     providerName?: string;
   };
   processRecordings?: boolean;
+  inputVariables?: InputVariables;
 }
 
 const prepareRecordingsConfig = (options?: RecordingsOptions) => ({
@@ -125,36 +130,33 @@ const prepareRecordingsConfig = (options?: RecordingsOptions) => ({
   recordingsKey: options?.recordingsKey ?? recordingsConfig.key,
 });
 
-const prepareLoadRecordingParameters = (
-  options?: RecordingsOptions & {
-    beforeRecordingLoad?: boolean;
-  }
-) => [
-  {
-    ...prepareRecordingsConfig(options),
-    inputVariables: options?.inputVariables,
-    config: {
-      boundProfileProvider: prepareBoundProfileProvider(
-        ...(options?.config?.boundProfileProvider ?? [])
-      ),
-      providerName: options?.config?.providerName ?? 'provider',
-    },
-    options: {
-      beforeRecordingLoad: options?.beforeRecordingLoad
-        ? /* eslint-disable-next-line @typescript-eslint/no-empty-function */
-          (_: RecordingDefinitions) => {}
-        : undefined,
-      processRecordings: options?.processRecordings ?? true,
-    },
-  },
-];
+// const prepareLoadRecordingParameters = (
+//   options?: RecordingsOptions & {
+//     beforeRecordingLoad?: boolean;
+//   }
+// ) => ({
+//   ...prepareRecordingsConfig(options),
+//   inputVariables: options?.inputVariables,
+//   config: {
+//     boundProfileProvider: prepareBoundProfileProvider(
+//       ...(options?.config?.boundProfileProvider ?? [])
+//     ),
+//     providerName: options?.config?.providerName ?? 'provider',
+//   },
+//   options: {
+//     beforeRecordingLoad: options?.beforeRecordingLoad
+//       ? /* eslint-disable-next-line @typescript-eslint/no-empty-function */
+//         (_: RecordingDefinitions) => {}
+//       : undefined,
+//     processRecordings: options?.processRecordings ?? true,
+//   },
+// });
 
 const prepareEndRecordingParameters = (
   options?: RecordingsOptions & {
     beforeRecordingSave?: boolean;
   }
-) => [
-  {
+) => ({
     ...prepareRecordingsConfig(options),
     inputVariables: options?.inputVariables,
     config: {
@@ -170,8 +172,7 @@ const prepareEndRecordingParameters = (
         : undefined,
       processRecordings: options?.processRecordings ?? true,
     },
-  },
-];
+});
 
 describe('SuperfaceTest', () => {
   let superfaceTest: SuperfaceTest;
@@ -259,9 +260,18 @@ describe('SuperfaceTest', () => {
         await expect(superfaceTest.run({ input: {} })).resolves.not.toThrow();
 
         expect(loadRecordingSpy).toHaveBeenCalledTimes(1);
-        expect(loadRecordingSpy).toHaveBeenCalledWith(
-          prepareLoadRecordingParameters()
-        );
+        expect(loadRecordingSpy).toHaveBeenCalledWith({
+          ...prepareRecordingsConfig(),
+          config: {
+            boundProfileProvider: prepareBoundProfileProvider(),
+            providerName: 'provider',
+          },
+          options: {
+            processRecordings: true,
+            beforeRecordingLoad: undefined,
+          },
+          inputVariables: undefined,
+        });
         expect(restoreSpy).toHaveBeenCalledTimes(1);
         expect(pendingMocks()).toEqual([]);
         expect(disableNetConnectSpy).toHaveBeenCalledTimes(1);
@@ -307,6 +317,100 @@ describe('SuperfaceTest', () => {
       });
     });
 
+    describe('when hashing recordings', () => {
+      let superfaceTest: SuperfaceTest;
+
+      beforeEach(async () => {
+        superfaceTest = new SuperfaceTest(testPayload, {
+          testInstance: expect,
+        });
+      });
+
+      it('loads recordings hashed based on test instance', async () => {
+        const expectedTestName = expect.getState().currentTestName;
+        const expectedHash = generate(expectedTestName);
+
+        const loadRecordingSpy = mocked(loadRecording);
+        mocked(prepareSuperface).mockResolvedValue(mockSuperface());
+        mocked(matchWildCard).mockReturnValueOnce(false);
+
+        await superfaceTest.run({ input: {} });
+
+        expect(loadRecordingSpy).toHaveBeenCalledWith({
+          ...prepareRecordingsConfig({
+            recordingsPath: DEFAULT_RECORDING_NEXT_TO_TEST_PATH,
+            recordingsHash: expectedHash,
+          }),
+          config: {
+            boundProfileProvider: prepareBoundProfileProvider(),
+            providerName: 'provider',
+          },
+          options: {
+            processRecordings: true,
+            beforeRecordingLoad: undefined,
+          },
+          inputVariables: undefined,
+        });
+      });
+
+      it('loads recordings hashed based on parameter testName', async () => {
+        const testName = 'my-test-name';
+        const expectedHash = generate(testName);
+
+        const loadRecordingSpy = mocked(loadRecording);
+        mocked(prepareSuperface).mockResolvedValue(mockSuperface());
+        mocked(matchWildCard).mockReturnValueOnce(false);
+
+        await superfaceTest.run({ input: {}, testName });
+
+        expect(loadRecordingSpy).toHaveBeenCalledWith({
+          ...prepareRecordingsConfig({
+            recordingsPath: DEFAULT_RECORDING_NEXT_TO_TEST_PATH,
+            recordingsHash: expectedHash,
+          }),
+          config: {
+            boundProfileProvider: prepareBoundProfileProvider(),
+            providerName: 'provider',
+          },
+          options: {
+            processRecordings: true,
+            beforeRecordingLoad: undefined,
+          },
+          inputVariables: undefined,
+        });
+      });
+
+      it('loads recordings hashed based on input', async () => {
+        superfaceTest = new SuperfaceTest(testPayload, {
+          testInstance: undefined,
+        });
+
+        const input = { some: 'value' };
+        const expectedHash = generate(JSON.stringify(input));
+
+        const loadRecordingSpy = mocked(loadRecording);
+        mocked(prepareSuperface).mockResolvedValue(mockSuperface());
+        mocked(matchWildCard).mockReturnValueOnce(false);
+
+        await superfaceTest.run({ input, testName: undefined });
+
+        expect(loadRecordingSpy).toHaveBeenCalledWith({
+          ...prepareRecordingsConfig({
+            recordingsHash: expectedHash,
+          }),
+          config: {
+            boundProfileProvider: prepareBoundProfileProvider(),
+            providerName: 'provider',
+          },
+          options: {
+            processRecordings: true,
+            beforeRecordingLoad: undefined,
+          },
+          inputVariables: undefined,
+        });
+      });
+    });
+
     describe('when updating', () => {
       let env: string | undefined;
 
@@ -321,7 +425,8 @@ describe('SuperfaceTest', () => {
       });
 
       it('merges new recordings with current ones', async () => {
-        const canUpdateTrafficSpy = mocked(canUpdateTraffic).mockResolvedValue(true);
+        const canUpdateTrafficSpy =
+          mocked(canUpdateTraffic).mockResolvedValue(true);
         const updateTrafficSpy = mocked(updateTraffic);
 
         mocked(prepareSuperface).mockResolvedValue(mockSuperface());

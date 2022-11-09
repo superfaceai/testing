@@ -320,7 +320,8 @@ describe('Recorder', () => {
             apikey: secret,
           },
         ],
-        {}
+        {},
+        undefined
       );
     });
 
