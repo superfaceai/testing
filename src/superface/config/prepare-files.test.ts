@@ -17,7 +17,6 @@ const testPayload: SuperfaceTestConfig = {
 };
 
 jest.mock('./prepare-super-json', () => ({
-  ...jest.requireActual('./prepare-super-json'),
   getSuperJson: jest.fn(),
 }));
 
@@ -31,6 +30,10 @@ jest.mock('./prepare-provider-json', () => ({
 }));
 
 describe('Prepare files module', () => {
+  afterEach(() => {
+    jest.resetAllMocks();
+  });
+
   describe('prepareFiles', () => {
     it('fails when no profile is specified', async () => {
       mocked(getSuperJson).mockResolvedValue(mockSuperJson());

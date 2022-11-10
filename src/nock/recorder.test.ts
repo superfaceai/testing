@@ -31,12 +31,10 @@ jest.mock('./recorder.utils', () => ({
 }));
 
 jest.mock('../common/output-stream', () => ({
-  ...jest.requireActual('../common/output-stream'),
   writeRecordings: jest.fn(),
 }));
 
 jest.mock('./matcher', () => ({
-  ...jest.requireActual('./matcher'),
   matchTraffic: jest.fn(),
 }));
 

@@ -29,25 +29,18 @@ import {
 
 jest.mock('./superface/config');
 
-jest.mock('./common/io', () => ({
-  readFileQuiet: jest.fn(),
-  exists: jest.fn(),
-}));
-
 jest.mock('./common/format', () => ({
   ...jest.requireActual('./common/format'),
   matchWildCard: jest.fn(),
 }));
 
 jest.mock('./nock/recorder', () => ({
-  ...jest.requireActual('./nock/recorder'),
   startRecording: jest.fn(),
   endRecording: jest.fn(),
   loadRecording: jest.fn(),
 }));
 
 jest.mock('./nock/recorder.utils', () => ({
-  ...jest.requireActual('./nock/recorder.utils'),
   canUpdateTraffic: jest.fn(),
   updateTraffic: jest.fn(),
 }));

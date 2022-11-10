@@ -42,7 +42,6 @@ const recordingsConfig = {
 };
 
 jest.mock('../common/io', () => ({
-  ...jest.requireActual('../common/io'),
   exists: jest.fn(),
   readFileQuiet: jest.fn(),
   mkdirQuiet: jest.fn(),
@@ -51,7 +50,6 @@ jest.mock('../common/io', () => ({
 }));
 
 jest.mock('../common/output-stream', () => ({
-  ...jest.requireActual('../common/output-stream'),
   writeRecordings: jest.fn(),
 }));
 
