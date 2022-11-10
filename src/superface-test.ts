@@ -1,19 +1,15 @@
 import { err, ok, Result } from '@superfaceai/one-sdk';
 import createDebug from 'debug';
 import { enableNetConnect, recorder, restore as restoreRecordings } from 'nock';
-import { join as joinPath } from 'path';
+import { dirname, join as joinPath } from 'path';
 
 import { UnexpectedError } from './common/errors';
 import { getFixtureName, matchWildCard } from './common/format';
 import { IGenerator } from './generate-hash';
 import { MatchImpact } from './nock/analyzer';
-import {
-  canUpdateTraffic,
-  endRecording,
-  loadRecording,
-  startRecording,
-  updateTraffic,
-} from './nock/recorder';
+import { endRecording, loadRecording, startRecording } from './nock/recorder';
+import { canUpdateTraffic, updateTraffic } from './nock/recorder.utils';
+import { RecordingType } from './nock/recording.interfaces';
 import { report, saveReport } from './reporter';
 import { prepareSuperface } from './superface/config';
 import {
@@ -27,9 +23,9 @@ import {
   TestingReturn,
 } from './superface-test.interfaces';
 import {
-  getGenerator,
   mapError,
   parseBooleanEnv,
+  parseTestInstance,
   searchValues,
 } from './superface-test.utils';
 
@@ -41,12 +37,15 @@ export class SuperfaceTest {
   private nockConfig?: NockConfig;
   private analysis?: AnalysisResult;
   private generator: IGenerator;
+  private getTestFilePath: () => string | undefined;
   public configuration: SuperfaceTestConfig | undefined;
 
   constructor(payload?: SuperfaceTestConfig, nockConfig?: NockConfig) {
     this.configuration = payload;
     this.nockConfig = nockConfig;
-    this.generator = getGenerator(nockConfig?.testInstance);
+
+    ({ generator: this.generator, getTestFilePath: this.getTestFilePath } =
+      parseTestInstance(nockConfig?.testInstance));
   }
 
   /**
@@ -69,20 +68,31 @@ export class SuperfaceTest {
 
     // Create a hash for access to recording files
     const { input, testName } = testCase;
-    const hash = this.generator.hash({ input, testName });
+    const recordingsHash = this.generator.hash({ input, testName });
 
-    debugHashing('Created hash:', hash);
+    debugHashing('Created hash:', recordingsHash);
 
-    const recordingPath = this.setupRecordingPath(
-      getFixtureName(sf.profileId, sf.providerName, sf.useCaseName),
-      hash
+    const recordingsKey = getFixtureName(
+      sf.profileId,
+      sf.providerName,
+      sf.useCaseName
+    );
+    const recordingsPath = this.setupRecordingPath(
+      sf.profileId,
+      sf.providerName
     );
 
-    debugSetup('Prepared path to recording:', recordingPath);
+    debugSetup('Prepared path to recording:', recordingsPath);
+    debugSetup(
+      'Current recordings located at:',
+      `${recordingsKey}.${recordingsHash}`
+    );
 
-    // Replace currently supported traffic with new (with changes)
-    if (await canUpdateTraffic(recordingPath)) {
-      await updateTraffic(recordingPath);
+    // Merge currently supported traffic with new (with changes)
+    if (await canUpdateTraffic(recordingsPath)) {
+      debug('Updating current recordings file with new recordings file.');
+
+      await updateTraffic(recordingsPath);
     }
 
     // Parse env variable and check if test should be recorded
@@ -94,12 +104,16 @@ export class SuperfaceTest {
     );
     const processRecordings = options?.processRecordings ?? true;
     const inputVariables = searchValues(testCase.input, options?.hideInput);
+    const recordingsType = options?.recordingType ?? RecordingType.MAIN;
 
     if (record) {
       await startRecording(this.nockConfig?.enableReqheadersRecording);
     } else {
       await loadRecording({
-        recordingPath,
+        recordingsPath,
+        recordingsType,
+        recordingsHash,
+        recordingsKey,
         inputVariables,
         config: {
           boundProfileProvider: sf.boundProfileProvider,
@@ -119,14 +133,19 @@ export class SuperfaceTest {
 
       if (record) {
         this.analysis = await endRecording({
-          recordingPath,
-          processRecordings,
+          recordingsPath,
+          recordingsType,
+          recordingsHash,
+          recordingsKey,
           inputVariables,
           config: {
             boundProfileProvider: sf.boundProfileProvider,
             providerName: sf.providerName,
           },
-          beforeRecordingSave: options?.beforeRecordingSave,
+          options: {
+            processRecordings,
+            beforeRecordingSave: options?.beforeRecordingSave,
+          },
         });
       } else {
         restoreRecordings();
@@ -150,8 +169,8 @@ export class SuperfaceTest {
       await saveReport({
         input,
         result,
-        hash: this.generator.hash({ input, testName }),
-        recordingPath,
+        recordingsHash,
+        recordingsPath,
         profileId: sf.profileId,
         providerName: sf.providerName,
         useCaseName: sf.useCaseName,
@@ -195,14 +214,25 @@ export class SuperfaceTest {
 
   /**
    * Sets up path to recording, depends on current Superface configuration and test case input.
+   * It also tries to look for current test file from test instance to save recordings
+   * next to test files.
    */
-  private setupRecordingPath(fixtureName: string, inputHash: string): string {
+  private setupRecordingPath(profileId: string, providerName: string): string {
     const { path, fixture } = this.nockConfig ?? {};
+    const fixtureName = `${providerName}.${fixture ?? 'recording'}`;
+    const testFilePath = this.getTestFilePath();
 
-    return joinPath(
-      path ?? joinPath(process.cwd(), 'nock'),
-      fixtureName,
-      `${fixture ?? 'recording'}-${inputHash}`
-    );
+    if (testFilePath === undefined) {
+      return joinPath(
+        path ?? joinPath(process.cwd(), 'recordings'),
+        profileId,
+        fixtureName
+      );
+    } else {
+      return joinPath(
+        path ?? joinPath(dirname(testFilePath), 'recordings'),
+        fixtureName
+      );
+    }
   }
 }

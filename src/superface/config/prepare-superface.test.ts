@@ -19,6 +19,10 @@ jest.mock('./create-bound-profile-provider', () => ({
 }));
 
 describe('prepare superface module', () => {
+  afterEach(() => {
+    jest.resetAllMocks();
+  });
+
   describe('prepareSuperface', () => {
     it('fails when no useCase is specified', async () => {
       await expect(prepareSuperface({})).rejects.toThrowError(

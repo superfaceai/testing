@@ -111,11 +111,29 @@ export class SuperJsonLoadingFailedError extends ErrorBase {
   }
 }
 
-export class RecordingsNotFoundError extends ErrorBase {
+export class RecordingsFileNotFoundError extends ErrorBase {
   constructor(path: string) {
     super(
-      'RecordingsNotFoundError',
-      `Recordings could not be found for running mocked tests at "${path}".\nYou must call the live API first to record API traffic.\nUse the environment variable SUPERFACE_LIVE_API to call the API and record traffic.\nSee https://github.com/superfaceai/testing#recording to learn more.`
+      'RecordingsFileNotFoundError',
+      `Recordings file could not be found for running mocked tests at "${path}".\nYou must call the live API first to record API traffic.\nUse the environment variable SUPERFACE_LIVE_API to call the API and record traffic.\nSee https://github.com/superfaceai/testing#recording to learn more.`
+    );
+  }
+}
+
+export class RecordingsIndexNotFoundError extends ErrorBase {
+  constructor(path: string, index: string) {
+    super(
+      'RecordingsIndexNotFoundError',
+      `Recordings index "${index}" could not be found in recordings file at "${path}".\nYou must call the live API first to record API traffic.\nUse the environment variable SUPERFACE_LIVE_API to call the API and record traffic.\nSee https://github.com/superfaceai/testing#recording to learn more.`
+    );
+  }
+}
+
+export class RecordingsHashNotFoundError extends ErrorBase {
+  constructor(path: string, index: string, hash: string) {
+    super(
+      'RecordingsHashNotFoundError',
+      `Recordings hash "${hash}" under index "${index}" could not be found in recordings file at "${path}".\nYou must call the live API first to record API traffic.\nUse the environment variable SUPERFACE_LIVE_API to call the API and record traffic.\nSee https://github.com/superfaceai/testing#recording to learn more.`
     );
   }
 }

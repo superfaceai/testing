@@ -1,31 +1,20 @@
 import { BoundProfileProvider } from '@superfaceai/one-sdk';
 import createDebug from 'debug';
-import { decodeBuffer } from 'http-encoding';
 import {
   activate as activateNock,
   define as loadRecordingDefinitions,
   disableNetConnect,
   isActive as isNockActive,
   recorder,
-  ReplyBody,
   restore as restoreRecordings,
 } from 'nock';
-import { basename, dirname, join as joinPath } from 'path';
-import { URLSearchParams } from 'url';
 
-import {
-  BaseURLNotFoundError,
-  RecordingsNotFoundError,
-  UnexpectedError,
-} from '../common/errors';
-import { exists, mkdirQuiet, readFileQuiet, rename } from '../common/io';
+import { BaseURLNotFoundError } from '../common/errors';
 import { writeRecordings } from '../common/output-stream';
 import {
   AnalysisResult,
   InputVariables,
   ProcessingFunction,
-  RecordingDefinition,
-  RecordingDefinitions,
 } from '../superface-test.interfaces';
 import {
   assertsDefinitionsAreNotStrings,
@@ -33,9 +22,18 @@ import {
   parseBooleanEnv,
   replaceCredentials,
 } from '../superface-test.utils';
+import { MatchImpact } from './analyzer';
 import { matchTraffic } from './matcher';
+import {
+  composeRecordingPath,
+  decodeRecordings,
+  getRecordings,
+  handleRecordings,
+} from './recorder.utils';
+import { RecordingType } from './recording.interfaces';
 
 const debug = createDebug('superface:testing');
+const debugRecordings = createDebug('superface:testing:recordings');
 
 /**
  * Starts recording HTTP traffic.
@@ -66,12 +64,18 @@ export async function startRecording(
  * Recordings do not get processed if user specifies parameter `processRecordings` as false.
  */
 export async function loadRecording({
-  recordingPath,
+  recordingsPath,
+  recordingsType,
+  recordingsKey,
+  recordingsHash,
   inputVariables,
   config: { boundProfileProvider, providerName },
   options,
 }: {
-  recordingPath: string;
+  recordingsPath: string;
+  recordingsType: RecordingType;
+  recordingsKey: string;
+  recordingsHash: string;
   inputVariables?: InputVariables;
   config: {
     boundProfileProvider: BoundProfileProvider;
@@ -82,7 +86,12 @@ export async function loadRecording({
     beforeRecordingLoad?: ProcessingFunction;
   };
 }): Promise<void> {
-  const definitions = await getRecordings(recordingPath);
+  const definitions = await getRecordings(
+    recordingsPath,
+    recordingsType,
+    recordingsKey,
+    recordingsHash
+  );
   const { parameters, security, services } = boundProfileProvider.configuration;
   const integrationParameters = parameters ?? {};
   const baseUrl = services.getUrl();
@@ -131,20 +140,27 @@ export async function loadRecording({
  * unless user pass in false for parameter `processRecordings`.
  */
 export async function endRecording({
-  recordingPath,
-  processRecordings,
+  recordingsPath,
+  recordingsType,
+  recordingsKey,
+  recordingsHash,
   config: { boundProfileProvider, providerName },
   inputVariables,
-  beforeRecordingSave,
+  options,
 }: {
-  recordingPath: string;
-  processRecordings: boolean;
+  recordingsPath: string;
+  recordingsType: RecordingType;
+  recordingsKey: string;
+  recordingsHash: string;
+  inputVariables?: InputVariables;
   config: {
     boundProfileProvider: BoundProfileProvider;
     providerName: string;
   };
-  inputVariables?: InputVariables;
-  beforeRecordingSave?: ProcessingFunction;
+  options?: {
+    processRecordings?: boolean;
+    beforeRecordingSave?: ProcessingFunction;
+  };
 }): Promise<AnalysisResult | undefined> {
   let definitions = recorder.play();
   recorder.clear();
@@ -154,14 +170,34 @@ export async function endRecording({
     'Recording ended - Restored HTTP requests and cleared recorded traffic'
   );
 
-  const recordingExists = await exists(composeRecordingPath(recordingPath));
-  if (definitions === undefined || definitions.length === 0) {
-    const path = composeRecordingPath(
-      recordingPath,
-      recordingExists ? { version: 'new' } : undefined
-    );
+  const path = composeRecordingPath(recordingsPath);
+  const newRecordingsFilePath = composeRecordingPath(recordingsPath, 'new');
+  const canSaveNewTraffic = parseBooleanEnv(process.env.STORE_NEW_TRAFFIC);
 
-    await writeRecordings(path, []);
+  const recordingsIndex =
+    recordingsType !== RecordingType.MAIN
+      ? `${recordingsType}-${recordingsKey}`
+      : recordingsKey;
+
+  debugRecordings(`Recordings location: ${recordingsIndex}.${recordingsHash}`);
+
+  if (definitions === undefined || definitions.length === 0) {
+    const result = await handleRecordings({
+      recordingsFilePath: path,
+      newRecordingsFilePath,
+      recordingsIndex,
+      recordingsHash,
+      canSaveNewTraffic,
+      recordings: [],
+    });
+
+    if (result !== undefined) {
+      if (result.kind === 'default') {
+        await writeRecordings(path, result.file);
+      } else if (result.kind === 'new') {
+        await writeRecordings(newRecordingsFilePath, result.file);
+      }
+    }
 
     return undefined;
   }
@@ -172,7 +208,7 @@ export async function endRecording({
   const { security, parameters, services } = boundProfileProvider.configuration;
   const integrationParameters = parameters ?? {};
 
-  if (processRecordings) {
+  if (options?.processRecordings) {
     const baseUrl = services.getUrl();
 
     if (baseUrl === undefined) {
@@ -189,10 +225,10 @@ export async function endRecording({
     });
   }
 
-  if (beforeRecordingSave) {
+  if (options?.beforeRecordingSave) {
     debug("Calling custom 'beforeRecordingSave' hook on recorded definitions");
 
-    await beforeRecordingSave(definitions);
+    await options.beforeRecordingSave(definitions);
   }
 
   if (
@@ -209,230 +245,38 @@ export async function endRecording({
     );
   }
 
-  if (recordingExists) {
-    return await matchTraffic(recordingPath, definitions);
-  }
-
-  // recording file does not exist -> record new traffic
-  const path = composeRecordingPath(recordingPath);
-
-  await writeRecordings(path, definitions);
-
-  debug('Recorded definitions written');
-
-  return undefined;
-}
-
-export function composeRecordingPath(
-  recordingPath: string,
-  options?: {
-    version?: string;
-  }
-): string {
-  if (options?.version === 'new') {
-    return `${recordingPath}-new.json`;
-  }
-
-  if (options?.version !== undefined) {
-    const baseDir = dirname(recordingPath);
-    const hash = basename(recordingPath);
-
-    return joinPath(baseDir, 'old', `${hash}-${options.version}.json`);
-  }
-
-  return `${recordingPath}.json`;
-}
-
-export async function getRecordings(
-  recordingPath: string
-): Promise<RecordingDefinitions> {
-  // try to get new recordings if environment variable is set
-  const useNewTraffic = parseBooleanEnv(process.env.USE_NEW_TRAFFIC);
-  const newRecordingPath = composeRecordingPath(recordingPath, {
-    version: 'new',
+  const result = await handleRecordings({
+    recordingsFilePath: path,
+    newRecordingsFilePath,
+    recordingsIndex,
+    recordingsHash,
+    canSaveNewTraffic,
+    recordings: definitions,
   });
 
-  if (useNewTraffic && (await exists(newRecordingPath))) {
-    return await parseRecordings(newRecordingPath);
-  }
+  if (result !== undefined) {
+    if (result.kind === 'default') {
+      debugRecordings('Writing to current recordings file', result.file);
 
-  // otherwise use default ones
-  const currentRecordingPath = composeRecordingPath(recordingPath);
-  const recordingExists = await exists(currentRecordingPath);
+      await writeRecordings(path, result.file);
+    } else if (result.kind === 'new') {
+      const analysis = await matchTraffic(result.oldRecordings, definitions);
 
-  if (!recordingExists) {
-    throw new RecordingsNotFoundError(currentRecordingPath);
-  }
+      debugRecordings('Matched incoming traffic with old one', analysis);
 
-  return await parseRecordings(currentRecordingPath);
-}
+      if (analysis.impact !== MatchImpact.NONE) {
+        debugRecordings('Writing to new recordings file', result.file);
 
-export async function parseRecordings(
-  path: string
-): Promise<RecordingDefinitions> {
-  const definitionFile = await readFileQuiet(path);
+        await writeRecordings(newRecordingsFilePath, result.file);
+      }
 
-  if (definitionFile === undefined) {
-    throw new UnexpectedError('Reading new recording file failed');
-  }
+      debugRecordings('No impact, incoming traffic is not stored');
 
-  debug(`Parsing recording file at: "${path}"`);
-
-  return JSON.parse(definitionFile) as RecordingDefinitions;
-}
-
-export async function updateTraffic(recordingPath: string): Promise<void> {
-  const pathToCurrent = composeRecordingPath(recordingPath);
-  const pathToNew = composeRecordingPath(recordingPath, { version: 'new' });
-
-  await mkdirQuiet(joinPath(dirname(pathToCurrent), 'old'));
-
-  // TODO: compose version based on used map
-  let i = 0;
-  while (
-    await exists(composeRecordingPath(recordingPath, { version: `${i}` }))
-  ) {
-    i++;
-  }
-
-  await rename(
-    pathToCurrent,
-    composeRecordingPath(recordingPath, { version: `${i}` })
-  );
-  await rename(pathToNew, pathToCurrent);
-}
-
-export async function canUpdateTraffic(
-  recordingPath: string
-): Promise<boolean> {
-  const updateTraffic = parseBooleanEnv(process.env.UPDATE_TRAFFIC);
-
-  if (
-    updateTraffic &&
-    (await exists(composeRecordingPath(recordingPath, { version: 'new' })))
-  ) {
-    return true;
-  }
-
-  return false;
-}
-
-export async function decodeRecordings(
-  recordings: RecordingDefinition[]
-): Promise<RecordingDefinition[]> {
-  return Promise.all(recordings.map(decodeRecordingResponse));
-}
-
-export async function decodeRecordingResponse(
-  recording: RecordingDefinition
-): Promise<RecordingDefinition> {
-  const contentEncoding = getResponseHeaderValue(
-    'Content-Encoding',
-    recording.rawHeaders ?? []
-  );
-
-  if (contentEncoding === undefined) {
-    return recording;
-  }
-
-  const decodedResponse = await decodeResponse(
-    recording.response,
-    contentEncoding
-  );
-
-  return {
-    ...recording,
-    decodedResponse,
-  };
-}
-
-export function getRequestHeaderValue(
-  headerName: string,
-  payload: Record<string, string | string[]>
-): string | string[] | undefined {
-  const headerKey = Object.keys(payload).find(
-    key => key.toLowerCase() === headerName.toLowerCase()
-  );
-
-  return headerKey ? payload[headerKey] : undefined;
-}
-
-export function getResponseHeaderValue(
-  headerName: string,
-  payload: string[]
-): string | undefined {
-  for (let i = 0; i < payload.length; i += 2) {
-    if (payload[i].toLowerCase() === headerName.toLowerCase()) {
-      return payload[i + 1];
+      return analysis;
     }
+
+    debug('Recorded definitions written');
   }
 
   return undefined;
-}
-
-/* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-function composeBuffer(response: any[]): Buffer {
-  return Buffer.concat(response.map(res => Buffer.from(res, 'hex')));
-}
-
-export async function decodeResponse(
-  response: ReplyBody | undefined,
-  contentEncoding: string
-): Promise<ReplyBody | undefined> {
-  if (response === undefined) {
-    return response;
-  }
-
-  if (!Array.isArray(response)) {
-    throw new UnexpectedError(
-      `Response is encoded by "${contentEncoding}" and is not an array`
-    );
-  }
-
-  const buffer = composeBuffer(response);
-
-  if (contentEncoding.toLowerCase() === 'gzip') {
-    return JSON.parse(
-      (await decodeBuffer(buffer, contentEncoding)).toString()
-    ) as ReplyBody;
-  } else {
-    throw new UnexpectedError(
-      `Content encoding ${contentEncoding} is not supported`
-    );
-  }
-}
-
-/**
- * Expect something like `To=%2Bxxx&From=%2Bxxx&Body=Hello+World%21`
- * and want back: `{ To: "+xxx", From: "+xxx", Body: "Hello World!" }`
- *
- * Limitation:
- *  since URLSearchParams always transform params to string we can't
- *  generate correct schema for this if it contains numbers or booleans
- */
-export function parseBody(
-  body: string,
-  _accept?: string
-): Record<string, unknown> | undefined {
-  if (body === '') {
-    return undefined;
-  }
-
-  const parsedBody = decodeURIComponent(body);
-  const result: Record<string, unknown> = {};
-  const params = new URLSearchParams(parsedBody);
-
-  for (const [key, value] of params.entries()) {
-    // parse value
-    let parsedValue: unknown;
-    if (value.startsWith('{') || value.startsWith('[')) {
-      parsedValue = JSON.parse(value);
-    } else {
-      parsedValue = value;
-    }
-
-    result[key] = parsedValue;
-  }
-
-  return result;
 }

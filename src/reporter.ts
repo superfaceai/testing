@@ -25,17 +25,17 @@ const debug = createDebug('superface:testing:reporter');
 export async function saveReport({
   input,
   result,
-  hash,
+  recordingsHash,
+  recordingsPath,
   analysis,
-  recordingPath,
   profileId,
   providerName,
   useCaseName,
 }: {
   input: NonPrimitive;
   result: TestingReturn;
-  hash: string;
-  recordingPath: string;
+  recordingsHash: string;
+  recordingsPath: string;
   analysis: ImpactResult;
   profileId: string;
   providerName: string;
@@ -45,12 +45,12 @@ export async function saveReport({
   const coveragePath = joinPath(
     DEFAULT_COVERAGE_PATH,
     getFixtureName(profileId, providerName, useCaseName),
-    `coverage-${hash}.json`
+    `coverage-${recordingsHash}.json`
   );
 
   const data: TestAnalysis = {
     ...analysis,
-    recordingPath,
+    recordingsPath,
     profileId,
     providerName,
     useCaseName,

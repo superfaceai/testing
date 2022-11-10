@@ -13,7 +13,7 @@ import { ReplyBody, RequestBodyMatcher } from 'nock/types';
 import { URL } from 'url';
 
 import { RecordingDefinition } from '..';
-import { getResponseHeaderValue } from './recorder';
+import { getResponseHeaderValue } from './recorder.utils';
 
 interface ReplaceOptions {
   definition: RecordingDefinition;

@@ -1,5 +1,8 @@
 import { MatchHeaders } from './matcher';
-import { getRequestHeaderValue, getResponseHeaderValue } from './recorder';
+import {
+  getRequestHeaderValue,
+  getResponseHeaderValue,
+} from './recorder.utils';
 
 export function getRequestHeader(
   oldHeaders: Record<string, string | string[]>,
