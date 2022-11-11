@@ -1,4 +1,3 @@
-import { MatchImpact } from '../interfaces';
 import {
   ErrorCollection,
   MatchError,
@@ -7,6 +6,7 @@ import {
   MatchErrorResponseHeaders,
   MatchErrorStatus,
 } from '../matcher/errors';
+import { MatchImpact } from './analyzer.interfaces';
 
 export function analyzeChangeImpact(
   errors: ErrorCollection<MatchError>

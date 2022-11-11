@@ -4,18 +4,12 @@ import { createSchema } from 'genson-js/dist';
 import { ReplyBody } from 'nock/types';
 import { inspect } from 'util';
 
-import { analyzeChangeImpact } from '../analyzer';
+import { AnalysisResult, analyzeChangeImpact, MatchImpact } from '../analyzer';
+import { parseBody } from '../recording';
 import {
-  AnalysisResult,
-  MatchHeaders,
-  MatchImpact,
-  MatchResult,
   RecordingDefinition,
   RecordingDefinitions,
-  RequestHeaderMatch,
-  ResponseHeaderMatch,
-} from '../interfaces';
-import { parseBody } from '../recording';
+} from '../recording/recording.interfaces';
 import { ErrorCollector } from './error-collector';
 import {
   ErrorType,
@@ -30,6 +24,12 @@ import {
   MatchErrorResponseHeaders,
   MatchErrorStatus,
 } from './errors';
+import {
+  MatchHeaders,
+  MatchResult,
+  RequestHeaderMatch,
+  ResponseHeaderMatch,
+} from './matcher.interfaces';
 import { getRequestHeader, getResponseHeader } from './utils';
 
 const schemaValidator = new Ajv({

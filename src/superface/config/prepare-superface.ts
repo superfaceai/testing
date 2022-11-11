@@ -10,8 +10,9 @@ import {
   UseCase,
 } from '@superfaceai/one-sdk';
 
+import { SuperfaceTestConfig } from '../../client';
 import { ComponentUndefinedError } from '../../common/errors';
-import { SuperfaceConfiguration, SuperfaceTestConfig } from '../../interfaces';
+import { SuperfaceConfiguration } from './config.interfaces';
 import { createBoundProfileProvider } from './create-bound-profile-provider';
 import { prepareFiles } from './prepare-files';
 

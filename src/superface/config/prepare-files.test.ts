@@ -1,7 +1,7 @@
 import { mocked } from 'ts-jest/utils';
 
+import { SuperfaceTestConfig } from '../../client';
 import { ComponentUndefinedError } from '../../common/errors';
-import { SuperfaceTestConfig } from '../../interfaces';
 import { mockMapAST, mockProfileAST } from '../mock/ast';
 import { mockProviderJson } from '../mock/provider';
 import { mockSuperJson } from '../mock/super-json';

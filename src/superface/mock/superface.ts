@@ -14,7 +14,7 @@ import {
   ServiceSelector,
 } from '@superfaceai/one-sdk';
 
-import { SuperfaceConfiguration } from '../../interfaces';
+import { SuperfaceConfiguration } from '../config';
 import { mockMapAST, mockProfileAST } from './ast';
 import { mockBoundProfileProvider } from './boundProfileProvider';
 import { mockProviderJson } from './provider';

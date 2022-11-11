@@ -12,7 +12,7 @@ import {
   NockConfig,
   ProcessingFunction,
   RecordingDefinitions,
-} from '../interfaces';
+} from '../recording/recording.interfaces';
 import { assertsDefinitionsAreNotStrings } from './utils';
 
 const debug = createDebug('superface:recording');

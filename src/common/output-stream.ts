@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import { dirname } from 'path';
 import { Writable } from 'stream';
 
-import { TestRecordings } from '../interfaces';
+import { TestRecordings } from '../recording/recording.interfaces';
 import { exists, streamEnd, streamWrite, WritingOptions } from './io';
 
 export class OutputStream {

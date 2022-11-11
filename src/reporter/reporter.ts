@@ -2,16 +2,12 @@ import { NonPrimitive } from '@superfaceai/one-sdk';
 import createDebug from 'debug';
 import { join as joinPath } from 'path';
 
+import { ImpactResult, TestAnalysis, TestReport } from '../analyzer';
+import { TestingReturn } from '../client';
 import { CoverageFileNotFoundError } from '../common/errors';
 import { getFixtureName } from '../common/format';
 import { exists, readFileQuiet, readFilesInDir, rimraf } from '../common/io';
 import { OutputStream } from '../common/output-stream';
-import {
-  ImpactResult,
-  TestAnalysis,
-  TestingReturn,
-  TestReport,
-} from '../interfaces';
 import { ErrorCollection, MatchError } from '../matcher/errors';
 
 export const DEFAULT_COVERAGE_PATH = 'superface-test-coverage';

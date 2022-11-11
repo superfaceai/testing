@@ -1,8 +1,8 @@
 import { NonPrimitive } from '@superfaceai/one-sdk';
 
+import { TestingReturn } from '../client/superface-test.interfaces';
 import { MatchError } from '../matcher/errors';
-import { ErrorCollection } from './matcher';
-import { TestingReturn } from './superface-test';
+import { ErrorCollection } from '../matcher/matcher.interfaces';
 
 export enum MatchImpact {
   MAJOR = 'major',

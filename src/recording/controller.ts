@@ -1,18 +1,13 @@
 import { BoundProfileProvider } from '@superfaceai/one-sdk';
 import createDebug from 'debug';
 
-import { parseBooleanEnv } from '../client';
+import { AnalysisResult, MatchImpact } from '../analyzer';
+import { InputVariables, parseBooleanEnv } from '../client';
 import { BaseURLNotFoundError } from '../common/errors';
 import { writeRecordings } from '../common/output-stream';
-import {
-  AnalysisResult,
-  InputVariables,
-  MatchImpact,
-  ProcessingFunction,
-  RecordingType,
-} from '../interfaces';
 import { matchTraffic } from '../matcher/matcher';
 import { endRecording, loadRecordings } from './recorder';
+import { ProcessingFunction, RecordingType } from './recording.interfaces';
 import { checkSensitiveInformation, replaceCredentials } from './replace/utils';
 import {
   composeRecordingPath,

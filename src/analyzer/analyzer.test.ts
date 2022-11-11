@@ -1,10 +1,10 @@
-import { MatchImpact } from '../interfaces';
 import {
   MatchErrorRequestHeaders,
   MatchErrorResponse,
   MatchErrorResponseHeaders,
 } from '../matcher/errors';
 import { analyzeChangeImpact } from './analyzer';
+import { MatchImpact } from './analyzer.interfaces';
 
 describe('Analyze module', () => {
   describe('analyzeChangeImpact', () => {

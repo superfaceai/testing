@@ -1,9 +1,9 @@
-import { IGenerator } from '../interfaces';
 import {
   InputGenerateHash,
   JestGenerateHash,
   MochaGenerateHash,
 } from './generator';
+import { IGenerator } from './hash.interfaces';
 
 function hasProperty<K extends PropertyKey>(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

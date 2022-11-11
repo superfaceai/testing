@@ -4,7 +4,10 @@ import {
   RequestHeaderMatcher,
 } from 'nock/types';
 
-import { RecordingDefinition, RecordingDefinitions } from '../interfaces';
+import {
+  RecordingDefinition,
+  RecordingDefinitions,
+} from '../recording/recording.interfaces';
 import {
   MatchErrorBaseURL,
   MatchErrorLength,

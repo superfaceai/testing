@@ -9,7 +9,7 @@ import {
   UseCase,
 } from '@superfaceai/one-sdk';
 
-import { HashOptions } from './hash';
+import { HashOptions } from '../hash-generator/hash.interfaces';
 
 export type InputVariables = Record<string, Primitive>;
 export type PerformError =

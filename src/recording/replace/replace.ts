@@ -12,15 +12,10 @@ import createDebug from 'debug';
 import { ReplyBody, RequestBodyMatcher } from 'nock/types';
 import { URL } from 'url';
 
-import { RecordingDefinition } from '../../interfaces';
+import { RecordingDefinition } from '../recording.interfaces';
 import { getResponseHeaderValue } from '../utils';
+import { ReplaceOptions } from './replace.interfaces';
 import { includes, replaceCredential } from './utils';
-
-export interface ReplaceOptions {
-  definition: RecordingDefinition;
-  credential: string;
-  placeholder: string;
-}
 
 const debug = createDebug('superface:testing:recordings');
 const debugSensitive = createDebug('superface:testing:recordings:sensitive');

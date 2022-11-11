@@ -3,21 +3,10 @@ import createDebug from 'debug';
 import { enableNetConnect, recorder, restore as restoreRecordings } from 'nock';
 import { dirname, join as joinPath } from 'path';
 
+import { AnalysisResult, MatchImpact } from '../analyzer/analyzer.interfaces';
 import { UnexpectedError } from '../common/errors';
 import { getFixtureName, matchWildCard } from '../common/format';
-import { parseTestInstance } from '../hash-generator';
-import {
-  AnalysisResult,
-  IGenerator,
-  MatchImpact,
-  NockConfig,
-  PerformError,
-  RecordingProcessOptions,
-  RecordingType,
-  SuperfaceTestConfig,
-  SuperfaceTestRun,
-  TestingReturn,
-} from '../interfaces';
+import { IGenerator, parseTestInstance } from '../hash-generator';
 import {
   canUpdateTraffic,
   endAndProcessRecording,
@@ -25,8 +14,19 @@ import {
   startRecording,
   updateTraffic,
 } from '../recording';
+import {
+  NockConfig,
+  RecordingProcessOptions,
+  RecordingType,
+} from '../recording/recording.interfaces';
 import { saveReport } from '../reporter';
 import { prepareSuperface } from '../superface/config';
+import {
+  PerformError,
+  SuperfaceTestConfig,
+  SuperfaceTestRun,
+  TestingReturn,
+} from './superface-test.interfaces';
 import { mapError, parseBooleanEnv, searchValues } from './utils';
 
 const debug = createDebug('superface:testing');

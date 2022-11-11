@@ -10,8 +10,8 @@ import {
   profileAstId,
 } from '@superfaceai/one-sdk';
 
+import { SuperfaceTestConfig } from '../../client';
 import { ComponentUndefinedError } from '../../common/errors';
-import { SuperfaceTestConfig } from '../../interfaces';
 import { getMapAst, getProfileAst } from './prepare-ast';
 import { getProviderJson } from './prepare-provider-json';
 import { getSuperJson } from './prepare-super-json';

@@ -2,12 +2,12 @@ import { SecurityValues } from '@superfaceai/ast';
 import { SecurityConfiguration } from '@superfaceai/one-sdk';
 import createDebug from 'debug';
 
+import { InputVariables } from '../../client';
 import { UnexpectedError } from '../../common/errors';
 import {
-  InputVariables,
   RecordingDefinition,
   RecordingDefinitions,
-} from '../../interfaces';
+} from '../../recording/recording.interfaces';
 import {
   replaceCredentialInDefinition,
   replaceInputInDefinition,

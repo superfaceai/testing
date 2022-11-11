@@ -2,10 +2,10 @@ import { ok } from '@superfaceai/one-sdk';
 import { join as joinPath } from 'path';
 import { mocked } from 'ts-jest/utils';
 
+import { ImpactResult, MatchImpact, TestReport } from '../analyzer';
 import { CoverageFileNotFoundError } from '../common/errors';
 import { exists, readFileQuiet, readFilesInDir } from '../common/io';
 import { OutputStream } from '../common/output-stream';
-import { ImpactResult, MatchImpact, TestReport } from '../interfaces';
 import { DEFAULT_COVERAGE_PATH, report, saveReport } from './reporter';
 
 jest.mock('../common/io');

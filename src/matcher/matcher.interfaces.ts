@@ -1,5 +1,5 @@
-import { MatchError } from '../matcher/errors';
-import { RecordingDefinitions } from './recording';
+import { RecordingDefinitions } from '../recording/recording.interfaces';
+import { MatchError } from './errors';
 
 export interface IMatcher {
   match: (

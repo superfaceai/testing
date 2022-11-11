@@ -1,4 +1,4 @@
-import { RecordingDefinition } from './recording';
+import { RecordingDefinition } from '../recording.interfaces';
 
 export interface ReplaceOptions {
   definition: RecordingDefinition;

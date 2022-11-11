@@ -24,7 +24,7 @@ import {
   RecordingDefinitions,
   RecordingType,
   TestRecordings,
-} from '../interfaces';
+} from '../recording/recording.interfaces';
 
 const debug = createDebug('superface:testing');
 const debugRecordings = createDebug('superface:testing:recordings');

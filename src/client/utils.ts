@@ -6,10 +6,7 @@ import {
   Variables,
 } from '@superfaceai/one-sdk';
 
-// import createDebug from 'debug';
-import { InputVariables, PerformError } from '../interfaces';
-
-// const debug = createDebug('superface:testing');
+import { InputVariables, PerformError } from './superface-test.interfaces';
 
 export function searchValues(
   input: NonPrimitive,
