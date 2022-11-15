@@ -18,7 +18,11 @@ import {
   RecordingType,
   TestRecordings,
 } from './recording.interfaces';
-import { checkSensitiveInformation, replaceCredentials } from './replace/utils';
+import * as utils from './replace/utils';
+import {
+  HIDDEN_CREDENTIALS_PLACEHOLDER,
+  HIDDEN_PARAMETERS_PLACEHOLDER,
+} from './replace/utils';
 import { getRecordings, handleRecordings } from './utils';
 
 jest.mock('./utils', () => ({
@@ -30,11 +34,6 @@ jest.mock('./utils', () => ({
 jest.mock('./recorder', () => ({
   endRecording: jest.fn(),
   loadRecordings: jest.fn(),
-}));
-
-jest.mock('./replace/utils', () => ({
-  replaceCredentials: jest.fn(),
-  checkSensitiveInformation: jest.fn(),
 }));
 
 jest.mock('../common/output-stream', () => ({
@@ -134,23 +133,13 @@ describe('recorder controller', () => {
       const sampleRecordings = [
         {
           scope: 'https://localhost',
-          path: '/?api_key=SECURITY_api-key',
+          path: `/?api_key=${HIDDEN_CREDENTIALS_PLACEHOLDER}api-key`,
           status: 200,
-          response: { auth: 'PARAMS_param' },
+          response: { auth: `${HIDDEN_PARAMETERS_PLACEHOLDER}param` },
         },
       ];
 
-      const replaceSpy = mocked(replaceCredentials).mockImplementation(
-        options => {
-          options.definitions.forEach((_, i) => {
-            options.definitions[i] = {
-              ...options.definitions[i],
-              path: `/?api_key=${secret}`,
-              response: { auth: integrationParam },
-            };
-          });
-        }
-      );
+      const replaceSpy = jest.spyOn(utils, 'replaceCredentials');
       const loadRecordingsSpy = mocked(loadRecordings);
       mocked(getRecordings).mockResolvedValue(sampleRecordings);
 
@@ -275,7 +264,11 @@ describe('recorder controller', () => {
         response: { auth: secret },
       };
 
-      const checkSensitiveInformationSpy = mocked(checkSensitiveInformation);
+      const checkSensitiveInformationSpy = jest.spyOn(
+        utils,
+        'checkSensitiveInformation'
+      );
+
       mocked(endRecording).mockReturnValue([sampleRecordings]);
 
       await endAndProcessRecording({
@@ -582,17 +575,7 @@ describe('recorder controller', () => {
           kind: 'default',
           file: prepareFile(sampleRecordings),
         });
-        const replaceSpy = mocked(replaceCredentials).mockImplementation(
-          options => {
-            options.definitions.forEach((_, i) => {
-              options.definitions[i] = {
-                ...options.definitions[i],
-                path: '/?api_key=SECURITY_api-key',
-                response: { auth: 'PARAMS_param' },
-              };
-            });
-          }
-        );
+        const replaceSpy = jest.spyOn(utils, 'replaceCredentials');
         const playSpy = mocked(endRecording).mockReturnValue(sampleRecordings);
 
         await endAndProcessRecording({
@@ -615,9 +598,9 @@ describe('recorder controller', () => {
           recordings: [
             {
               scope: 'https://localhost',
-              path: '/?api_key=SECURITY_api-key',
+              path: `/?api_key=${HIDDEN_CREDENTIALS_PLACEHOLDER}api-key`,
               status: 200,
-              response: { auth: 'PARAMS_param' },
+              response: { auth: `${HIDDEN_PARAMETERS_PLACEHOLDER}param` },
             },
           ],
         });
