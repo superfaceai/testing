@@ -19,6 +19,66 @@ import {
 const debug = createDebug('superface:recording-controller');
 const debugRecordings = createDebug('superface:testing:recordings');
 
+export async function processAndLoadRecordings({
+  recordingsPath,
+  recordingsType,
+  recordingsKey,
+  recordingsHash,
+  inputVariables,
+  config: { boundProfileProvider, providerName },
+  options,
+}: {
+  recordingsPath: string;
+  recordingsType: RecordingType;
+  recordingsKey: string;
+  recordingsHash: string;
+  inputVariables?: InputVariables;
+  config: {
+    boundProfileProvider: BoundProfileProvider;
+    providerName: string;
+  };
+  options?: {
+    processRecordings?: boolean;
+    beforeRecordingLoad?: ProcessingFunction;
+  };
+}): Promise<void> {
+  const definitions = await getRecordings(
+    recordingsPath,
+    recordingsType,
+    recordingsKey,
+    recordingsHash
+  );
+  const { parameters, security, services } = boundProfileProvider.configuration;
+  const integrationParameters = parameters ?? {};
+  const baseUrl = services.getUrl();
+
+  if (baseUrl === undefined) {
+    throw new BaseURLNotFoundError(providerName);
+  }
+
+  if (options?.processRecordings) {
+    //Use security configuration only
+    replaceCredentials({
+      definitions,
+      security,
+      integrationParameters,
+      inputVariables,
+      baseUrl,
+      beforeSave: false,
+    });
+  }
+
+  if (options?.beforeRecordingLoad) {
+    debug(
+      "Calling custom 'beforeRecordingLoad' hook on loaded recording definitions"
+    );
+
+    await options.beforeRecordingLoad(definitions);
+  }
+
+  await loadRecordings(definitions);
+}
+
 export async function endAndProcessRecording({
   recordingsPath,
   recordingsType,
@@ -150,56 +210,4 @@ export async function endAndProcessRecording({
   }
 
   return undefined;
-}
-
-export async function processAndLoadRecordings({
-  recordingsPath,
-  recordingsType,
-  recordingsKey,
-  recordingsHash,
-  inputVariables,
-  config: { boundProfileProvider, providerName },
-  options,
-}: {
-  recordingsPath: string;
-  recordingsType: RecordingType;
-  recordingsKey: string;
-  recordingsHash: string;
-  inputVariables?: InputVariables;
-  config: {
-    boundProfileProvider: BoundProfileProvider;
-    providerName: string;
-  };
-  options?: {
-    processRecordings?: boolean;
-    beforeRecordingLoad?: ProcessingFunction;
-  };
-}): Promise<void> {
-  const definitions = await getRecordings(
-    recordingsPath,
-    recordingsType,
-    recordingsKey,
-    recordingsHash
-  );
-  const { parameters, security, services } = boundProfileProvider.configuration;
-  const integrationParameters = parameters ?? {};
-  const baseUrl = services.getUrl();
-
-  if (baseUrl === undefined) {
-    throw new BaseURLNotFoundError(providerName);
-  }
-
-  if (options?.processRecordings) {
-    //Use security configuration only
-    replaceCredentials({
-      definitions,
-      security,
-      integrationParameters,
-      inputVariables,
-      baseUrl,
-      beforeSave: false,
-    });
-  }
-
-  await loadRecordings(definitions, options?.beforeRecordingLoad);
 }

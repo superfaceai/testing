@@ -1,1 +1,1 @@
-export * from './client/superface-test';
+export * from './client';

@@ -10,7 +10,6 @@ import {
 
 import {
   NockConfig,
-  ProcessingFunction,
   RecordingDefinitions,
 } from '../recording/recording.interfaces';
 import { assertsDefinitionsAreNotStrings } from './utils';
@@ -64,17 +63,8 @@ export function endRecording(): RecordingDefinitions {
 }
 
 export async function loadRecordings(
-  definitions: RecordingDefinitions,
-  beforeRecordingLoad?: ProcessingFunction
+  definitions: RecordingDefinitions
 ): Promise<void> {
-  if (beforeRecordingLoad) {
-    debug(
-      "Calling custom 'beforeRecordingLoad' hook on loaded recording definitions"
-    );
-
-    await beforeRecordingLoad(definitions);
-  }
-
   define(definitions);
 
   debug('Loaded and mocked recorded traffic based on recording fixture');
