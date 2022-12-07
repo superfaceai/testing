@@ -1,45 +1,15 @@
-import {
-  isApiKeySecurityValues,
-  isBasicAuthSecurityValues,
-  isBearerTokenSecurityValues,
-  NormalizedSuperJsonDocument,
-  SecurityScheme,
-  SecurityValues,
-} from '@superfaceai/ast';
-import {
-  BoundProfileProvider,
-  Profile,
-  Provider,
-  SuperfaceClient,
-  SuperJson,
-  UnexpectedError,
-  UseCase,
-} from '@superfaceai/one-sdk';
+import { SecurityValues } from '@superfaceai/ast';
 import {
   getValue,
   isPrimitive,
   NonPrimitive,
   Primitive,
+  SecurityConfiguration,
+  UnexpectedError,
   Variables,
-} from '@superfaceai/one-sdk/dist/internal/interpreter/variables';
+} from '@superfaceai/one-sdk';
 import createDebug from 'debug';
-import { join as joinPath } from 'path';
 
-import {
-  CompleteSuperfaceTestConfig,
-  InputVariables,
-  RecordingDefinition,
-  RecordingDefinitions,
-  SuperfaceTestConfigPayload,
-} from '.';
-import {
-  ComponentUndefinedError,
-  InstanceMissingError,
-  MapUndefinedError,
-  ProfileUndefinedError,
-  SuperJsonLoadingFailedError,
-  SuperJsonNotFoundError,
-} from './common/errors';
 import {
   IGenerator,
   InputGenerateHash,
@@ -50,165 +20,15 @@ import {
   replaceCredentialInDefinition,
   replaceInputInDefinition,
   replaceParameterInDefinition,
-} from './nock.utils';
+} from './nock';
+import {
+  InputVariables,
+  PerformError,
+  RecordingDefinition,
+  RecordingDefinitions,
+} from './superface-test.interfaces';
 
-const debug = createDebug('superface:testing');
-
-/**
- * Asserts that entered sfConfig contains every component and
- * that every component is instance of corresponding class not string.
- */
-export function assertsPreparedConfig(
-  sfConfig: SuperfaceTestConfigPayload
-): asserts sfConfig is CompleteSuperfaceTestConfig {
-  assertsPreparedClient(sfConfig.client);
-  assertsPreparedProfile(sfConfig.profile);
-  assertsPreparedProvider(sfConfig.provider);
-  assertsPreparedUseCase(sfConfig.useCase);
-}
-
-export function assertsPreparedClient(
-  client: SuperfaceClient | undefined
-): asserts client is SuperfaceClient {
-  if (client === undefined) {
-    throw new ComponentUndefinedError('Client');
-  }
-}
-
-export function assertsPreparedProfile(
-  profile: Profile | string | undefined
-): asserts profile is Profile {
-  if (profile === undefined) {
-    throw new ComponentUndefinedError('Profile');
-  }
-
-  if (typeof profile === 'string') {
-    throw new InstanceMissingError('Profile');
-  }
-}
-
-export function assertsPreparedProvider(
-  provider: Provider | string | undefined
-): asserts provider is Provider {
-  if (provider === undefined) {
-    throw new ComponentUndefinedError('Provider');
-  }
-
-  if (typeof provider === 'string') {
-    throw new InstanceMissingError('Provider');
-  }
-}
-
-export function assertsPreparedUseCase(
-  useCase: UseCase | string | undefined
-): asserts useCase is UseCase {
-  if (useCase === undefined) {
-    throw new ComponentUndefinedError('UseCase');
-  }
-
-  if (typeof useCase === 'string') {
-    throw new InstanceMissingError('UseCase');
-  }
-}
-
-export function assertBoundProfileProvider(
-  boundProfileProvider: BoundProfileProvider | undefined
-): asserts boundProfileProvider is BoundProfileProvider {
-  if (boundProfileProvider === undefined) {
-    throw new ComponentUndefinedError('BoundProfileProvider');
-  }
-}
-
-/**
- * Checks whether provider is local and contains some file path.
- */
-export function isProfileProviderLocal(
-  provider: Provider | string,
-  profileId: string,
-  superJsonNormalized: NormalizedSuperJsonDocument
-): void {
-  debug(
-    'Checking for local profile provider in super.json for given profile:',
-    profileId
-  );
-
-  const providerId = getProviderName(provider);
-  const targetedProfile = superJsonNormalized.profiles[profileId];
-
-  if (targetedProfile === undefined) {
-    throw new ProfileUndefinedError(profileId);
-  }
-
-  const targetedProfileProvider = targetedProfile.providers[providerId];
-
-  if (targetedProfileProvider === undefined) {
-    throw new MapUndefinedError(profileId, providerId);
-  }
-
-  debug('Found profile provider:', targetedProfileProvider);
-
-  if (!('file' in targetedProfileProvider)) {
-    throw new MapUndefinedError(profileId, providerId);
-  }
-}
-
-/**
- * Returns profile id if entered profile is either instance of Profile or string
- */
-export function getProfileId(profile: Profile | string): string {
-  if (typeof profile === 'string') {
-    return profile;
-  } else {
-    return profile.configuration.id;
-  }
-}
-
-/**
- * Returns provider id if entered provider is either instance of Provider or string
- */
-export function getProviderName(provider: Provider | string): string {
-  if (typeof provider === 'string') {
-    return provider;
-  } else {
-    return provider.configuration.name;
-  }
-}
-
-/**
- * Returns usecase name if entered usecase is either instance of UseCase or string
- */
-export function getUseCaseName(useCase: UseCase | string): string {
-  if (typeof useCase === 'string') {
-    return useCase;
-  } else {
-    return useCase.name;
-  }
-}
-
-/**
- * Returns SuperJson based on path detected with its abstract method.
- */
-export async function getSuperJson(): Promise<SuperJson> {
-  const superPath = await SuperJson.detectSuperJson(process.cwd(), 3);
-
-  debug('Loading super.json from path:', superPath);
-
-  if (superPath === undefined) {
-    throw new SuperJsonNotFoundError();
-  }
-
-  const superJsonResult = await SuperJson.load(
-    joinPath(superPath, 'super.json')
-  );
-
-  debug('Found super.json:', superJsonResult);
-
-  if (superJsonResult.isErr()) {
-    throw new SuperJsonLoadingFailedError(superJsonResult.error);
-  }
-
-  return superJsonResult.value;
-}
+const debugRecording = createDebug('superface:testing:recordings');
 
 export function assertsDefinitionsAreNotStrings(
   definitions: string[] | RecordingDefinition[]
@@ -221,9 +41,9 @@ export function assertsDefinitionsAreNotStrings(
 }
 
 export function resolveCredential(securityValue: SecurityValues): string {
-  debug('Resolving security value:', securityValue.id);
+  debugRecording('Resolving security value:', securityValue.id);
 
-  if (isApiKeySecurityValues(securityValue)) {
+  if ('apikey' in securityValue) {
     if (securityValue.apikey.startsWith('$')) {
       return process.env[securityValue.apikey.substr(1)] ?? '';
     } else {
@@ -231,7 +51,7 @@ export function resolveCredential(securityValue: SecurityValues): string {
     }
   }
 
-  if (isBasicAuthSecurityValues(securityValue)) {
+  if ('username' in securityValue) {
     let user: string, password: string;
 
     if (securityValue.username.startsWith('$')) {
@@ -249,7 +69,7 @@ export function resolveCredential(securityValue: SecurityValues): string {
     return Buffer.from(user + ':' + password).toString('base64');
   }
 
-  if (isBearerTokenSecurityValues(securityValue)) {
+  if ('token' in securityValue) {
     if (securityValue.token.startsWith('$')) {
       return process.env[securityValue.token.substr(1)] ?? '';
     } else {
@@ -307,48 +127,42 @@ export function resolvePlaceholder({
 
 export function replaceCredentials({
   definitions,
-  securitySchemes,
-  securityValues,
+  security,
   integrationParameters,
   inputVariables,
   beforeSave,
   baseUrl,
 }: {
   definitions: RecordingDefinition[];
-  securitySchemes: SecurityScheme[];
-  securityValues: SecurityValues[];
+  security: SecurityConfiguration[];
   integrationParameters: Record<string, string>;
-  inputVariables?: Record<string, Primitive>;
   beforeSave: boolean;
   baseUrl: string;
+  inputVariables?: InputVariables;
 }): void {
-  debug('Replacing credentials from recording definitions');
+  debugRecording('Replacing credentials from recording definitions');
 
   for (const definition of definitions) {
-    for (const scheme of securitySchemes) {
-      debug(
-        `Going through scheme with id: '${scheme.id}' and type: '${scheme.type}'`
+    for (const securityConfig of security) {
+      debugRecording(
+        `Going through scheme with id: '${securityConfig.id}' and type: '${securityConfig.type}'`
       );
 
-      const securityValue = securityValues.find(val => val.id === scheme.id);
-
-      if (securityValue) {
-        replaceCredentialInDefinition({
-          definition,
-          scheme,
-          baseUrl,
-          ...resolvePlaceholder({
-            kind: 'credential',
-            name: scheme.id,
-            value: resolveCredential(securityValue),
-            beforeSave,
-          }),
-        });
-      }
+      replaceCredentialInDefinition({
+        definition,
+        security: securityConfig,
+        baseUrl,
+        ...resolvePlaceholder({
+          kind: 'credential',
+          name: securityConfig.id,
+          value: resolveCredential(securityConfig),
+          beforeSave,
+        }),
+      });
     }
 
     for (const [name, value] of Object.entries(integrationParameters)) {
-      debug('Going through integration parameter:', name);
+      debugRecording('Going through integration parameter:', name);
 
       replaceParameterInDefinition({
         definition,
@@ -359,7 +173,7 @@ export function replaceCredentials({
 
     if (inputVariables) {
       for (const [name, value] of Object.entries(inputVariables)) {
-        debug('Going through input property:', name);
+        debugRecording('Going through input property:', name);
 
         replaceInputInDefinition({
           definition,
@@ -378,22 +192,17 @@ export function replaceCredentials({
 
 export function checkSensitiveInformation(
   definitions: RecordingDefinitions,
-  schemes: SecurityScheme[],
-  securityValues: SecurityValues[],
-  params: Record<string, string>
+  security: SecurityConfiguration[],
+  params: Record<string, string>,
+  inputVariables?: InputVariables
 ): void {
   for (const definition of definitions) {
     const stringifiedDef = JSON.stringify(definition);
 
-    for (const scheme of schemes) {
-      const securityValue = securityValues.find(val => val.id === scheme.id);
-
-      if (
-        securityValue &&
-        stringifiedDef.includes(resolveCredential(securityValue))
-      ) {
+    for (const securityConfig of security) {
+      if (stringifiedDef.includes(resolveCredential(securityConfig))) {
         console.warn(
-          `Value for security scheme '${scheme.id}' of type '${scheme.type}' was found in recorded HTTP traffic.`
+          `Value for security scheme '${securityConfig.id}' of type '${securityConfig.type}' was found in recorded HTTP traffic.`
         );
       }
     }
@@ -403,6 +212,16 @@ export function checkSensitiveInformation(
         console.warn(
           `Value for integration parameter '${paramName}' was found in recorded HTTP traffic.`
         );
+      }
+    }
+
+    if (inputVariables) {
+      for (const [name, value] of Object.entries(inputVariables)) {
+        if (stringifiedDef.includes(value.toString())) {
+          console.warn(
+            `Value for input variable '${name}' was found in recorded HTTP traffic.`
+          );
+        }
       }
     }
   }
@@ -460,6 +279,13 @@ function hasProperty<K extends PropertyKey>(
   return !!obj && propKey in obj;
 }
 
+const getProperty: <K extends PropertyKey>(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  obj: any,
+  propKey: K
+) => unknown = (obj, propKey) =>
+  hasProperty(obj, propKey) ? obj[propKey] : undefined;
+
 function isFunction<R extends unknown>(
   value: unknown,
   returnType?: R
@@ -473,12 +299,15 @@ function isFunction<R extends unknown>(
 
 /**
  * Checks for structural typing of specified `testInstance` and returns
- * corresponding instance of hash generator
+ * corresponding instance of hash generator and function to get current path.
  *
  * It checks for jest's `expect` instance and mocha's `this` instance,
  * otherwise it generates hash according to specified `testName` or `input` in test run
  */
-export function getGenerator(testInstance: unknown): IGenerator {
+export function parseTestInstance(testInstance: unknown): {
+  generator: IGenerator;
+  getTestFilePath: () => string | undefined;
+} {
   // jest instance of `expect` contains function `getState()` which should contain `currentTestName`
   if (testInstance && isFunction(testInstance)) {
     if (
@@ -486,9 +315,21 @@ export function getGenerator(testInstance: unknown): IGenerator {
       isFunction(testInstance.getState)
     ) {
       const state = testInstance.getState();
+      const generator = new JestGenerateHash(
+        state as { currentTestName?: unknown }
+      );
+
+      const getTestFilePath = () => {
+        const testPath = getProperty(state, 'testPath');
+
+        return typeof testPath === 'string' ? testPath : undefined;
+      };
 
       if (state) {
-        return new JestGenerateHash(state as { currentTestName?: unknown });
+        return {
+          generator,
+          getTestFilePath,
+        };
       }
     }
   }
@@ -509,7 +350,10 @@ export function getGenerator(testInstance: unknown): IGenerator {
             const value = testInstance.currentTest.fullTitle();
 
             if (typeof value === 'string') {
-              return new MochaGenerateHash(value);
+              return {
+                generator: new MochaGenerateHash(value),
+                getTestFilePath: () => undefined,
+              };
             }
           }
         }
@@ -524,12 +368,44 @@ export function getGenerator(testInstance: unknown): IGenerator {
           const value = testInstance.test.fullTitle();
 
           if (typeof value === 'string') {
-            return new MochaGenerateHash(value);
+            return {
+              generator: new MochaGenerateHash(value),
+              getTestFilePath: () => undefined,
+            };
           }
         }
       }
     }
   }
 
-  return new InputGenerateHash();
+  return {
+    generator: new InputGenerateHash(),
+    getTestFilePath: () => undefined,
+  };
+}
+
+export function parseBooleanEnv(variable: string | undefined): boolean {
+  if (variable === 'true') {
+    return true;
+  }
+
+  if (variable === 'false') {
+    return false;
+  }
+
+  return false;
+}
+
+/**
+ * @param error - error returned from perform
+ * @returns perform error without ast metadata
+ */
+export function mapError(error: PerformError): PerformError {
+  const result = error;
+
+  if ('metadata' in result) {
+    delete result.metadata;
+  }
+
+  return result;
 }

@@ -1,9 +1,22 @@
 {
   "profiles": {
-    "starwars/character-information": {
-      "version": "1.0.1",
-      "providers": {}
+    "profile": {
+      "version": "1.0.0",
+      "priority": [
+        "provider"
+      ],
+      "defaults": {},
+      "providers": {
+        "provider": {
+          "defaults": {}
+        }
+      }
     }
   },
-  "providers": {}
+  "providers": {
+    "provider": {
+      "security": [],
+      "parameters": {}
+    }
+  }
 }

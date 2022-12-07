@@ -1,16 +1,19 @@
 import {
   ApiKeyPlacement,
   ApiKeySecurityScheme,
+  ApiKeySecurityValues,
+  DigestSecurityScheme,
+  DigestSecurityValues,
   HttpScheme,
-  SecurityScheme,
   SecurityType,
 } from '@superfaceai/ast';
+import { SecurityConfiguration } from '@superfaceai/one-sdk';
 import createDebug from 'debug';
 import { ReplyBody, RequestBodyMatcher } from 'nock/types';
 import { URL } from 'url';
 
-import { RecordingDefinition } from '.';
-import { UnexpectedError } from './common/errors';
+import { RecordingDefinition } from '..';
+import { getResponseHeaderValue } from './recorder.utils';
 
 interface ReplaceOptions {
   definition: RecordingDefinition;
@@ -29,6 +32,21 @@ CONSIDER DISABLING SENSITIVE INFORMATION LOGGING BY APPENDING THE DEBUG ENVIRONM
 );
 
 const AUTH_HEADER_NAME = 'Authorization';
+const WWW_AUTH_HEADER_NAME = 'WWW-Authenticate';
+
+const replace = (
+  payload: string,
+  credential: string,
+  placeholder: string
+): string =>
+  payload.replace(
+    new RegExp(`${credential}|${encodeURIComponent(credential)}`, 'g'),
+    placeholder
+  );
+
+const includes = (payload: string, credential: string): boolean =>
+  payload.includes(credential) ||
+  payload.includes(encodeURIComponent(credential));
 
 function replaceCredential({
   payload,
@@ -38,13 +56,13 @@ function replaceCredential({
   payload: string;
   credential: string;
   placeholder: string;
-}) {
+}): string {
   if (credential !== '') {
     debugSensitive(
       `Replacing credential: '${credential}' for placeholder: '${placeholder}'`
     );
 
-    return payload.replace(new RegExp(credential, 'g'), placeholder);
+    return replace(payload, credential, placeholder);
   }
 
   return payload;
@@ -57,7 +75,7 @@ function replaceCredentialInHeaders({
 }: ReplaceOptions): void {
   if (definition.reqheaders) {
     const headers = Object.entries(definition.reqheaders).filter(([, value]) =>
-      value.toString().includes(credential)
+      includes(value.toString(), credential)
     );
 
     for (const [headerName, headerValue] of headers) {
@@ -78,18 +96,50 @@ function replaceCredentialInRawHeaders({
   definition,
   credential,
   placeholder,
-}: ReplaceOptions): void {
+  security,
+}: ReplaceOptions & {
+  security?: SecurityConfiguration;
+}): void {
   if (definition.rawHeaders) {
-    debug('Replacing credentials in raw headers');
+    if (
+      security?.type === SecurityType.HTTP &&
+      security.scheme === HttpScheme.DIGEST
+    ) {
+      const { authorizationHeader, challengeHeader } = security;
+
+      const supportedHeaders = new Set([
+        AUTH_HEADER_NAME,
+        WWW_AUTH_HEADER_NAME,
+        authorizationHeader,
+        challengeHeader,
+      ]);
+
+      for (const header of supportedHeaders) {
+        const index = definition.rawHeaders.findIndex(
+          rawHeader => rawHeader.toLowerCase() === header?.toLowerCase()
+        );
+
+        if (index !== -1) {
+          definition.rawHeaders[index + 1] = `Digest ${placeholder}`;
+        }
+      }
+
+      return;
+    }
 
     definition.rawHeaders = definition.rawHeaders.map(header => {
-      debugSensitive('Header name/value:', header);
+      if (includes(header, credential)) {
+        debug('Replacing credentials in raw header');
+        debugSensitive('Header name/value:', header);
 
-      return replaceCredential({
-        payload: header,
-        credential,
-        placeholder,
-      });
+        return replaceCredential({
+          payload: header,
+          credential,
+          placeholder,
+        });
+      }
+
+      return header;
     });
   }
 }
@@ -102,7 +152,7 @@ function replaceCredentialInBody({
   if (definition.body !== undefined && definition.body !== '') {
     let body = JSON.stringify(definition.body);
 
-    if (body.includes(credential)) {
+    if (includes(body, credential)) {
       debug('Replacing credentials in request body');
       debugSensitive('Request body:', body);
 
@@ -117,24 +167,44 @@ function replaceCredentialInBody({
   }
 }
 
+enum TargetResponse {
+  default = 'response',
+  decoded = 'decodedResponse',
+}
+
 function replaceCredentialInResponse({
   definition,
   credential,
   placeholder,
-}: ReplaceOptions): void {
-  if (definition.response) {
-    let response = JSON.stringify(definition.response);
+  contentEncoding,
+}: ReplaceOptions & { contentEncoding?: string }): void {
+  let response: string | undefined,
+    targetResponse: TargetResponse = TargetResponse.default;
 
-    debug('Replacing credentials in response');
-    debugSensitive('Response:', response);
+  if (contentEncoding === undefined) {
+    if (definition.response) {
+      response = JSON.stringify(definition.response);
+    }
+  } else {
+    if (definition.decodedResponse) {
+      response = JSON.stringify(definition.decodedResponse);
+      targetResponse = TargetResponse.decoded;
+    }
+  }
 
-    response = replaceCredential({
-      payload: response,
-      credential,
-      placeholder,
-    });
+  if (response) {
+    if (includes(response, credential)) {
+      debug('Replacing credentials in response');
+      debugSensitive('Response:', response);
 
-    definition.response = JSON.parse(response) as ReplyBody;
+      response = replaceCredential({
+        payload: response,
+        credential,
+        placeholder,
+      });
+
+      definition[targetResponse] = JSON.parse(response) as ReplyBody;
+    }
   }
 }
 
@@ -143,7 +213,7 @@ function replaceCredentialInScope({
   credential,
   placeholder,
 }: ReplaceOptions): void {
-  if (definition.scope.includes(credential)) {
+  if (includes(definition.scope, credential)) {
     debug('Replacing credentials in scope');
     debugSensitive('Scope:', definition.scope);
 
@@ -165,7 +235,7 @@ function replaceCredentialInQuery({
   const definitionURL = new URL(baseUrlOrigin + definition.path);
 
   for (const [key, queryValue] of definitionURL.searchParams.entries()) {
-    if (queryValue.includes(credential)) {
+    if (includes(queryValue, credential)) {
       debug('Replacing credentials in query');
       debugSensitive('Query name:', key);
       debugSensitive('Query value:', queryValue);
@@ -194,7 +264,7 @@ function replaceCredentialInPath({
   const baseUrlOrigin = new URL(baseUrl).origin;
   const definitionURL = new URL(baseUrlOrigin + definition.path);
 
-  if (definitionURL.pathname.includes(credential)) {
+  if (includes(definitionURL.pathname, credential)) {
     debug('Replacing credentials in path');
     debugSensitive('Request path:', definitionURL.pathname);
 
@@ -211,21 +281,23 @@ function replaceCredentialInPath({
 
 function replaceApiKeyInHeader({
   definition,
-  scheme,
+  security,
   credential,
   placeholder,
-}: ReplaceOptions & { scheme: ApiKeySecurityScheme }): void {
-  if (scheme.name !== undefined) {
-    if (definition.reqheaders?.[scheme.name] !== undefined) {
+}: ReplaceOptions & {
+  security: ApiKeySecurityScheme & ApiKeySecurityValues;
+}): void {
+  if (security.name !== undefined) {
+    if (definition.reqheaders?.[security.name] !== undefined) {
       debug('Replacing api-key in request header');
-      debugSensitive('Request header name:', scheme.name);
+      debugSensitive('Request header name:', security.name);
       debugSensitive(
         'Request header value:',
-        definition.reqheaders[scheme.name]
+        definition.reqheaders[security.name]
       );
 
-      definition.reqheaders[scheme.name] = replaceCredential({
-        payload: definition.reqheaders[scheme.name].toString(),
+      definition.reqheaders[security.name] = replaceCredential({
+        payload: definition.reqheaders[security.name].toString(),
         credential,
         placeholder,
       });
@@ -267,27 +339,33 @@ function replaceApiKeyInPath({
 
 function replaceApiKeyInQuery({
   definition,
-  scheme,
+  security,
   baseUrl,
   credential,
   placeholder,
-}: ReplaceOptions & { baseUrl: string; scheme: ApiKeySecurityScheme }): void {
+}: ReplaceOptions & {
+  baseUrl: string;
+  security: ApiKeySecurityScheme & ApiKeySecurityValues;
+}): void {
   const baseUrlOrigin = new URL(baseUrl).origin;
   const definitionURL = new URL(baseUrlOrigin + definition.path);
 
   if (
-    scheme.name !== undefined &&
-    definitionURL.searchParams.has(scheme.name) &&
-    definitionURL.searchParams.get(scheme.name)?.includes(credential)
+    security.name !== undefined &&
+    definitionURL.searchParams.has(security.name)
   ) {
-    debug('Replacing api-key in query');
-    debugSensitive('Query name:', scheme.name);
-    debugSensitive('Query value:', definitionURL.searchParams.get(scheme.name));
+    const param = definitionURL.searchParams.get(security.name);
 
-    definitionURL.searchParams.set(scheme.name, placeholder);
+    if (param && includes(param, credential)) {
+      debug('Replacing api-key in query');
+      debugSensitive('Query name:', security.name);
+      debugSensitive('Query value:', param);
 
-    definition.path =
-      definitionURL.pathname + definitionURL.search + definitionURL.hash;
+      definitionURL.searchParams.set(security.name, placeholder);
+
+      definition.path =
+        definitionURL.pathname + definitionURL.search + definitionURL.hash;
+    }
   }
 
   replaceCredentialInQuery({
@@ -300,11 +378,14 @@ function replaceApiKeyInQuery({
 
 function replaceApiKey({
   definition,
-  scheme,
+  security,
   baseUrl,
   credential,
   placeholder,
-}: ReplaceOptions & { baseUrl: string; scheme: ApiKeySecurityScheme }): void {
+}: ReplaceOptions & {
+  baseUrl: string;
+  security: ApiKeySecurityScheme & ApiKeySecurityValues;
+}): void {
   debug('Replacing api-key');
   const options = {
     definition,
@@ -312,15 +393,15 @@ function replaceApiKey({
     placeholder,
   };
 
-  if (scheme.in === ApiKeyPlacement.HEADER) {
-    replaceApiKeyInHeader({ ...options, scheme });
+  if (security.in === ApiKeyPlacement.HEADER) {
+    replaceApiKeyInHeader({ ...options, security });
     replaceCredentialInRawHeaders(options);
-  } else if (scheme.in === ApiKeyPlacement.BODY) {
+  } else if (security.in === ApiKeyPlacement.BODY) {
     replaceApiKeyInBody(options);
-  } else if (scheme.in === ApiKeyPlacement.PATH) {
+  } else if (security.in === ApiKeyPlacement.PATH) {
     replaceApiKeyInPath({ ...options, baseUrl });
-  } else if (scheme.in === ApiKeyPlacement.QUERY) {
-    replaceApiKeyInQuery({ ...options, scheme, baseUrl });
+  } else if (security.in === ApiKeyPlacement.QUERY) {
+    replaceApiKeyInQuery({ ...options, security, baseUrl });
   }
 }
 
@@ -346,6 +427,53 @@ function replaceBearerAuth(
   }
 }
 
+function replaceDigestAuth(
+  definition: RecordingDefinition,
+  placeholder: string,
+  security: DigestSecurityScheme & DigestSecurityValues
+): void {
+  const { authorizationHeader, challengeHeader } = security;
+
+  // Challenge digest header
+  if (
+    challengeHeader &&
+    definition.reqheaders?.[challengeHeader] !== undefined
+  ) {
+    debug(`Replacing Digest token from challenge header: ${challengeHeader}`);
+
+    definition.reqheaders[challengeHeader] = `Digest ${placeholder}`;
+  }
+
+  // Authorization digest header
+  if (
+    authorizationHeader &&
+    definition.reqheaders?.[authorizationHeader] !== undefined
+  ) {
+    debug(
+      `Replacing Digest token from authorization header: ${authorizationHeader}`
+    );
+
+    definition.reqheaders[authorizationHeader] = `Digest ${placeholder}`;
+  }
+
+  // Authorization or www-authenticate header
+  if (challengeHeader === undefined || authorizationHeader === undefined) {
+    if (definition.reqheaders?.[AUTH_HEADER_NAME] !== undefined) {
+      debug(`Replacing Digest token from default header: ${AUTH_HEADER_NAME}`);
+
+      definition.reqheaders[AUTH_HEADER_NAME] = `Digest ${placeholder}`;
+    }
+
+    if (definition.reqheaders?.[WWW_AUTH_HEADER_NAME] !== undefined) {
+      debug(
+        `Replacing Digest token from default header: ${WWW_AUTH_HEADER_NAME}`
+      );
+
+      definition.reqheaders[WWW_AUTH_HEADER_NAME] = `Digest ${placeholder}`;
+    }
+  }
+}
+
 /**
  * Replaces occurences of credentials from security schemes in recorded HTTP calls
  *
@@ -353,7 +481,7 @@ function replaceBearerAuth(
  * based on security scheme.
  *
  * It can look in following places of HTTP recording definition:
- * - headers and rawHeaders (bearer & basic)
+ * - headers and rawHeaders (bearer, basic & digest)
  * - body (apiKey)
  * - path (apiKey)
  * - query (apiKey)
@@ -361,13 +489,13 @@ function replaceBearerAuth(
  */
 export function replaceCredentialInDefinition({
   definition,
-  scheme,
+  security,
   baseUrl,
   credential,
   placeholder,
 }: {
   definition: RecordingDefinition;
-  scheme: SecurityScheme;
+  security: SecurityConfiguration;
   baseUrl: string;
   credential: string;
   placeholder: string;
@@ -378,29 +506,34 @@ export function replaceCredentialInDefinition({
     credential,
     placeholder,
   };
+  const contentEncoding = getResponseHeaderValue(
+    'Content-Encoding',
+    definition.rawHeaders ?? []
+  );
 
-  if (scheme.type === SecurityType.APIKEY) {
-    replaceApiKey({ ...options, scheme, baseUrl });
+  if (security.type === SecurityType.APIKEY) {
+    replaceApiKey({ ...options, security, baseUrl });
   } else if (
-    scheme.type === SecurityType.HTTP &&
-    scheme.scheme === HttpScheme.BASIC
+    security.type === SecurityType.HTTP &&
+    security.scheme === HttpScheme.BASIC
   ) {
     replaceBasicAuth(definition, placeholder);
     replaceCredentialInRawHeaders(options);
   } else if (
-    scheme.type === SecurityType.HTTP &&
-    scheme.scheme === HttpScheme.BEARER
+    security.type === SecurityType.HTTP &&
+    security.scheme === HttpScheme.BEARER
   ) {
     replaceBearerAuth(definition, placeholder);
     replaceCredentialInRawHeaders(options);
   } else if (
-    scheme.type === SecurityType.HTTP &&
-    scheme.scheme === HttpScheme.DIGEST
+    security.type === SecurityType.HTTP &&
+    security.scheme === HttpScheme.DIGEST
   ) {
-    throw new UnexpectedError('Digest auth not implemented');
+    replaceDigestAuth(definition, placeholder, security);
+    replaceCredentialInRawHeaders({ ...options, security });
   }
 
-  replaceCredentialInResponse(options);
+  replaceCredentialInResponse({ ...options, contentEncoding });
 }
 
 /**
@@ -432,11 +565,15 @@ export function replaceParameterInDefinition({
     credential,
     placeholder,
   };
+  const contentEncoding = getResponseHeaderValue(
+    'Content-Encoding',
+    definition.rawHeaders ?? []
+  );
 
   replaceCredentialInHeaders(options);
   replaceCredentialInRawHeaders(options);
   replaceCredentialInBody(options);
-  replaceCredentialInResponse(options);
+  replaceCredentialInResponse({ ...options, contentEncoding });
   replaceCredentialInScope(options);
   replaceCredentialInPath({ ...options, baseUrl });
   replaceCredentialInQuery({ ...options, baseUrl });
@@ -470,11 +607,15 @@ export function replaceInputInDefinition({
     credential,
     placeholder,
   };
+  const contentEncoding = getResponseHeaderValue(
+    'Content-Encoding',
+    definition.rawHeaders ?? []
+  );
 
   replaceCredentialInHeaders(options);
   replaceCredentialInRawHeaders(options);
   replaceCredentialInBody(options);
-  replaceCredentialInResponse(options);
+  replaceCredentialInResponse({ ...options, contentEncoding });
   replaceCredentialInPath({ ...options, baseUrl });
   replaceCredentialInQuery({ ...options, baseUrl });
 }

@@ -1,20 +1,25 @@
 import { SDKExecutionError } from '@superfaceai/one-sdk';
 import { inspect } from 'util';
 
-class ErrorBase extends Error {
-  constructor(public kind: string, public override message: string) {
+export class ErrorBase extends Error {
+  constructor(kind: string, message: string) {
     super(message);
-    this.name = kind;
 
     Object.setPrototypeOf(this, ErrorBase.prototype);
+
+    this.name = kind;
   }
 
-  get [Symbol.toStringTag](): string {
-    return this.kind;
+  public get [Symbol.toStringTag](): string {
+    return this.name;
   }
 
-  override toString(): string {
-    return `${this.kind}: ${this.message}`;
+  public get kind(): string {
+    return this.name;
+  }
+
+  public override toString(): string {
+    return `${this.name}: ${this.message}`;
   }
 }
 
@@ -24,11 +29,20 @@ export class UnexpectedError extends ErrorBase {
   }
 }
 
+export class ProviderUndefinedError extends ErrorBase {
+  constructor(provider: string) {
+    super(
+      'ProviderUndefinedError',
+      `Provider ${provider} does not exist.\nUse \`superface create --provider --providerName ${provider}\` to create it.`
+    );
+  }
+}
+
 export class MapUndefinedError extends ErrorBase {
   constructor(profile: string, provider: string) {
     super(
       'MapUndefinedError',
-      `Map for ${profile} and ${provider} does not exist.\nUse \`superface create --map --profileId ${profile} --providerName ${provider}\` to create it.`
+      `Map for "${profile}" and "${provider}" does not exist.\nUse \`superface create --map --profileId ${profile} --providerName ${provider}\` to create it.`
     );
   }
 }
@@ -37,7 +51,16 @@ export class ProfileUndefinedError extends ErrorBase {
   constructor(profile: string) {
     super(
       'ProfileUndefinedError',
-      `Profile ${profile} does not exist.\nUse \`superface create --profile --profileId ${profile}\` to create it.`
+      `Profile "${profile}" does not exist.\nUse \`superface create --profile --profileId ${profile}\` to create it.`
+    );
+  }
+}
+
+export class ProviderJsonUndefinedError extends ErrorBase {
+  constructor(provider: string) {
+    super(
+      'ProviderJsonUndefinedError',
+      `Provider for "${provider}" does not exist.\nUse \`superface create --provider --providerName ${provider}\` to create it.`
     );
   }
 }
@@ -82,17 +105,35 @@ export class SuperJsonNotFoundError extends ErrorBase {
 export class SuperJsonLoadingFailedError extends ErrorBase {
   constructor(originalError: SDKExecutionError) {
     super(
-      'SuperJsonNotFoundError',
+      'SuperJsonLoadingFailedError',
       `Loading super.json failed.\n${originalError.toString()}`
     );
   }
 }
 
-export class RecordingsNotFoundError extends ErrorBase {
-  constructor() {
+export class RecordingsFileNotFoundError extends ErrorBase {
+  constructor(path: string) {
     super(
-      'RecordingsNotFoundError',
-      'Recordings could not be found for running mocked tests.\nYou must call the live API first to record API traffic.\nUse the environment variable SUPERFACE_LIVE_API to call the API and record traffic.\nSee https://github.com/superfaceai/testing#recording to learn more.'
+      'RecordingsFileNotFoundError',
+      `Recordings file could not be found for running mocked tests at "${path}".\nYou must call the live API first to record API traffic.\nUse the environment variable SUPERFACE_LIVE_API to call the API and record traffic.\nSee https://github.com/superfaceai/testing#recording to learn more.`
+    );
+  }
+}
+
+export class RecordingsIndexNotFoundError extends ErrorBase {
+  constructor(path: string, index: string) {
+    super(
+      'RecordingsIndexNotFoundError',
+      `Recordings index "${index}" could not be found in recordings file at "${path}".\nYou must call the live API first to record API traffic.\nUse the environment variable SUPERFACE_LIVE_API to call the API and record traffic.\nSee https://github.com/superfaceai/testing#recording to learn more.`
+    );
+  }
+}
+
+export class RecordingsHashNotFoundError extends ErrorBase {
+  constructor(path: string, index: string, hash: string) {
+    super(
+      'RecordingsHashNotFoundError',
+      `Recordings hash "${hash}" under index "${index}" could not be found in recordings file at "${path}".\nYou must call the live API first to record API traffic.\nUse the environment variable SUPERFACE_LIVE_API to call the API and record traffic.\nSee https://github.com/superfaceai/testing#recording to learn more.`
     );
   }
 }
@@ -101,7 +142,16 @@ export class BaseURLNotFoundError extends ErrorBase {
   constructor(provider: string) {
     super(
       'BaseURLNotFoundError',
-      `No base URL was found for provider ${provider}, configure a service in provider.json.`
+      `No base URL was found for provider "${provider}", configure a service in provider.json.`
+    );
+  }
+}
+
+export class CoverageFileNotFoundError extends ErrorBase {
+  constructor(path: string) {
+    super(
+      'CoverageFileNotFoundError',
+      `No coverage file at path "${path}" found.`
     );
   }
 }

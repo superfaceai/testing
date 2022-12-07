@@ -1,9 +1,16 @@
 import {
   assertIsIOError,
+  BaseURLNotFoundError,
   ComponentUndefinedError,
+  CoverageFileNotFoundError,
   InstanceMissingError,
   MapUndefinedError,
+  ProfileUndefinedError,
+  ProviderJsonUndefinedError,
   RecordingPathUndefinedError,
+  RecordingsFileNotFoundError,
+  RecordingsHashNotFoundError,
+  RecordingsIndexNotFoundError,
   SuperJsonNotFoundError,
   UnexpectedError,
 } from './errors';
@@ -23,6 +30,24 @@ describe('errors', () => {
     });
   });
 
+  describe('when throwing ProfileUndefinedError', () => {
+    const error = new ProfileUndefinedError('profile');
+
+    it('throws in correct format', () => {
+      expect(() => {
+        throw error;
+      }).toThrow(
+        'Profile "profile" does not exist.\nUse `superface create --profile --profileId profile` to create it.'
+      );
+    });
+
+    it('returns correct format', () => {
+      expect(error.toString()).toEqual(
+        'ProfileUndefinedError: Profile "profile" does not exist.\nUse `superface create --profile --profileId profile` to create it.'
+      );
+    });
+  });
+
   describe('when throwing MapUndefinedError', () => {
     const error = new MapUndefinedError('profile', 'provider');
 
@@ -30,13 +55,31 @@ describe('errors', () => {
       expect(() => {
         throw error;
       }).toThrow(
-        'Map for profile and provider does not exist.\nUse `superface create --map --profileId profile --providerName provider` to create it.'
+        'Map for "profile" and "provider" does not exist.\nUse `superface create --map --profileId profile --providerName provider` to create it.'
       );
     });
 
     it('returns correct format', () => {
       expect(error.toString()).toEqual(
-        'MapUndefinedError: Map for profile and provider does not exist.\nUse `superface create --map --profileId profile --providerName provider` to create it.'
+        'MapUndefinedError: Map for "profile" and "provider" does not exist.\nUse `superface create --map --profileId profile --providerName provider` to create it.'
+      );
+    });
+  });
+
+  describe('when throwing ProviderJsonUndefinedError', () => {
+    const error = new ProviderJsonUndefinedError('provider');
+
+    it('throws in correct format', () => {
+      expect(() => {
+        throw error;
+      }).toThrow(
+        'Provider for "provider" does not exist.\nUse `superface create --provider --providerName provider` to create it.'
+      );
+    });
+
+    it('returns correct format', () => {
+      expect(error.toString()).toEqual(
+        'ProviderJsonUndefinedError: Provider for "provider" does not exist.\nUse `superface create --provider --providerName provider` to create it.'
       );
     });
   });
@@ -185,6 +228,102 @@ describe('errors', () => {
     it('returns correct format', () => {
       expect(error.toString()).toEqual(
         'SuperJsonNotFoundError: No super.json found.'
+      );
+    });
+  });
+
+  describe('when throwing RecordingsFileNotFoundError', () => {
+    const error = new RecordingsFileNotFoundError('path/to/recording.json');
+
+    it('throws in correct format', () => {
+      expect(() => {
+        throw error;
+      }).toThrow(
+        'Recordings file could not be found for running mocked tests at "path/to/recording.json".\nYou must call the live API first to record API traffic.\nUse the environment variable SUPERFACE_LIVE_API to call the API and record traffic.\nSee https://github.com/superfaceai/testing#recording to learn more.'
+      );
+    });
+
+    it('returns correct format', () => {
+      expect(error.toString()).toEqual(
+        'RecordingsFileNotFoundError: Recordings file could not be found for running mocked tests at "path/to/recording.json".\nYou must call the live API first to record API traffic.\nUse the environment variable SUPERFACE_LIVE_API to call the API and record traffic.\nSee https://github.com/superfaceai/testing#recording to learn more.'
+      );
+    });
+  });
+
+  describe('when throwing RecordingsIndexNotFoundError', () => {
+    const error = new RecordingsIndexNotFoundError(
+      'path/to/recording.json',
+      'profile/provider/test'
+    );
+
+    it('throws in correct format', () => {
+      expect(() => {
+        throw error;
+      }).toThrow(
+        'Recordings index "profile/provider/test" could not be found in recordings file at "path/to/recording.json".\nYou must call the live API first to record API traffic.\nUse the environment variable SUPERFACE_LIVE_API to call the API and record traffic.\nSee https://github.com/superfaceai/testing#recording to learn more.'
+      );
+    });
+
+    it('returns correct format', () => {
+      expect(error.toString()).toEqual(
+        'RecordingsIndexNotFoundError: Recordings index "profile/provider/test" could not be found in recordings file at "path/to/recording.json".\nYou must call the live API first to record API traffic.\nUse the environment variable SUPERFACE_LIVE_API to call the API and record traffic.\nSee https://github.com/superfaceai/testing#recording to learn more.'
+      );
+    });
+  });
+
+  describe('when throwing RecordingsHashNotFoundError', () => {
+    const error = new RecordingsHashNotFoundError(
+      'path/to/recording.json',
+      'profile/provider/test',
+      '###'
+    );
+
+    it('throws in correct format', () => {
+      expect(() => {
+        throw error;
+      }).toThrow(
+        'Recordings hash "###" under index "profile/provider/test" could not be found in recordings file at "path/to/recording.json".\nYou must call the live API first to record API traffic.\nUse the environment variable SUPERFACE_LIVE_API to call the API and record traffic.\nSee https://github.com/superfaceai/testing#recording to learn more.'
+      );
+    });
+
+    it('returns correct format', () => {
+      expect(error.toString()).toEqual(
+        'RecordingsHashNotFoundError: Recordings hash "###" under index "profile/provider/test" could not be found in recordings file at "path/to/recording.json".\nYou must call the live API first to record API traffic.\nUse the environment variable SUPERFACE_LIVE_API to call the API and record traffic.\nSee https://github.com/superfaceai/testing#recording to learn more.'
+      );
+    });
+  });
+
+  describe('when throwing BaseURLNotFoundError', () => {
+    const error = new BaseURLNotFoundError('provider');
+
+    it('throws in correct format', () => {
+      expect(() => {
+        throw error;
+      }).toThrow(
+        'No base URL was found for provider "provider", configure a service in provider.json.'
+      );
+    });
+
+    it('returns correct format', () => {
+      expect(error.toString()).toEqual(
+        'BaseURLNotFoundError: No base URL was found for provider "provider", configure a service in provider.json.'
+      );
+    });
+  });
+
+  describe('when throwing CoverageFileNotFoundError', () => {
+    const samplePath = 'path/to/coverage.json';
+    const error = new CoverageFileNotFoundError(samplePath);
+
+    it('throws in correct format', () => {
+      expect(() => {
+        throw error;
+      }).toThrow(`No coverage file at path "${samplePath}" found.`);
+    });
+
+    it('returns correct format', () => {
+      expect(error.toString()).toEqual(
+        `CoverageFileNotFoundError: No coverage file at path "${samplePath}" found.`
       );
     });
   });

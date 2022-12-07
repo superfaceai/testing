@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import { dirname } from 'path';
 import { Writable } from 'stream';
 
-import { RecordingDefinition } from '..';
+import { TestRecordings } from '../nock/recording.interfaces';
 import { exists, streamEnd, streamWrite, WritingOptions } from './io';
 
 export class OutputStream {
@@ -60,7 +60,7 @@ export class OutputStream {
 
 export async function writeRecordings(
   path: string,
-  recordings: string[] | RecordingDefinition[]
+  recordings: TestRecordings
 ): Promise<void> {
   await OutputStream.writeIfAbsent(path, JSON.stringify(recordings, null, 2), {
     dirs: true,
