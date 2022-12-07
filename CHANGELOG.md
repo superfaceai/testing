@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [3.0.0] - 2022-12-07
 ### Added
 - New parameter `recordingType` in method `run()` to differentiate between prepare, teardown or main test run
 - New dev and peer dependency - Superface Parser [v1.2.0](https://github.com/superfaceai/parser/releases/tag/v1.2.0)
@@ -25,10 +27,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Errors for module `matcher`
 - Error `CoverageFileNotFoundError` for correct reporting
 
-### Removed
-- Parameter `client` from constructor and method `run`
-- Function for omitting timestamp from perform error `removeTimestamp`
-
 ### Changed
 - **BREAKING CHANGE:** Recording fixtures are grouped by test file or provider
 - **BREAKING CHANGE:** Recording fixtures are stored next to test file OR in `<project-dir>/recordings/<profile>/<provider>.recording.json`
@@ -39,6 +37,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Move parameter `testInstance` from superface components to second parameter in constructor
 - Return value from method `run` to `PerformError | string`
 - Does not overwrite HTTP traffic recording when in record mode, instead save new one next to old one with suffix `-new`
+
+### Removed
+- Parameter `client` from constructor and method `run`
+- Function for omitting timestamp from perform error `removeTimestamp`
 
 ## [2.0.3] - 2022-02-15
 ### Changed
@@ -82,7 +84,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Modules for io, formatting and errors.
 - SuperfaceTest class
 
-[Unreleased]: https://github.com/superfaceai/testing/compare/v2.0.3...HEAD
+[Unreleased]: https://github.com/superfaceai/testing/compare/v3.0.0...HEAD
+[3.0.0]: https://github.com/superfaceai/testing/compare/v2.0.3...v3.0.0
 [2.0.3]: https://github.com/superfaceai/testing/compare/v2.0.1...v2.0.3
 [2.0.1]: https://github.com/superfaceai/testing/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/superfaceai/testing/compare/v1.0.0...v2.0.0
