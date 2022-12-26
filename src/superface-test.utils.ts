@@ -307,6 +307,7 @@ function isFunction<R extends unknown>(
 export function parseTestInstance(testInstance: unknown): {
   generator: IGenerator;
   getTestFilePath: () => string | undefined;
+  testName?: string;
 } {
   // jest instance of `expect` contains function `getState()` which should contain `currentTestName`
   if (testInstance && isFunction(testInstance)) {
@@ -329,6 +330,9 @@ export function parseTestInstance(testInstance: unknown): {
         return {
           generator,
           getTestFilePath,
+          testName: String(
+            (state as { currentTestName?: unknown }).currentTestName
+          ),
         };
       }
     }
@@ -353,6 +357,7 @@ export function parseTestInstance(testInstance: unknown): {
               return {
                 generator: new MochaGenerateHash(value),
                 getTestFilePath: () => undefined,
+                testName: value,
               };
             }
           }
@@ -371,6 +376,7 @@ export function parseTestInstance(testInstance: unknown): {
             return {
               generator: new MochaGenerateHash(value),
               getTestFilePath: () => undefined,
+              testName: value,
             };
           }
         }

@@ -28,6 +28,7 @@ import {
   parseTestInstance,
   searchValues,
 } from './superface-test.utils';
+import { inspectRecordings } from './common/inspect';
 
 const debug = createDebug('superface:testing');
 const debugSetup = createDebug('superface:testing:setup');
@@ -39,13 +40,17 @@ export class SuperfaceTest {
   private generator: IGenerator;
   private getTestFilePath: () => string | undefined;
   public configuration: SuperfaceTestConfig | undefined;
+  private instanceTestName?: string;
 
   constructor(payload?: SuperfaceTestConfig, nockConfig?: NockConfig) {
     this.configuration = payload;
     this.nockConfig = nockConfig;
 
-    ({ generator: this.generator, getTestFilePath: this.getTestFilePath } =
-      parseTestInstance(nockConfig?.testInstance));
+    ({
+      generator: this.generator,
+      getTestFilePath: this.getTestFilePath,
+      testName: this.instanceTestName,
+    } = parseTestInstance(nockConfig?.testInstance));
   }
 
   /**
@@ -179,6 +184,21 @@ export class SuperfaceTest {
     }
 
     this.analysis = undefined;
+
+    if (options?.inspect === true || this.nockConfig?.inspect === true) {
+      await inspectRecordings(
+        {
+          type: recordingsType,
+          path: recordingsPath,
+          key: recordingsKey,
+          hash: recordingsHash,
+        },
+        this.instanceTestName ??
+          (testName !== undefined
+            ? joinPath(recordingsKey, testName)
+            : recordingsKey)
+      );
+    }
 
     if (result.isErr()) {
       debug('Perform failed with error:', result.error.toString());

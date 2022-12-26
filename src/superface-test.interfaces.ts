@@ -43,6 +43,7 @@ export interface NockConfig {
   fixture?: string;
   enableReqheadersRecording?: boolean;
   testInstance?: unknown;
+  inspect?: boolean;
 }
 
 export type RecordingDefinition = Definition & {
@@ -62,6 +63,7 @@ export interface RecordingProcessOptions {
   beforeRecordingLoad?: ProcessingFunction;
   hideInput?: string[];
   fullError?: boolean;
+  inspect?: boolean;
 }
 
 export interface NoImpactResult {

@@ -45,6 +45,7 @@
   "dependencies": {
     "@superfaceai/ast": "^1.2.0",
     "ajv": "^8.11.0",
+    "chalk": "^4.1.2",
     "debug": "^4.3.2",
     "genson-js": "^0.0.8",
     "http-encoding": "^1.5.1",
