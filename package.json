@@ -24,7 +24,7 @@
   },
   "devDependencies": {
     "@superfaceai/one-sdk": "^2.2.0",
-    "@superfaceai/parser": "1.2.0",
+    "@superfaceai/parser": "2.0.0",
     "@types/debug": "^4.1.7",
     "@types/jest": "^27.0.1",
     "@types/rimraf": "^3.0.2",
@@ -52,6 +52,6 @@
   },
   "peerDependencies": {
     "@superfaceai/one-sdk": "^2.2",
-    "@superfaceai/parser": "^1.2.0"
+    "@superfaceai/parser": "^2.0.0"
   }
 }
