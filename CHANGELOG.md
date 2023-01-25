@@ -7,7 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Changed
-- `@superfaceai/one-sdk` peer dependency from `v2.0` to `v2.2`
+- `@superfaceai/one-sdk` peer dependency from `^2.0` to `^2.2`
+- `@superfaceai/parser` peer dependency from `^1.2.0` to `^2.0.0`
 
 ## [3.0.0] - 2022-12-07
 ### Added
