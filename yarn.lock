@@ -566,14 +566,6 @@
     ajv "^8.8.2"
     ajv-formats "^2.1.1"
 
-"@superfaceai/ast@^1.2.0":
-  version "1.2.0"
-  resolved "https://registry.yarnpkg.com/@superfaceai/ast/-/ast-1.2.0.tgz#f41823d550e0b0a05a8398be22a68b7b3912dde3"
-  integrity sha512-HMmdSUNzKuVgQ9g9YS/eiv3/CitSZks8eury8sAi2QbwT+n5f9SsVcmHxL2/QbkRCmlPpRqHJ6YSCqvBZ2fu1g==
-  dependencies:
-    ajv "^8.8.2"
-    ajv-formats "^2.1.1"
-
 "@superfaceai/one-sdk@2.3.0-rc.0":
   version "2.3.0-rc.0"
   resolved "https://registry.yarnpkg.com/@superfaceai/one-sdk/-/one-sdk-2.3.0-rc.0.tgz#c4a490c19a3696f7e47e585cd8746d7116732389"
