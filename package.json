@@ -24,7 +24,7 @@
   },
   "devDependencies": {
     "@superfaceai/one-sdk": "2.3.0-rc.0",
-    "@superfaceai/parser": "2.0.0",
+    "@superfaceai/parser": "^2.1.0",
     "@types/debug": "^4.1.7",
     "@types/jest": "^27.0.1",
     "@types/rimraf": "^3.0.2",
