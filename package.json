@@ -23,7 +23,7 @@
     "prepush": "yarn build && yarn test && yarn lint && yarn format"
   },
   "devDependencies": {
-    "@superfaceai/one-sdk": "2.3.0-rc.0",
+    "@superfaceai/one-sdk": "2.3.0-rc.1",
     "@superfaceai/parser": "^2.1.0",
     "@types/debug": "^4.1.7",
     "@types/jest": "^27.0.1",
@@ -51,7 +51,7 @@
     "nock": "^13.1.3"
   },
   "peerDependencies": {
-    "@superfaceai/one-sdk": "^2.2",
+    "@superfaceai/one-sdk": "^2.3.0",
     "@superfaceai/parser": "^2.0.0"
   }
 }
