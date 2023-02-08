@@ -1,6 +1,6 @@
 # Superface Testing Library
 
-![GitHub Workflow Status](https://img.shields.io/github/workflow/status/superfaceai/testing/CI)
+[![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/superfaceai/testing/main.yml)](https://github.com/superfaceai/testing/actions/workflows/main.yml)
 ![NPM](https://img.shields.io/npm/v/@superfaceai/testing)
 [![NPM](https://img.shields.io/npm/l/@superfaceai/testing)](LICENSE)
 ![TypeScript](https://img.shields.io/badge/%3C%2F%3E-Typescript-blue)
