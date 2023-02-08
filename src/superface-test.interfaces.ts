@@ -6,6 +6,7 @@ import {
   ProfileParameterError,
   Provider,
   Result,
+  SDKExecutionError,
   UnexpectedError,
   UseCase,
 } from '@superfaceai/one-sdk';
@@ -35,7 +36,8 @@ export type SuperfaceTestRun = SuperfaceTestConfig & HashOptions;
 export type PerformError =
   | ProfileParameterError
   | MapInterpreterError
-  | UnexpectedError;
+  | UnexpectedError
+  | SDKExecutionError;
 export type TestingReturn = Result<unknown, PerformError | string>;
 
 export interface NockConfig {
