@@ -1,6 +1,7 @@
 import { SecurityValues } from '@superfaceai/ast';
 import {
-  getValue,
+  indexRecord,
+  isNone,
   isPrimitive,
   NonPrimitive,
   Primitive,
@@ -175,6 +176,11 @@ export function replaceCredentials({
       for (const [name, value] of Object.entries(inputVariables)) {
         debugRecording('Going through input property:', name);
 
+        if (isNone(value)) {
+          debugRecording('Value is None');
+          continue;
+        }
+
         replaceInputInDefinition({
           definition,
           baseUrl,
@@ -217,7 +223,7 @@ export function checkSensitiveInformation(
 
     if (inputVariables) {
       for (const [name, value] of Object.entries(inputVariables)) {
-        if (stringifiedDef.includes(value.toString())) {
+        if (!isNone(value) && stringifiedDef.includes(value.toString())) {
           console.warn(
             `Value for input variable '${name}' was found in recorded HTTP traffic.`
           );
@@ -241,7 +247,7 @@ export function searchValues(
     const keys = property.split('.');
 
     if (keys.length > 1) {
-      const value = getValue(input, keys);
+      const value = indexRecord(input, keys)
 
       assertPrimitive(value, property);
 
@@ -284,7 +290,7 @@ const getProperty: <K extends PropertyKey>(
   obj: any,
   propKey: K
 ) => unknown = (obj, propKey) =>
-  hasProperty(obj, propKey) ? obj[propKey] : undefined;
+    hasProperty(obj, propKey) ? obj[propKey] : undefined;
 
 function isFunction<R extends unknown>(
   value: unknown,
