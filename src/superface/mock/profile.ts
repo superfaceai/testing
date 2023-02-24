@@ -12,6 +12,7 @@ import {
 import { mockProfileAST } from './ast';
 import { mockNodeFetch } from './fetch-instance';
 import { mockFileSystem } from './file-system';
+import { mockNodeSandbox } from './sandbox-instance';
 import { MockTimers } from './timers';
 
 const crypto = new NodeCrypto();
@@ -28,11 +29,13 @@ export function createProfile(options?: {
   }>();
   const fileSystem = mockFileSystem();
   const config = new Config(fileSystem);
+  const fetch = mockNodeFetch();
   const ast = mockProfileAST;
   const configuration = new ProfileConfiguration(
     options?.name ?? 'profile',
     '1.0.0'
   );
+  const sandbox = mockNodeSandbox();
 
   return new Profile(
     configuration,
@@ -40,10 +43,11 @@ export function createProfile(options?: {
     events,
     options?.superJson ?? undefined,
     config,
+    sandbox,
     timers,
     fileSystem,
     cache,
     crypto,
-    mockNodeFetch()
+    fetch,
   );
 }

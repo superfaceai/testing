@@ -18,12 +18,14 @@ import {
   NodeFetch,
   NodeFileSystem,
   NodeLogger,
+  NodeSandbox,
   NodeTimers,
   profileAstId,
   resolveSecurityConfiguration,
   ServiceSelector,
 } from '@superfaceai/one-sdk';
 import { resolveIntegrationParameters } from '@superfaceai/one-sdk/dist/core/profile-provider/parameters';
+import { ISandbox } from '@superfaceai/one-sdk/dist/interfaces/sandbox';
 
 // This deals only with BoundProfileProvider instance creation, it should NOT be exported from directory.
 export function createBoundProfileProvider({
@@ -40,9 +42,10 @@ export function createBoundProfileProvider({
   providerJson: ProviderJson;
   options?: {
     crypto?: ICrypto;
-    timers?: ITimers;
-    logger?: ILogger;
     fetchInstance?: IFetch & Interceptable & AuthCache;
+    logger?: ILogger;
+    timers?: ITimers;
+    sandbox?: ISandbox;
   };
   configOptions?: {
     cachePath?: string;
@@ -61,17 +64,20 @@ export function createBoundProfileProvider({
   const crypto = options?.crypto ?? new NodeCrypto();
   const timers = options?.timers ?? new NodeTimers();
   const logger = options?.logger ?? new NodeLogger();
-  const events = new Events(timers, logger);
+  const sandbox = options?.sandbox ?? new NodeSandbox();
   const fetchInstance = options?.fetchInstance ?? new NodeFetch(timers);
+  const events = new Events(timers, logger);
+  const config = new Config(NodeFileSystem, {
+    disableReporting: true,
+    ...configOptions,
+  });
 
   return new BoundProfileProvider(
     profileAst,
     mapAst,
     providerJson,
-    new Config(NodeFileSystem, {
-      disableReporting: true,
-      ...configOptions,
-    }),
+    config,
+    sandbox,
     {
       services: new ServiceSelector(
         providerJson.services,
@@ -79,7 +85,7 @@ export function createBoundProfileProvider({
       ),
       profileProviderSettings:
         superJson.profiles[profileAstId(profileAst)].providers[
-          providerJson.name
+        providerJson.name
         ],
       security: resolveSecurityConfiguration(
         providerJson.securitySchemes ?? [],
